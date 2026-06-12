@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monthly Completed Tickets Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+    padding: 24px;
+  }
+  .dashboard { max-width: 1200px; margin: 0 auto; }
+
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    color: #fff;
+    padding: 28px 32px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header h1 { font-size: 24px; font-weight: 700; }
+  .header .meta { text-align: right; }
+  .header .month { font-size: 18px; opacity: .92; }
+  .header .updated { font-size: 12px; opacity: .65; margin-top: 4px; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .card .label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .card .value { font-size: 32px; font-weight: 700; margin-top: 2px; }
+  .card.incident .value { color: #3b82f6; }
+  .card.task .value    { color: #f97316; }
+  .card.total .value   { color: #1e293b; }
+  .card.emp .value     { color: #8b5cf6; }
+
+  .chart-section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    margin-bottom: 20px;
+  }
+  .legend {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #475569;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 3px; }
+  .chart-wrap { position: relative; width: 100%; }
+
+  .data-section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .data-toggle {
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer; font-size: 14px; font-weight: 600;
+    color: #3b82f6; border: none; background: none; padding: 0;
+  }
+  .data-toggle:hover { color: #1d4ed8; }
+  .data-content { display: none; margin-top: 14px; }
+  .data-content.open { display: block; }
+  .data-content textarea {
+    width: 100%; height: 180px;
+    font-family: 'SF Mono', Consolas, 'Courier New', monospace;
+    font-size: 12px; padding: 12px;
+    border: 1px solid #e2e8f0; border-radius: 8px; resize: vertical;
+  }
+  .data-content .hint { font-size: 12px; color: #94a3b8; margin-top: 6px; line-height: 1.5; }
+  .btn {
+    display: inline-block; padding: 8px 20px; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 10px;
+    background: #3b82f6; color: #fff; transition: background .15s;
+  }
+  .btn:hover { background: #1d4ed8; }
+
+  @media print {
+    body { padding: 0; background: #fff; }
+    .data-section { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="dashboard">
+
+  <div class="header">
+    <h1>Monthly Completed Tickets</h1>
+    <div class="meta">
+      <div class="month" id="monthTitle"></div>
+      <div class="updated" id="updatedTime"></div>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card incident">
+      <div class="label">Incidents</div>
+      <div class="value" id="sumInc">0</div>
+    </div>
+    <div class="card task">
+      <div class="label">SC Tasks</div>
+      <div class="value" id="sumTask">0</div>
+    </div>
+    <div class="card total">
+      <div class="label">Total Completed</div>
+      <div class="value" id="sumAll">0</div>
+    </div>
+    <div class="card emp">
+      <div class="label">Active Employees</div>
+      <div class="value" id="sumEmp">0</div>
+    </div>
+  </div>
+
+  <div class="chart-section">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Incident</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>SC Task</div>
+      <div class="legend-item" style="color:#94a3b8;font-size:12px">右侧列: Inc | Task | Total</div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+  <div class="data-section">
+    <button class="data-toggle" onclick="toggleInput()">&#9654; Update Data (Paste from Databricks)</button>
+    <div class="data-content" id="inputPanel">
+      <p class="hint">
+        在 Databricks 中运行 <code>dashboard_query.sql</code>，复制查询结果（Tab 分隔或逗号分隔），粘贴到下方文本框。<br>
+        格式：<code>employee_id &lt;tab&gt; employee_name &lt;tab&gt; incident_count &lt;tab&gt; task_count &lt;tab&gt; total_count</code>（首行表头可选）
+      </p>
+      <textarea id="rawInput" placeholder="BLiu60&#9;Bob Liu&#9;12&#9;8&#9;20&#10;AGuo22&#9;Alice Guo&#9;5&#9;3&#9;8&#10;..."></textarea>
+      <button class="btn" onclick="loadFromPaste()">Update Chart</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ================================================================
+   DATA — replace this array with real query output, or paste below
+   ================================================================ */
+let DATA = [
+  { employee: 'liang Xiang', incidents: 56, tasks: 0 },
+  { employee: 'He Feng', incidents: 5, tasks: 49 },
+  { employee: 'Allen Guo', incidents: 2, tasks: 50 },
+  { employee: 'Ping Wang', incidents: 45, tasks: 1 },
+  { employee: 'Yang Ding', incidents: 0, tasks: 46 },
+  { employee: 'Hao Zhu', incidents: 29, tasks: 9 },
+  { employee: 'Rory Ju', incidents: 21, tasks: 11 },
+  { employee: 'Freddie Qiang', incidents: 21, tasks: 9 },
+  { employee: 'Yibo Wang', incidents: 20, tasks: 10 },
+  { employee: 'Thomas Tao', incidents: 17, tasks: 9 },
+  { employee: 'Vance Chen', incidents: 4, tasks: 21 },
+  { employee: 'Junfeng Deng', incidents: 5, tasks: 18 },
+  { employee: 'Colin Liu', incidents: 6, tasks: 16 },
+  { employee: 'Xinyu Zhang', incidents: 15, tasks: 5 },
+  { employee: 'Harry Yip', incidents: 8, tasks: 10 },
+  { employee: 'Jacky Chan', incidents: 3, tasks: 13 },
+  { employee: 'Lee Li', incidents: 6, tasks: 10 },
+  { employee: 'Alex Xu', incidents: 6, tasks: 9 },
+  { employee: 'Dom Chang', incidents: 11, tasks: 3 },
+  { employee: 'Roy Wei', incidents: 1, tasks: 13 },
+  { employee: 'Karen Ou Yang', incidents: 5, tasks: 7 },
+  { employee: 'Alex Sun', incidents: 2, tasks: 9 },
+  { employee: 'Bob Liu', incidents: 4, tasks: 7 },
+  { employee: 'Andy Lan', incidents: 5, tasks: 5 },
+  { employee: 'Luby Lu', incidents: 6, tasks: 2 },
+  { employee: 'Kenneth Chung', incidents: 0, tasks: 7 },
+  { employee: 'Guichong You', incidents: 0, tasks: 4 },
+  { employee: 'Zhi Lu', incidents: 0, tasks: 2 },
+  { employee: 'Aaron Jiang', incidents: 0, tasks: 0 },
+  { employee: 'Charles Lee', incidents: 0, tasks: 0 },
+  { employee: 'Freddie Liu', incidents: 0, tasks: 0 },
+  { employee: 'Howie Tan', incidents: 0, tasks: 0 },
+  { employee: 'Yin Ye', incidents: 0, tasks: 0 },
+  { employee: 'Yong Zhao', incidents: 0, tasks: 0 }
+];
+
+/* ================================================================ */
+
+const COL = { inc: '#3b82f6', task: '#f97316', txt: '#374151', light: '#94a3b8' };
+
+const rightAnnotations = {
+  id: 'rightAnnotations',
+  afterDraw(chart) {
+    const { ctx, chartArea } = chart;
+    const colInc   = chartArea.right + 22;
+    const colTask  = chartArea.right + 58;
+    const colTotal = chartArea.right + 100;
+
+    ctx.save();
+    ctx.textAlign = 'right';
+
+    ctx.textBaseline = 'bottom';
+    ctx.font = '600 10px system-ui, sans-serif';
+    const headY = chartArea.top - 5;
+    ctx.fillStyle = COL.inc;  ctx.fillText('Inc',   colInc,   headY);
+    ctx.fillStyle = COL.task; ctx.fillText('Task',  colTask,  headY);
+    ctx.fillStyle = COL.txt;  ctx.fillText('Total', colTotal, headY);
+
+    ctx.textBaseline = 'middle';
+    const meta = chart.getDatasetMeta(0);
+    meta.data.forEach((bar, i) => {
+      const inc  = chart.data.datasets[0].data[i];
+      const tsk  = chart.data.datasets[1].data[i];
+      const total = inc + tsk;
+      const y = bar.y;
+
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.fillStyle = COL.inc;  ctx.fillText(String(inc),  colInc,  y);
+      ctx.fillStyle = COL.task; ctx.fillText(String(tsk),  colTask, y);
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.fillStyle = COL.txt;  ctx.fillText(String(total), colTotal, y);
+    });
+
+    ctx.restore();
+  }
+};
+
+let chart = null;
+
+function render(data) {
+  data.sort((a, b) => {
+    const diff = (b.incidents + b.tasks) - (a.incidents + a.tasks);
+    return diff !== 0 ? diff : a.employee.localeCompare(b.employee);
+  });
+
+  const labels   = data.map(d => d.employee);
+  const incArr   = data.map(d => d.incidents);
+  const taskArr  = data.map(d => d.tasks);
+
+  const totInc  = incArr.reduce((s, v) => s + v, 0);
+  const totTask = taskArr.reduce((s, v) => s + v, 0);
+  const active  = data.filter(d => d.incidents + d.tasks > 0).length;
+
+  document.getElementById('sumInc').textContent  = totInc;
+  document.getElementById('sumTask').textContent = totTask;
+  document.getElementById('sumAll').textContent  = totInc + totTask;
+  document.getElementById('sumEmp').textContent  = active;
+
+  const rowH = 32;
+  const h = Math.max(360, data.length * rowH + 40);
+  const canvas = document.getElementById('chart');
+  canvas.style.height = h + 'px';
+  canvas.parentElement.style.height = h + 'px';
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Incident',
+          data: incArr,
+          backgroundColor: COL.inc,
+          barPercentage: 0.65,
+          categoryPercentage: 0.82
+        },
+        {
+          label: 'SC Task',
+          data: taskArr,
+          backgroundColor: COL.task,
+          barPercentage: 0.65,
+          categoryPercentage: 0.82
+        }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { right: 110, top: 18 } },
+      scales: {
+        x: {
+          stacked: true,
+          beginAtZero: true,
+          grid: { color: '#f1f5f9' },
+          ticks: { font: { size: 11 }, precision: 0 }
+        },
+        y: {
+          stacked: true,
+          grid: { display: false },
+          ticks: { font: { size: 12, weight: '600' }, color: '#334155' }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            afterBody(items) {
+              const idx = items[0].dataIndex;
+              const inc = chart.data.datasets[0].data[idx];
+              const tsk = chart.data.datasets[1].data[idx];
+              return 'Total: ' + (inc + tsk);
+            }
+          }
+        }
+      }
+    },
+    plugins: [rightAnnotations]
+  });
+}
+
+/* ---------- date header ---------- */
+const now = new Date();
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+document.getElementById('monthTitle').textContent = MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+document.getElementById('updatedTime').textContent = 'Updated: ' + now.toLocaleString('zh-CN');
+
+/* ---------- toggle ---------- */
+function toggleInput() {
+  const panel = document.getElementById('inputPanel');
+  const btn = panel.previousElementSibling;
+  panel.classList.toggle('open');
+  btn.innerHTML = (panel.classList.contains('open') ? '&#9660;' : '&#9654;')
+    + ' Update Data (Paste from Databricks)';
+}
+
+/* ---------- paste handler ---------- */
+function loadFromPaste() {
+  const raw = document.getElementById('rawInput').value.trim();
+  if (!raw) { alert('请先粘贴数据'); return; }
+  const rows = raw.split('\n');
+  const parsed = [];
+  for (const row of rows) {
+    const cols = row.split(/\t/).map(s => s.trim());
+    if (cols[0] === 'employee_id') continue;
+    if (cols.length >= 5) {
+      parsed.push({ employee: cols[1] || cols[0], incidents: +cols[2] || 0, tasks: +cols[3] || 0 });
+    } else if (cols.length >= 3) {
+      parsed.push({ employee: cols[0], incidents: +cols[1] || 0, tasks: +cols[2] || 0 });
+    }
+  }
+  if (!parsed.length) { alert('未解析到有效数据'); return; }
+  DATA = parsed;
+  render(DATA);
+}
+
+/* ---------- initial render ---------- */
+render(DATA);
+</script>
+</body>
+</html>
