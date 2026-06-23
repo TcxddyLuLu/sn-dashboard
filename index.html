@@ -116,7 +116,7 @@
     <h1>Monthly Completed Tickets</h1>
     <div class="meta">
       <div class="month" id="monthTitle"></div>
-      <div class="updated" id="updatedTime"></div>
+      <div class="updated" id="updatedTime">Updated: 2026/6/23 14:37</div>
     </div>
   </div>
 
@@ -169,32 +169,32 @@
    DATA — replace this array with real query output, or paste below
    ================================================================ */
 let DATA = [
-  { employee: 'He Feng', incidents: 11, tasks: 80 },
-  { employee: 'Yang Ding', incidents: 3, tasks: 82 },
+  { employee: 'He Feng', incidents: 13, tasks: 80 },
+  { employee: 'Yang Ding', incidents: 5, tasks: 83 },
   { employee: 'liang Xiang', incidents: 79, tasks: 0 },
+  { employee: 'Junfeng Deng', incidents: 7, tasks: 71 },
   { employee: 'Ping Wang', incidents: 64, tasks: 1 },
+  { employee: 'Xinyu Zhang', incidents: 52, tasks: 13 },
   { employee: 'Colin Liu', incidents: 28, tasks: 36 },
   { employee: 'Howie Tan', incidents: 4, tasks: 60 },
-  { employee: 'Xinyu Zhang', incidents: 49, tasks: 13 },
-  { employee: 'Junfeng Deng', incidents: 6, tasks: 55 },
   { employee: 'Hao Zhu', incidents: 48, tasks: 12 },
-  { employee: 'Allen Guo', incidents: 1, tasks: 53 },
+  { employee: 'Allen Guo', incidents: 1, tasks: 54 },
   { employee: 'Freddie Qiang', incidents: 26, tasks: 20 },
   { employee: 'Vance Chen', incidents: 6, tasks: 38 },
   { employee: 'Dom Chang', incidents: 30, tasks: 7 },
   { employee: 'Rory Ju', incidents: 16, tasks: 19 },
-  { employee: 'Jacky Chan', incidents: 9, tasks: 20 },
+  { employee: 'Yibo Wang', incidents: 17, tasks: 18 },
+  { employee: 'Jacky Chan', incidents: 9, tasks: 21 },
   { employee: 'Alex Xu', incidents: 12, tasks: 14 },
-  { employee: 'Thomas Tao', incidents: 12, tasks: 13 },
-  { employee: 'Yibo Wang', incidents: 7, tasks: 18 },
-  { employee: 'Roy Wei', incidents: 3, tasks: 21 },
+  { employee: 'Thomas Tao', incidents: 13, tasks: 13 },
+  { employee: 'Bob Liu', incidents: 6, tasks: 19 },
+  { employee: 'Roy Wei', incidents: 3, tasks: 22 },
   { employee: 'Harry Yip', incidents: 9, tasks: 14 },
-  { employee: 'Bob Liu', incidents: 6, tasks: 16 },
-  { employee: 'Lee Li', incidents: 1, tasks: 19 },
+  { employee: 'Lee Li', incidents: 1, tasks: 21 },
+  { employee: 'Andy Lan', incidents: 7, tasks: 13 },
   { employee: 'Aaron Jiang', incidents: 9, tasks: 10 },
   { employee: 'Luby Lu', incidents: 11, tasks: 8 },
-  { employee: 'Andy Lan', incidents: 5, tasks: 12 },
-  { employee: 'Kenneth Chung', incidents: 2, tasks: 12 },
+  { employee: 'Kenneth Chung', incidents: 2, tasks: 13 },
   { employee: 'Karen Ou Yang', incidents: 2, tasks: 10 },
   { employee: 'Alex Sun', incidents: 0, tasks: 11 },
   { employee: 'Yin Ye', incidents: 2, tasks: 8 },
@@ -202,6 +202,7 @@ let DATA = [
   { employee: 'Guichong You', incidents: 0, tasks: 6 },
   { employee: 'Freddie Liu', incidents: 0, tasks: 4 },
   { employee: 'Charles Lee', incidents: 0, tasks: 0 },
+  { employee: 'Hooxi Zhu', incidents: 0, tasks: 0 },
   { employee: 'Yong Zhao', incidents: 0, tasks: 0 }
 ];
 
@@ -337,7 +338,10 @@ const now = new Date();
 const MONTHS = ['January','February','March','April','May','June',
                 'July','August','September','October','November','December'];
 document.getElementById('monthTitle').textContent = MONTHS[now.getMonth()] + ' ' + now.getFullYear();
-document.getElementById('updatedTime').textContent = 'Updated: ' + now.toLocaleString('zh-CN');
+const updatedEl = document.getElementById('updatedTime');
+if (!updatedEl.textContent.startsWith('Updated:')) {
+  updatedEl.textContent = 'Updated: ' + now.toLocaleString('zh-CN');
+}
 
 /* ---------- toggle ---------- */
 function toggleInput() {
