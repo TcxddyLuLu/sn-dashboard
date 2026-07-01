@@ -75,6 +75,47 @@
   .legend-dot { width: 14px; height: 14px; border-radius: 3px; }
   .chart-wrap { position: relative; width: 100%; }
 
+  .weekly-section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    margin-bottom: 20px;
+  }
+  .weekly-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px;
+  }
+  .weekly-header h3 { font-size: 16px; font-weight: 700; color: #1e293b; }
+  .weekly-header span { font-size: 11px; color: #94a3b8; }
+  .weekly-wrap { overflow-x: auto; }
+  #weeklyTable {
+    border-collapse: collapse; width: 100%; font-size: 13px;
+  }
+  #weeklyTable th {
+    background: #1e3a5f; color: #fff;
+    padding: 8px 10px; font-weight: 600; text-align: center; white-space: nowrap;
+  }
+  #weeklyTable th:first-child { text-align: left; }
+  #weeklyTable th.current-week {
+    background: #2563eb;
+    box-shadow: inset 0 -3px 0 #60a5fa;
+  }
+  #weeklyTable td {
+    padding: 6px 10px; text-align: center;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  #weeklyTable td:first-child {
+    text-align: left; font-weight: 500; color: #334155; white-space: nowrap;
+  }
+  #weeklyTable td:last-child { font-weight: 700; }
+  #weeklyTable tr:hover td { background: #f8fafc !important; }
+  #weeklyTable .zero { color: #cbd5e1; }
+  #weeklyTable tfoot td {
+    font-weight: 700; border-top: 2px solid #e2e8f0;
+    background: #f8fafc !important;
+  }
+
   .data-section {
     background: #fff;
     border-radius: 12px;
@@ -125,7 +166,7 @@
     <h1>Monthly Completed Tickets</h1>
     <div class="meta">
       <div class="month" id="monthTitle"></div>
-      <div class="updated" id="updatedTime">Updated: 2026/7/1 11:00</div>
+      <div class="updated" id="updatedTime">Updated: 2026/7/1 11:19</div>
       <div style="font-size:11px;opacity:.6;margin-top:2px;">每日 9:00 / 11:00 / 13:00 / 15:00 / 17:00 更新</div>
     </div>
   </div>
@@ -160,6 +201,16 @@
     </div>
   </div>
 
+  <div class="weekly-section" id="weeklySection" style="display:none">
+    <div class="weekly-header">
+      <h3>Weekly Breakdown</h3>
+      <span>Week = Monday - Sunday</span>
+    </div>
+    <div class="weekly-wrap">
+      <table id="weeklyTable"></table>
+    </div>
+  </div>
+
   <div class="data-section">
     <button class="data-toggle" onclick="toggleInput()">&#9654; Update Data (Paste from Databricks)</button>
     <div class="data-content" id="inputPanel">
@@ -180,8 +231,8 @@
    ================================================================ */
 let DATA = [
   { employee: 'He Feng', incidents: 2, tasks: 7 },
-  { employee: 'Hooxi Zhu', incidents: 5, tasks: 0 },
-  { employee: 'Yang Ding', incidents: 0, tasks: 2 },
+  { employee: 'Hooxi Zhu', incidents: 7, tasks: 0 },
+  { employee: 'Yang Ding', incidents: 0, tasks: 7 },
   { employee: 'Zhi Lu', incidents: 0, tasks: 2 },
   { employee: 'Allen Guo', incidents: 0, tasks: 1 },
   { employee: 'Howie Tan', incidents: 0, tasks: 1 },
@@ -382,8 +433,62 @@ function loadFromPaste() {
   render(DATA);
 }
 
+/* ================================================================
+   WEEKLY_DATA — weekly breakdown, injected by run_dashboard.py
+   ================================================================ */
+let WEEKLY_DATA = {"weeks": ["6/29-7/5", "7/6-12", "7/13-19", "7/20-26", "7/27-8/2"], "currentWeek": 0, "data": [{"employee": "He Feng", "weekly": [9, 0, 0, 0, 0], "total": 9}, {"employee": "Hooxi Zhu", "weekly": [7, 0, 0, 0, 0], "total": 7}, {"employee": "Yang Ding", "weekly": [7, 0, 0, 0, 0], "total": 7}, {"employee": "Zhi Lu", "weekly": [2, 0, 0, 0, 0], "total": 2}, {"employee": "Allen Guo", "weekly": [1, 0, 0, 0, 0], "total": 1}, {"employee": "Howie Tan", "weekly": [1, 0, 0, 0, 0], "total": 1}, {"employee": "Karen Ou Yang", "weekly": [1, 0, 0, 0, 0], "total": 1}, {"employee": "Xinyu Zhang", "weekly": [1, 0, 0, 0, 0], "total": 1}, {"employee": "Roy Wei", "weekly": [1, 0, 0, 0, 0], "total": 1}, {"employee": "Aaron Jiang", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Andy Lan", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Alex Sun", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Alex Xu", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Bob Liu", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Colin Liu", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Charles Lee", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Dom Chang", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Freddie Liu", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Guichong You", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Harry Yip", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Hao Zhu", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Jacky Chan", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Junfeng Deng", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Freddie Qiang", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Kenneth Chung", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Lee Li", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Luby Lu", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "liang Xiang", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Ping Wang", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Rory Ju", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Thomas Tao", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Vance Chen", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Yibo Wang", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Yin Ye", "weekly": [0, 0, 0, 0, 0], "total": 0}, {"employee": "Yong Zhao", "weekly": [0, 0, 0, 0, 0], "total": 0}]};
+
+function renderWeeklyTable(wd) {
+  if (!wd || !wd.weeks || wd.weeks.length === 0) return;
+
+  const section = document.getElementById('weeklySection');
+  const table = document.getElementById('weeklyTable');
+  section.style.display = '';
+
+  let maxVal = 0;
+  wd.data.forEach(d => d.weekly.forEach(v => { if (v > maxVal) maxVal = v; }));
+
+  const sorted = [...wd.data].sort((a, b) => b.total - a.total || a.employee.localeCompare(b.employee));
+
+  let html = '<thead><tr><th>Employee</th>';
+  wd.weeks.forEach((w, i) => {
+    const cls = (i === wd.currentWeek) ? ' class="current-week"' : '';
+    html += `<th${cls}>W${i + 1}<br><span style="font-weight:400;font-size:11px;opacity:.8">${w}</span></th>`;
+  });
+  html += '<th>Total</th></tr></thead>';
+
+  html += '<tbody>';
+  sorted.forEach((emp, ri) => {
+    html += '<tr>';
+    html += `<td>${emp.employee}</td>`;
+    emp.weekly.forEach((v, ci) => {
+      let style = '';
+      if (v > 0) {
+        const intensity = Math.min(v / Math.max(maxVal, 1), 1);
+        const alpha = (0.12 + intensity * 0.38).toFixed(2);
+        style = ` style="background:rgba(34,197,94,${alpha})"`;
+      }
+      const cls = v === 0 ? ' class="zero"' : '';
+      html += `<td${style}${cls}>${v}</td>`;
+    });
+    const totalCls = emp.total === 0 ? ' class="zero"' : '';
+    html += `<td${totalCls}>${emp.total}</td>`;
+    html += '</tr>';
+  });
+  html += '</tbody>';
+
+  const weekTotals = wd.weeks.map((_, i) => sorted.reduce((s, d) => s + d.weekly[i], 0));
+  const grandTotal = weekTotals.reduce((s, v) => s + v, 0);
+  html += '<tfoot><tr><td>TOTAL</td>';
+  weekTotals.forEach(v => { html += `<td>${v}</td>`; });
+  html += `<td>${grandTotal}</td></tr></tfoot>`;
+
+  table.innerHTML = html;
+}
+
 /* ---------- initial render ---------- */
 render(DATA);
+renderWeeklyTable(WEEKLY_DATA);
 </script>
 </body>
 </html>
