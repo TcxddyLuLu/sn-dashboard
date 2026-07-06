@@ -44,7 +44,7 @@
   .header .month { font-size: 17px; opacity: .92; }
   .header .updated { font-size: 12px; opacity: .6; margin-top: 4px; }
 
-  .cards {
+  .summary-row {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 14px;
@@ -65,6 +65,57 @@
   .card.cat .value   { color: #2dd4bf; }
   .card.emp .value   { color: #a78bfa; }
 
+  .team-section {
+    background: #1e293b;
+    border-radius: 14px;
+    padding: 24px;
+    border: 1px solid #334155;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+  }
+  .team-section h3 {
+    font-size: 16px; font-weight: 700; color: #f1f5f9;
+    margin-bottom: 12px;
+  }
+  .team-radar-wrap {
+    width: 320px;
+    flex-shrink: 0;
+  }
+  .team-stats {
+    flex: 1;
+    min-width: 0;
+  }
+  .team-cat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .team-cat-dot {
+    width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
+  }
+  .team-cat-name {
+    font-size: 13px; color: #cbd5e1; width: 120px; flex-shrink: 0;
+  }
+  .team-cat-bar-bg {
+    flex: 1; height: 14px; background: #334155; border-radius: 4px; overflow: hidden;
+  }
+  .team-cat-bar {
+    height: 100%; border-radius: 4px; transition: width .6s;
+  }
+  .team-cat-count {
+    font-size: 12px; color: #94a3b8; width: 50px; text-align: right; flex-shrink: 0;
+  }
+
+  .section-title {
+    font-size: 16px; font-weight: 700; color: #94a3b8;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -76,34 +127,42 @@
     border-radius: 14px;
     padding: 20px;
     border: 1px solid #334155;
-    transition: border-color .2s;
+    transition: border-color .2s, transform .2s;
+    position: relative;
   }
-  .emp-card:hover { border-color: #2dd4bf; }
+  .emp-card:hover { border-color: #2dd4bf; transform: translateY(-2px); }
+
+  .emp-rank {
+    position: absolute;
+    top: 14px; right: 16px;
+    font-size: 20px; font-weight: 800;
+    color: #334155;
+    line-height: 1;
+  }
+  .emp-rank.r1 { color: #eab308; }
+  .emp-rank.r2 { color: #94a3b8; }
+  .emp-rank.r3 { color: #b45309; }
 
   .emp-top {
     display: flex;
-    justify-content: space-between;
     align-items: baseline;
+    gap: 8px;
     margin-bottom: 4px;
   }
-  .emp-name {
-    font-size: 15px; font-weight: 700; color: #f1f5f9;
-  }
-  .emp-total {
-    font-size: 13px; color: #64748b; font-weight: 500;
-  }
+  .emp-name { font-size: 15px; font-weight: 700; color: #f1f5f9; }
+  .emp-total { font-size: 13px; color: #64748b; font-weight: 500; }
 
   .radar-wrap {
     position: relative;
     width: 100%;
-    max-width: 280px;
+    max-width: 270px;
     margin: 0 auto;
   }
 
   .top-cats {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 12px;
+    gap: 4px 14px;
     margin-top: 8px;
     justify-content: center;
   }
@@ -114,22 +173,14 @@
     align-items: center;
     gap: 5px;
   }
-  .top-cat .rank {
-    font-weight: 700;
-    width: 16px; height: 16px;
-    border-radius: 4px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    color: #fff;
-  }
-  .rank-1 { background: #eab308; }
-  .rank-2 { background: #94a3b8; }
-  .rank-3 { background: #b45309; }
-  .top-cat .pct {
-    font-weight: 600;
-    color: #2dd4bf;
+  .top-cat .medal { font-size: 13px; }
+  .top-cat .pct { font-weight: 600; color: #2dd4bf; }
+
+  .legend-hint {
+    text-align: center;
+    font-size: 11px;
+    color: #475569;
+    margin-top: 20px;
   }
 
   .back-link {
@@ -145,7 +196,9 @@
     body { padding: 12px; }
     .header { flex-direction: column; text-align: center; gap: 8px; }
     .header .meta { text-align: center; }
-    .cards { grid-template-columns: 1fr; }
+    .summary-row { grid-template-columns: 1fr; }
+    .team-section { flex-direction: column; }
+    .team-radar-wrap { width: 100%; max-width: 280px; }
     .grid { grid-template-columns: 1fr; }
   }
 </style>
@@ -158,17 +211,28 @@
     <h1>Ticket Category Dashboard</h1>
     <div class="meta">
       <div class="month" id="monthLabel"></div>
-      <div class="updated" id="updatedTime">Updated: 2026/7/7 07:25</div>
+      <div class="updated" id="updatedTime">Updated: 2026/7/7 07:45</div>
     </div>
   </div>
 
-  <div class="cards">
+  <div class="summary-row">
     <div class="card total"><div class="label">Total Tickets</div><div class="value" id="totalVal">0</div></div>
     <div class="card cat"><div class="label">Categories</div><div class="value" id="catVal">0</div></div>
     <div class="card emp"><div class="label">Active Employees</div><div class="value" id="empVal">0</div></div>
   </div>
 
+  <div class="team-section">
+    <div class="team-radar-wrap"><canvas id="teamRadar"></canvas></div>
+    <div class="team-stats">
+      <h3>Team Overview</h3>
+      <div id="teamBars"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Individual Profiles</div>
   <div class="grid" id="empGrid"></div>
+
+  <div class="legend-hint">Dashed line = team average &middot; Hover radar points for details</div>
 </div>
 
 <script>
@@ -181,30 +245,112 @@ let CATEGORY_DATA = {"axes": ["Device (LC)", "Meeting Support", "New Hire Setup"
   const axes = D.axes;
   const emps = D.employees;
   const colorMap = D.colors || {};
+  const fallback = '#94a3b8';
 
   const now = new Date();
   document.getElementById('monthLabel').textContent =
     now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
-  const totalTickets = emps.reduce((s, e) => s + e.total, 0);
+  const activeEmps = emps.filter(function(e) { return e.total > 0; });
+  const totalTickets = emps.reduce(function(s, e) { return s + e.total; }, 0);
+
   document.getElementById('totalVal').textContent = totalTickets;
   document.getElementById('catVal').textContent = axes.length;
-  document.getElementById('empVal').textContent = emps.filter(e => e.total > 0).length;
+  document.getElementById('empVal').textContent = activeEmps.length;
 
-  const grid = document.getElementById('empGrid');
+  // --- Team totals per category ---
+  var teamCounts = axes.map(function(_, ai) {
+    return emps.reduce(function(s, e) { return s + e.counts[ai]; }, 0);
+  });
+  var teamMax = Math.max.apply(null, teamCounts);
 
-  const radarColor = 'rgba(45, 212, 191, 0.8)';
-  const radarBg = 'rgba(45, 212, 191, 0.15)';
+  // Team average percentages (across active employees)
+  var teamAvgPcts = axes.map(function(_, ai) {
+    if (activeEmps.length === 0) return 0;
+    var sum = 0;
+    activeEmps.forEach(function(e) {
+      sum += (e.total > 0 ? e.counts[ai] / e.total * 100 : 0);
+    });
+    return Math.round(sum / activeEmps.length);
+  });
 
-  emps.forEach((emp, idx) => {
-    if (emp.total === 0) return;
+  // --- Team overview radar ---
+  var teamPcts = axes.map(function(_, ai) {
+    return totalTickets > 0 ? Math.round(teamCounts[ai] / totalTickets * 100) : 0;
+  });
 
-    const card = document.createElement('div');
+  new Chart(document.getElementById('teamRadar').getContext('2d'), {
+    type: 'radar',
+    data: {
+      labels: axes,
+      datasets: [{
+        data: teamPcts,
+        borderColor: 'rgba(45, 212, 191, 0.9)',
+        backgroundColor: 'rgba(45, 212, 191, 0.15)',
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointBackgroundColor: 'rgba(45, 212, 191, 0.9)',
+        pointBorderColor: '#1e293b',
+        pointBorderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              var i = ctx.dataIndex;
+              return axes[i] + ': ' + teamCounts[i] + ' (' + teamPcts[i] + '%)';
+            }
+          },
+          backgroundColor: '#1e293b', bodyColor: '#f1f5f9',
+          borderColor: '#334155', borderWidth: 1, padding: 10,
+        }
+      },
+      scales: {
+        r: {
+          beginAtZero: true,
+          ticks: { display: false, stepSize: 10 },
+          grid: { color: 'rgba(148,163,184,0.12)' },
+          angleLines: { color: 'rgba(148,163,184,0.12)' },
+          pointLabels: { color: '#94a3b8', font: { size: 11, weight: '500' } }
+        }
+      }
+    }
+  });
+
+  // --- Team category bars ---
+  var barsEl = document.getElementById('teamBars');
+  var catOrder = axes.map(function(c, i) { return { cat: c, count: teamCounts[i] }; })
+                     .sort(function(a, b) { return b.count - a.count; });
+  catOrder.forEach(function(item) {
+    var pct = teamMax > 0 ? (item.count / teamMax * 100) : 0;
+    var row = document.createElement('div');
+    row.className = 'team-cat-row';
+    row.innerHTML =
+      '<span class="team-cat-dot" style="background:' + (colorMap[item.cat] || fallback) + '"></span>' +
+      '<span class="team-cat-name">' + item.cat + '</span>' +
+      '<div class="team-cat-bar-bg"><div class="team-cat-bar" style="width:' + pct + '%;background:' + (colorMap[item.cat] || fallback) + '"></div></div>' +
+      '<span class="team-cat-count">' + item.count + '</span>';
+    barsEl.appendChild(row);
+  });
+
+  // --- Individual cards ---
+  var grid = document.getElementById('empGrid');
+  var medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
+
+  activeEmps.forEach(function(emp, idx) {
+    var card = document.createElement('div');
     card.className = 'emp-card';
 
-    const pcts = emp.counts.map(c => emp.total > 0 ? Math.round(c / emp.total * 100) : 0);
+    var rankClass = idx < 3 ? ' r' + (idx + 1) : '';
+    var pcts = emp.counts.map(function(c) { return emp.total > 0 ? Math.round(c / emp.total * 100) : 0; });
 
     card.innerHTML =
+      '<div class="emp-rank' + rankClass + '">#' + (idx + 1) + '</div>' +
       '<div class="emp-top">' +
         '<span class="emp-name">' + emp.name + '</span>' +
         '<span class="emp-total">' + emp.total + ' tickets</span>' +
@@ -213,32 +359,48 @@ let CATEGORY_DATA = {"axes": ["Device (LC)", "Meeting Support", "New Hire Setup"
       '<div class="top-cats" id="topCats' + idx + '"></div>';
     grid.appendChild(card);
 
-    const sorted = axes.map((a, i) => ({ cat: a, count: emp.counts[i], pct: pcts[i] }))
-                       .filter(x => x.count > 0)
-                       .sort((a, b) => b.count - a.count);
-    const topN = sorted.slice(0, 3);
-    const tcEl = document.getElementById('topCats' + idx);
-    topN.forEach((t, ri) => {
-      const cls = 'rank-' + (ri + 1);
-      tcEl.innerHTML += '<span class="top-cat"><span class="rank ' + cls + '">' + (ri+1) + '</span>' +
+    // Top 3 categories
+    var sorted = axes.map(function(a, i) { return { cat: a, count: emp.counts[i], pct: pcts[i] }; })
+                     .filter(function(x) { return x.count > 0; })
+                     .sort(function(a, b) { return b.count - a.count; });
+    var topN = sorted.slice(0, 3);
+    var tcEl = document.getElementById('topCats' + idx);
+    topN.forEach(function(t, ri) {
+      var medal = ri < 3 ? medals[ri] : '';
+      tcEl.innerHTML += '<span class="top-cat"><span class="medal">' + medal + '</span>' +
         t.cat + ' <span class="pct">' + t.pct + '%</span></span>';
     });
 
-    const ctx = document.getElementById('radar' + idx).getContext('2d');
+    // Radar chart with team average overlay
+    var maxVal = Math.max(Math.max.apply(null, pcts), Math.max.apply(null, teamAvgPcts));
+    var ctx = document.getElementById('radar' + idx).getContext('2d');
     new Chart(ctx, {
       type: 'radar',
       data: {
         labels: axes,
-        datasets: [{
-          data: pcts,
-          borderColor: radarColor,
-          backgroundColor: radarBg,
-          borderWidth: 2,
-          pointRadius: 3,
-          pointBackgroundColor: radarColor,
-          pointBorderColor: '#0f172a',
-          pointBorderWidth: 1,
-        }]
+        datasets: [
+          {
+            label: 'Team Avg',
+            data: teamAvgPcts,
+            borderColor: 'rgba(148,163,184,0.4)',
+            backgroundColor: 'rgba(148,163,184,0.05)',
+            borderWidth: 1.5,
+            borderDash: [4, 3],
+            pointRadius: 0,
+            pointHitRadius: 0,
+          },
+          {
+            label: emp.name,
+            data: pcts,
+            borderColor: 'rgba(45, 212, 191, 0.85)',
+            backgroundColor: 'rgba(45, 212, 191, 0.15)',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: 'rgba(45, 212, 191, 0.85)',
+            pointBorderColor: '#1e293b',
+            pointBorderWidth: 1,
+          }
+        ]
       },
       options: {
         responsive: true,
@@ -246,38 +408,28 @@ let CATEGORY_DATA = {"axes": ["Device (LC)", "Meeting Support", "New Hire Setup"
         plugins: {
           legend: { display: false },
           tooltip: {
+            filter: function(item) { return item.datasetIndex === 1; },
             callbacks: {
               label: function(ctx) {
                 var i = ctx.dataIndex;
-                return axes[i] + ': ' + emp.counts[i] + ' (' + pcts[i] + '%)';
+                var diff = pcts[i] - teamAvgPcts[i];
+                var sign = diff >= 0 ? '+' : '';
+                return axes[i] + ': ' + emp.counts[i] + ' (' + pcts[i] + '%)  ' + sign + diff + '% vs avg';
               }
             },
-            backgroundColor: '#1e293b',
+            backgroundColor: '#1e293b', bodyColor: '#f1f5f9',
             titleColor: '#94a3b8',
-            bodyColor: '#f1f5f9',
-            borderColor: '#334155',
-            borderWidth: 1,
-            padding: 10,
+            borderColor: '#334155', borderWidth: 1, padding: 10,
           }
         },
         scales: {
           r: {
             beginAtZero: true,
-            max: Math.max(100, Math.max.apply(null, pcts) + 10),
-            ticks: {
-              display: false,
-              stepSize: 20,
-            },
-            grid: {
-              color: 'rgba(148,163,184,0.12)',
-            },
-            angleLines: {
-              color: 'rgba(148,163,184,0.12)',
-            },
-            pointLabels: {
-              color: '#94a3b8',
-              font: { size: 10, weight: '500' },
-            }
+            max: Math.min(100, maxVal + 15),
+            ticks: { display: false, stepSize: 20 },
+            grid: { color: 'rgba(148,163,184,0.10)' },
+            angleLines: { color: 'rgba(148,163,184,0.10)' },
+            pointLabels: { color: '#64748b', font: { size: 9, weight: '500' } }
           }
         }
       }
