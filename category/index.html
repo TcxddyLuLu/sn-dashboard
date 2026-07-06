@@ -27,7 +27,7 @@
     color: #1e293b;
     padding: 24px;
   }
-  .dashboard { max-width: 1200px; margin: 0 auto; }
+  .dashboard { max-width: 900px; margin: 0 auto; }
 
   .header {
     background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
@@ -39,16 +39,16 @@
     justify-content: space-between;
     align-items: center;
   }
-  .header h1 { font-size: 24px; font-weight: 700; }
+  .header h1 { font-size: 22px; font-weight: 700; }
   .header .meta { text-align: right; }
-  .header .month { font-size: 18px; opacity: .92; }
+  .header .month { font-size: 17px; opacity: .92; }
   .header .updated { font-size: 12px; opacity: .65; margin-top: 4px; }
 
   .cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 14px;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
   }
   .card {
     background: #fff;
@@ -57,155 +57,85 @@
     box-shadow: 0 1px 3px rgba(0,0,0,.06);
   }
   .card .label {
-    font-size: 12px;
-    color: #64748b;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .5px;
+    font-size: 12px; color: #64748b; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .5px;
   }
   .card .value { font-size: 32px; font-weight: 700; margin-top: 2px; }
-  .card.total .value   { color: #1e293b; }
-  .card.cat .value     { color: #0f766e; }
-  .card.emp .value     { color: #8b5cf6; }
+  .card.total .value { color: #1e293b; }
+  .card.cat .value   { color: #0f766e; }
+  .card.emp .value   { color: #8b5cf6; }
 
-  .tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-  }
-  .tab-btn {
-    padding: 10px 24px;
-    border-radius: 10px;
-    border: 2px solid #e2e8f0;
-    background: #fff;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    color: #64748b;
-    transition: all .2s;
-  }
-  .tab-btn:hover { border-color: #14b8a6; color: #14b8a6; }
-  .tab-btn.active {
-    background: #0f766e;
-    color: #fff;
-    border-color: #0f766e;
-  }
-
-  .view-section {
+  .emp-card {
     background: #fff;
     border-radius: 12px;
-    padding: 20px 24px;
+    padding: 18px 22px;
     box-shadow: 0 1px 3px rgba(0,0,0,.06);
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
-  .view-section h3 {
-    font-size: 16px; font-weight: 700; color: #1e293b;
-    margin-bottom: 16px;
-  }
-
-  .emp-row {
-    margin-bottom: 18px;
-  }
-  .emp-row .emp-header {
+  .emp-top {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin-bottom: 6px;
+    margin-bottom: 10px;
   }
-  .emp-row .emp-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: #1e293b;
-  }
-  .emp-row .emp-total {
-    font-size: 13px;
-    color: #64748b;
-    font-weight: 500;
-  }
-  .stacked-bar {
+  .emp-name { font-size: 15px; font-weight: 700; color: #1e293b; }
+  .emp-total { font-size: 13px; color: #64748b; }
+
+  .bar-row {
     display: flex;
-    height: 28px;
+    height: 26px;
     border-radius: 6px;
     overflow: hidden;
     background: #f1f5f9;
+    margin-bottom: 10px;
   }
-  .stacked-bar .seg {
-    position: relative;
+  .bar-seg {
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 11px;
     font-weight: 600;
     color: #fff;
-    transition: opacity .2s;
-    cursor: default;
     min-width: 0;
+    position: relative;
+    cursor: default;
   }
-  .stacked-bar .seg:hover { opacity: .85; }
-  .seg-label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding: 0 4px;
-  }
-
-  .tooltip {
+  .bar-seg:hover { filter: brightness(1.1); }
+  .bar-seg .tip {
     display: none;
     position: absolute;
-    bottom: 36px;
-    left: 50%;
+    bottom: 32px; left: 50%;
     transform: translateX(-50%);
     background: #1e293b;
     color: #fff;
-    padding: 6px 10px;
+    padding: 5px 10px;
     border-radius: 6px;
     font-size: 12px;
     white-space: nowrap;
     z-index: 10;
     pointer-events: none;
   }
-  .seg:hover .tooltip { display: block; }
+  .bar-seg:hover .tip { display: block; }
 
-  .cat-row {
-    margin-bottom: 18px;
-  }
-  .cat-row .cat-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-  }
-  .cat-row .cat-name {
-    font-size: 14px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .cat-dot {
-    width: 12px; height: 12px;
-    border-radius: 3px;
-    display: inline-block;
-  }
-  .cat-row .cat-total {
-    font-size: 13px;
-    color: #64748b;
-    font-weight: 500;
-  }
-
-  .legend-row {
+  .cat-labels {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 16px;
-    font-size: 12px;
+    gap: 6px 16px;
+  }
+  .cat-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
     color: #475569;
   }
-  .legend-row .legend-item {
-    display: flex; align-items: center; gap: 5px;
+  .cat-label .dot {
+    width: 10px; height: 10px;
+    border-radius: 3px; flex-shrink: 0;
   }
-  .legend-row .ldot {
-    width: 12px; height: 12px; border-radius: 3px;
+  .cat-label .pct {
+    font-weight: 600;
+    color: #1e293b;
   }
 
   .back-link {
@@ -233,7 +163,7 @@
     <h1>Ticket Category Dashboard</h1>
     <div class="meta">
       <div class="month" id="monthLabel"></div>
-      <div class="updated" id="updatedTime">Updated: 2026/7/7 06:52</div>
+      <div class="updated" id="updatedTime">Updated: 2026/7/7 07:16</div>
     </div>
   </div>
 
@@ -243,145 +173,71 @@
     <div class="card emp"><div class="label">Active Employees</div><div class="value" id="empVal">0</div></div>
   </div>
 
-  <div class="tabs">
-    <button class="tab-btn active" data-view="employee">By Employee</button>
-    <button class="tab-btn" data-view="category">By Category</button>
-  </div>
-
-  <div id="employeeView" class="view-section">
-    <h3>Category Breakdown by Employee</h3>
-    <div class="legend-row" id="empLegend"></div>
-    <div id="empCharts"></div>
-  </div>
-
-  <div id="categoryView" class="view-section" style="display:none">
-    <h3>Employee Breakdown by Category</h3>
-    <div id="catCharts"></div>
-  </div>
+  <div id="empList"></div>
 </div>
 
 <script>
-let CATEGORY_DATA = {"categories": ["Account / Auth", "COG", "Daily Ops", "Device (LC)", "Mac", "Meeting Support", "New Hire Setup", "O365", "Peripherals", "Windows", "Other"], "employees": [{"id": "AXu72", "name": "Alex Xu", "total": 38, "breakdown": {"Account / Auth": 0, "COG": 6, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 30, "New Hire Setup": 1, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 1}}, {"id": "HZh8", "name": "Hooxi Zhu", "total": 31, "breakdown": {"Account / Auth": 0, "COG": 2, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 2, "New Hire Setup": 10, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 17}}, {"id": "PWan61", "name": "Ping Wang", "total": 31, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 31, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "XZh302", "name": "Xinyu Zhang", "total": 31, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 27, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 3, "O365": 1, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "LXIAN2", "name": "liang Xiang", "total": 24, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 24, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "YDin23", "name": "Yang Ding", "total": 23, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 5, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 18, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "HTan3", "name": "Howie Tan", "total": 22, "breakdown": {"Account / Auth": 0, "COG": 2, "Daily Ops": 4, "Device (LC)": 0, "Mac": 0, "Meeting Support": 16, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "HFeng1", "name": "He Feng", "total": 20, "breakdown": {"Account / Auth": 0, "COG": 4, "Daily Ops": 4, "Device (LC)": 0, "Mac": 0, "Meeting Support": 12, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "ALan2", "name": "Andy Lan", "total": 18, "breakdown": {"Account / Auth": 0, "COG": 10, "Daily Ops": 0, "Device (LC)": 0, "Mac": 1, "Meeting Support": 0, "New Hire Setup": 7, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "AJian3", "name": "Aaron Jiang", "total": 15, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 12, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 3}}, {"id": "TTao5", "name": "Thomas Tao", "total": 15, "breakdown": {"Account / Auth": 2, "COG": 0, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 6, "O365": 3, "Peripherals": 1, "Windows": 3, "Other": 0}}, {"id": "VCHE11", "name": "Vance Chen", "total": 15, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 8, "O365": 0, "Peripherals": 0, "Windows": 4, "Other": 3}}, {"id": "RJu1", "name": "Rory Ju", "total": 14, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 1, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 10, "Other": 3}}, {"id": "JCh603", "name": "Jacky Chan", "total": 13, "breakdown": {"Account / Auth": 0, "COG": 1, "Daily Ops": 2, "Device (LC)": 0, "Mac": 0, "Meeting Support": 6, "New Hire Setup": 2, "O365": 0, "Peripherals": 0, "Windows": 1, "Other": 1}}, {"id": "JDen4", "name": "Junfeng Deng", "total": 13, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 13, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "BLiu60", "name": "Bob Liu", "total": 10, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 2, "Device (LC)": 0, "Mac": 3, "Meeting Support": 0, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 3, "Other": 2}}, {"id": "CLe144", "name": "Charles Lee", "total": 9, "breakdown": {"Account / Auth": 0, "COG": 6, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 1, "O365": 0, "Peripherals": 0, "Windows": 1, "Other": 1}}, {"id": "HZhu8", "name": "Hao Zhu", "total": 9, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 8, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 1, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "L31", "name": "Lee Li", "total": 9, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 1, "Device (LC)": 0, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 7, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 1}}, {"id": "DCha49", "name": "Dom Chang", "total": 8, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 7, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 1, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "JQIANG", "name": "Freddie Qiang", "total": 8, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 7, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 0, "O365": 1, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "KOuYan", "name": "Karen Ou Yang", "total": 8, "breakdown": {"Account / Auth": 0, "COG": 4, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 2, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 2}}, {"id": "KChu17", "name": "Kenneth Chung", "total": 8, "breakdown": {"Account / Auth": 1, "COG": 0, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 1, "New Hire Setup": 0, "O365": 1, "Peripherals": 1, "Windows": 3, "Other": 1}}, {"id": "YWei29", "name": "Roy Wei", "total": 7, "breakdown": {"Account / Auth": 0, "COG": 1, "Daily Ops": 4, "Device (LC)": 0, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 0, "O365": 1, "Peripherals": 0, "Windows": 0, "Other": 1}}, {"id": "AGuo22", "name": "Allen Guo", "total": 5, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 2, "Device (LC)": 0, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 2, "Other": 1}}, {"id": "HYip2", "name": "Harry Yip", "total": 5, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 1, "Device (LC)": 0, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 2, "Other": 2}}, {"id": "Z36", "name": "Zhi Lu", "total": 4, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 4, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "LCh158", "name": "Luby Lu", "total": 3, "breakdown": {"Account / Auth": 0, "COG": 3, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 0}}, {"id": "YY7", "name": "Yin Ye", "total": 3, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 0, "Other": 3}}, {"id": "YWa456", "name": "Yibo Wang", "total": 2, "breakdown": {"Account / Auth": 0, "COG": 0, "Daily Ops": 0, "Device (LC)": 0, "Mac": 0, "Meeting Support": 0, "New Hire Setup": 0, "O365": 0, "Peripherals": 0, "Windows": 1, "Other": 1}}], "colors": {"Account / Auth": "#ec4899", "COG": "#6366f1", "Daily Ops": "#22c55e", "Device (LC)": "#eab308", "Mac": "#3b82f6", "Meeting Support": "#06b6d4", "New Hire Setup": "#14b8a6", "O365": "#8b5cf6", "Peripherals": "#a855f7", "Windows": "#f97316", "Other": "#94a3b8"}};
+let CATEGORY_DATA = {"employees": [{"id": "AXu72", "name": "Alex Xu", "total": 38, "breakdown": [{"cat": "Meeting Support", "count": 30}, {"cat": "COG", "count": 6}, {"cat": "Other", "count": 1}, {"cat": "Other", "count": 1}]}, {"id": "HZh8", "name": "Hooxi Zhu", "total": 31, "breakdown": [{"cat": "Other", "count": 17}, {"cat": "New Hire Setup", "count": 10}, {"cat": "COG", "count": 2}, {"cat": "Other", "count": 2}]}, {"id": "PWan61", "name": "Ping Wang", "total": 31, "breakdown": [{"cat": "Device (LC)", "count": 31}]}, {"id": "XZh302", "name": "Xinyu Zhang", "total": 31, "breakdown": [{"cat": "Device (LC)", "count": 27}, {"cat": "New Hire Setup", "count": 3}, {"cat": "O365", "count": 1}]}, {"id": "HFeng1", "name": "He Feng", "total": 27, "breakdown": [{"cat": "Meeting Support", "count": 18}, {"cat": "Daily Ops", "count": 5}, {"cat": "COG", "count": 4}]}, {"id": "LXIAN2", "name": "liang Xiang", "total": 24, "breakdown": [{"cat": "Device (LC)", "count": 24}]}, {"id": "YDin23", "name": "Yang Ding", "total": 23, "breakdown": [{"cat": "New Hire Setup", "count": 18}, {"cat": "Device (LC)", "count": 5}]}, {"id": "HTan3", "name": "Howie Tan", "total": 22, "breakdown": [{"cat": "Meeting Support", "count": 16}, {"cat": "Daily Ops", "count": 4}, {"cat": "COG", "count": 2}]}, {"id": "ALan2", "name": "Andy Lan", "total": 18, "breakdown": [{"cat": "COG", "count": 10}, {"cat": "New Hire Setup", "count": 7}, {"cat": "Mac", "count": 1}]}, {"id": "AJian3", "name": "Aaron Jiang", "total": 15, "breakdown": [{"cat": "Meeting Support", "count": 12}, {"cat": "Other", "count": 3}]}, {"id": "TTao5", "name": "Thomas Tao", "total": 15, "breakdown": [{"cat": "New Hire Setup", "count": 6}, {"cat": "O365", "count": 3}, {"cat": "Windows", "count": 3}, {"cat": "Other", "count": 3}]}, {"id": "VCHE11", "name": "Vance Chen", "total": 15, "breakdown": [{"cat": "New Hire Setup", "count": 8}, {"cat": "Windows", "count": 4}, {"cat": "Other", "count": 3}]}, {"id": "RJu1", "name": "Rory Ju", "total": 14, "breakdown": [{"cat": "Windows", "count": 10}, {"cat": "Other", "count": 3}, {"cat": "Meeting Support", "count": 1}]}, {"id": "JCh603", "name": "Jacky Chan", "total": 13, "breakdown": [{"cat": "Meeting Support", "count": 6}, {"cat": "Daily Ops", "count": 2}, {"cat": "New Hire Setup", "count": 2}, {"cat": "Other", "count": 3}]}, {"id": "JDen4", "name": "Junfeng Deng", "total": 13, "breakdown": [{"cat": "Meeting Support", "count": 13}]}, {"id": "BLiu60", "name": "Bob Liu", "total": 10, "breakdown": [{"cat": "Mac", "count": 3}, {"cat": "Windows", "count": 3}, {"cat": "Daily Ops", "count": 2}, {"cat": "Other", "count": 2}]}, {"id": "CLe144", "name": "Charles Lee", "total": 9, "breakdown": [{"cat": "COG", "count": 6}, {"cat": "Windows", "count": 1}, {"cat": "Other", "count": 1}, {"cat": "Other", "count": 1}]}, {"id": "HZhu8", "name": "Hao Zhu", "total": 9, "breakdown": [{"cat": "Device (LC)", "count": 8}, {"cat": "New Hire Setup", "count": 1}]}, {"id": "L31", "name": "Lee Li", "total": 9, "breakdown": [{"cat": "New Hire Setup", "count": 7}, {"cat": "Other", "count": 1}, {"cat": "Daily Ops", "count": 1}]}, {"id": "DCha49", "name": "Dom Chang", "total": 8, "breakdown": [{"cat": "Device (LC)", "count": 7}, {"cat": "New Hire Setup", "count": 1}]}, {"id": "JQIANG", "name": "Freddie Qiang", "total": 8, "breakdown": [{"cat": "Device (LC)", "count": 7}, {"cat": "O365", "count": 1}]}, {"id": "KOuYan", "name": "Karen Ou Yang", "total": 8, "breakdown": [{"cat": "COG", "count": 4}, {"cat": "Other", "count": 2}, {"cat": "New Hire Setup", "count": 2}]}, {"id": "KChu17", "name": "Kenneth Chung", "total": 8, "breakdown": [{"cat": "Windows", "count": 3}, {"cat": "O365", "count": 1}, {"cat": "Peripherals", "count": 1}, {"cat": "Other", "count": 3}]}, {"id": "YWei29", "name": "Roy Wei", "total": 7, "breakdown": [{"cat": "Daily Ops", "count": 4}, {"cat": "COG", "count": 1}, {"cat": "O365", "count": 1}, {"cat": "Other", "count": 1}]}, {"id": "AGuo22", "name": "Allen Guo", "total": 5, "breakdown": [{"cat": "Windows", "count": 2}, {"cat": "Daily Ops", "count": 2}, {"cat": "Other", "count": 1}]}, {"id": "HYip2", "name": "Harry Yip", "total": 5, "breakdown": [{"cat": "Windows", "count": 2}, {"cat": "Other", "count": 2}, {"cat": "Daily Ops", "count": 1}]}, {"id": "Z36", "name": "Zhi Lu", "total": 4, "breakdown": [{"cat": "Meeting Support", "count": 4}]}, {"id": "LCh158", "name": "Luby Lu", "total": 3, "breakdown": [{"cat": "COG", "count": 3}]}, {"id": "YY7", "name": "Yin Ye", "total": 3, "breakdown": [{"cat": "Other", "count": 3}]}, {"id": "YWa456", "name": "Yibo Wang", "total": 2, "breakdown": [{"cat": "Windows", "count": 1}, {"cat": "Other", "count": 1}]}], "colors": {"Mac": "#3b82f6", "Windows": "#f97316", "O365": "#8b5cf6", "Meeting Support": "#06b6d4", "Device (LC)": "#eab308", "Account / Auth": "#ec4899", "Daily Ops": "#22c55e", "New Hire Setup": "#14b8a6", "COG": "#6366f1", "Peripherals": "#a855f7", "Mobile": "#f43f5e", "Other": "#94a3b8"}};
 
 (function() {
   const D = CATEGORY_DATA;
-  if (!D.categories) return;
+  if (!D.employees) return;
 
-  const cats = D.categories;
   const emps = D.employees;
-  const colors = D.colors;
+  const colors = D.colors || {};
+  const fallback = '#94a3b8';
 
   const now = new Date();
   document.getElementById('monthLabel').textContent =
     now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
   const totalTickets = emps.reduce((s, e) => s + e.total, 0);
+  const allCats = new Set();
+  emps.forEach(e => e.breakdown.forEach(b => allCats.add(b.cat)));
+
   document.getElementById('totalVal').textContent = totalTickets;
-  document.getElementById('catVal').textContent = cats.length;
+  document.getElementById('catVal').textContent = allCats.size;
   document.getElementById('empVal').textContent = emps.filter(e => e.total > 0).length;
 
-  // --- Tabs ---
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const v = btn.dataset.view;
-      document.getElementById('employeeView').style.display = v === 'employee' ? '' : 'none';
-      document.getElementById('categoryView').style.display = v === 'category' ? '' : 'none';
-    });
-  });
+  const container = document.getElementById('empList');
 
-  // --- Legend ---
-  const legendEl = document.getElementById('empLegend');
-  cats.forEach(c => {
-    const item = document.createElement('div');
-    item.className = 'legend-item';
-    item.innerHTML = `<span class="ldot" style="background:${colors[c]}"></span>${c}`;
-    legendEl.appendChild(item);
-  });
-
-  // --- Employee view ---
-  const empContainer = document.getElementById('empCharts');
   emps.forEach(emp => {
     if (emp.total === 0) return;
-    const row = document.createElement('div');
-    row.className = 'emp-row';
 
-    const header = document.createElement('div');
-    header.className = 'emp-header';
-    header.innerHTML = `<span class="emp-name">${emp.name}</span><span class="emp-total">${emp.total} tickets</span>`;
-    row.appendChild(header);
+    const card = document.createElement('div');
+    card.className = 'emp-card';
 
-    const bar = document.createElement('div');
-    bar.className = 'stacked-bar';
-    cats.forEach(c => {
-      const cnt = emp.breakdown[c] || 0;
-      if (cnt === 0) return;
-      const pct = (cnt / emp.total * 100).toFixed(1);
-      const seg = document.createElement('div');
-      seg.className = 'seg';
-      seg.style.width = pct + '%';
-      seg.style.background = colors[c];
-      seg.innerHTML = `<span class="seg-label">${pct > 8 ? cnt : ''}</span><div class="tooltip">${c}: ${cnt} (${pct}%)</div>`;
-      bar.appendChild(seg);
-    });
-    row.appendChild(bar);
-    empContainer.appendChild(row);
-  });
-
-  // --- Category view ---
-  const catContainer = document.getElementById('catCharts');
-  const catTotals = {};
-  cats.forEach(c => {
-    let total = 0;
-    const empBreakdown = [];
-    emps.forEach(emp => {
-      const cnt = emp.breakdown[c] || 0;
-      if (cnt > 0) {
-        empBreakdown.push({ name: emp.name, count: cnt });
-        total += cnt;
-      }
-    });
-    if (total > 0) {
-      catTotals[c] = { total, empBreakdown };
-    }
-  });
-
-  const sortedCats = Object.entries(catTotals).sort((a, b) => b[1].total - a[1].total);
-
-  const empColors = [
-    '#3b82f6','#f97316','#8b5cf6','#06b6d4','#eab308','#ec4899',
-    '#22c55e','#f43f5e','#14b8a6','#6366f1','#a855f7','#0ea5e9',
-    '#d946ef','#84cc16','#fb923c','#64748b','#be123c','#0d9488',
-    '#7c3aed','#dc2626','#2563eb','#ca8a04','#9333ea','#059669',
-    '#e11d48','#4f46e5','#16a34a','#ea580c','#7c2d12','#475569',
-    '#0369a1','#b91c1c','#4338ca','#15803d'
-  ];
-
-  sortedCats.forEach(([catName, info]) => {
-    const row = document.createElement('div');
-    row.className = 'cat-row';
-
-    const header = document.createElement('div');
-    header.className = 'cat-header';
-    header.innerHTML = `<span class="cat-name"><span class="cat-dot" style="background:${colors[catName]}"></span>${catName}</span><span class="cat-total">${info.total} tickets</span>`;
-    row.appendChild(header);
-
-    info.empBreakdown.sort((a, b) => b.count - a.count);
+    const top = document.createElement('div');
+    top.className = 'emp-top';
+    top.innerHTML = '<span class="emp-name">' + emp.name + '</span><span class="emp-total">' + emp.total + ' tickets</span>';
+    card.appendChild(top);
 
     const bar = document.createElement('div');
-    bar.className = 'stacked-bar';
-    info.empBreakdown.forEach((eb, idx) => {
-      const pct = (eb.count / info.total * 100).toFixed(1);
+    bar.className = 'bar-row';
+    emp.breakdown.forEach(b => {
+      const pct = (b.count / emp.total * 100).toFixed(1);
       const seg = document.createElement('div');
-      seg.className = 'seg';
+      seg.className = 'bar-seg';
       seg.style.width = pct + '%';
-      seg.style.background = empColors[idx % empColors.length];
-      seg.innerHTML = `<span class="seg-label">${pct > 10 ? eb.name : (pct > 5 ? eb.count : '')}</span><div class="tooltip">${eb.name}: ${eb.count} (${pct}%)</div>`;
+      seg.style.background = colors[b.cat] || fallback;
+      const inner = pct >= 8 ? b.count : '';
+      seg.innerHTML = '<span>' + inner + '</span><div class="tip">' + b.cat + ': ' + b.count + ' (' + pct + '%)</div>';
       bar.appendChild(seg);
     });
-    row.appendChild(bar);
-    catContainer.appendChild(row);
+    card.appendChild(bar);
+
+    const labels = document.createElement('div');
+    labels.className = 'cat-labels';
+    emp.breakdown.forEach(b => {
+      const pct = (b.count / emp.total * 100).toFixed(0);
+      const lbl = document.createElement('div');
+      lbl.className = 'cat-label';
+      lbl.innerHTML = '<span class="dot" style="background:' + (colors[b.cat] || fallback) + '"></span>' + b.cat + ' <span class="pct">' + pct + '%</span>';
+      labels.appendChild(lbl);
+    });
+    card.appendChild(labels);
+
+    container.appendChild(card);
   });
 })();
 </script>
