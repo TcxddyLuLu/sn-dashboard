@@ -211,7 +211,7 @@
     <h1>Ticket Category Dashboard</h1>
     <div class="meta">
       <div class="month" id="monthLabel"></div>
-      <div class="updated" id="updatedTime">Updated: 2026/7/7 09:20</div>
+      <div class="updated" id="updatedTime">Updated: 2026/7/7 09:23</div>
     </div>
   </div>
 
@@ -340,17 +340,13 @@ let CATEGORY_DATA = {"axes": ["Daily Health Check", "Device (LC)", "New Hire Set
 
   // --- Individual cards ---
   var grid = document.getElementById('empGrid');
-  var medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
-
   activeEmps.forEach(function(emp, idx) {
     var card = document.createElement('div');
     card.className = 'emp-card';
 
-    var rankClass = idx < 3 ? ' r' + (idx + 1) : '';
     var pcts = emp.counts.map(function(c) { return emp.total > 0 ? Math.round(c / emp.total * 100) : 0; });
 
     card.innerHTML =
-      '<div class="emp-rank' + rankClass + '">#' + (idx + 1) + '</div>' +
       '<div class="emp-top">' +
         '<span class="emp-name">' + emp.name + '</span>' +
         '<span class="emp-total">' + emp.total + ' tickets</span>' +
@@ -366,8 +362,7 @@ let CATEGORY_DATA = {"axes": ["Daily Health Check", "Device (LC)", "New Hire Set
     var topN = sorted.slice(0, 3);
     var tcEl = document.getElementById('topCats' + idx);
     topN.forEach(function(t, ri) {
-      var medal = ri < 3 ? medals[ri] : '';
-      tcEl.innerHTML += '<span class="top-cat"><span class="medal">' + medal + '</span>' +
+      tcEl.innerHTML += '<span class="top-cat">' +
         t.cat + ' <span class="pct">' + t.pct + '%</span></span>';
     });
 
