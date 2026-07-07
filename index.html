@@ -481,7 +481,7 @@ function renderWeeklyTable(wd) {
         const alpha = (0.12 + intensity * 0.38).toFixed(2);
         style = ` style="background:rgba(34,197,94,${alpha})"`;
       }
-      const cls = v === 0 ? ' class="zero"' : '';
+      const cls = (v === 0 && ci <= wd.currentWeek) ? ' class="zero"' : '';
       html += `<td${style}${cls}>${v}</td>`;
     });
     const totalCls = emp.total === 0 ? ' class="zero"' : '';
