@@ -606,8 +606,7 @@ function renderWeeklyTable(wd) {
     if (bestVal === 0) {
       html += '<td>-</td>';
     } else {
-      const firstName = best.split(' ')[0];
-      html += `<td class="mvp-cell">${firstName}<br><span class="mvp-val">${bestVal}</span></td>`;
+      html += `<td class="mvp-cell">${best}<br><span class="mvp-val">${bestVal}</span></td>`;
     }
   });
   html += '<td></td></tr></tfoot>';
