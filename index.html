@@ -183,6 +183,28 @@
   #weeklyTable td:last-child { font-weight: 700; }
   #weeklyTable tr:hover td { background: #f8fafc !important; }
   #weeklyTable .zero { color: #ff1744; font-weight: 700; }
+
+  @keyframes blink-warn {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(255, 23, 68, 0.12); }
+  }
+  #weeklyTable .blink-zero {
+    animation: blink-warn 2s ease-in-out infinite;
+    color: #ff1744 !important;
+    font-weight: 700 !important;
+  }
+  #weeklyTable .warn-zero td {
+    background: #fef2f2 !important;
+  }
+  #weeklyTable .warn-zero td:first-child {
+    color: #334155;
+  }
+  #weeklyTable .warn-zero td:first-child::after {
+    content: ' \26A0';
+    color: #dc2626;
+    font-size: 14px;
+    margin-left: 4px;
+  }
   #weeklyTable tfoot td {
     font-weight: 700; border-top: 2px solid #e2e8f0;
     background: #f8fafc !important;
@@ -569,19 +591,27 @@ function renderWeeklyTable(wd) {
 
   html += '<tbody>';
   sorted.forEach((emp, ri) => {
-    html += '<tr>';
+    const isZeroTotal = emp.total === 0;
+    const rowCls = isZeroTotal ? ' class="warn-zero"' : '';
+    html += `<tr${rowCls}>`;
     html += `<td>${emp.employee}</td>`;
     emp.weekly.forEach((v, ci) => {
       let style = '';
+      let cls = '';
       if (v > 0) {
         const intensity = Math.min(v / Math.max(maxVal, 1), 1);
         const alpha = (0.12 + intensity * 0.38).toFixed(2);
         style = ` style="background:rgba(34,197,94,${alpha})"`;
+      } else if (ci <= wd.currentWeek) {
+        if (ci === wd.currentWeek && !isZeroTotal) {
+          cls = ' class="blink-zero"';
+        } else {
+          cls = ' class="zero"';
+        }
       }
-      const cls = (v === 0 && ci <= wd.currentWeek) ? ' class="zero"' : '';
       html += `<td${style}${cls}>${v}</td>`;
     });
-    const totalCls = emp.total === 0 ? ' class="zero"' : '';
+    const totalCls = isZeroTotal ? ' class="zero"' : '';
     html += `<td${totalCls}>${emp.total}</td>`;
     html += '</tr>';
   });
