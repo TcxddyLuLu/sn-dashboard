@@ -128,7 +128,7 @@ function buildTable(tableId, wrapId) {
     var isExempt = emp.employee === 'Luby Lu';
     var rowCls = (isZeroTotal && !isExempt) ? ' class="warn-zero"' : '';
     html += '<tr' + rowCls + '>';
-    html += '<td class="name-cell" data-row="' + ri + '">' + emp.employee + '</td>';
+    html += '<td class="name-cell" data-row="' + ri + '"><span class="name-text">' + emp.employee + '</span></td>';
 
     emp.weekly.forEach(function(v, ci) {
       var extra = '';
@@ -206,9 +206,11 @@ function drawArrows(wrapId, thickness) {
     var cellRect = cell.getBoundingClientRect();
     var nameRect = nameCell.getBoundingClientRect();
 
-    var x1 = cellRect.left - wrapRect.left + 2;
+    var x1 = cellRect.left - wrapRect.left + 4;
     var y1 = cellRect.top - wrapRect.top + cellRect.height / 2;
-    var x2 = nameRect.right - wrapRect.left - 2;
+    var nameSpan = nameCell.querySelector('.name-text');
+    var spanRect = nameSpan.getBoundingClientRect();
+    var x2 = spanRect.right - wrapRect.left + 3;
     var y2 = nameRect.top - wrapRect.top + nameRect.height / 2;
 
     var line = document.createElementNS(svgNS, 'line');
