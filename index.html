@@ -187,6 +187,22 @@
     font-weight: 700; border-top: 2px solid #e2e8f0;
     background: #f8fafc !important;
   }
+  #weeklyTable .weekly-mvp-row td {
+    background: #fffbeb !important;
+    border-top: 2px solid #f59e0b;
+    font-size: 12px;
+    color: #92400e;
+    font-weight: 600;
+  }
+  #weeklyTable .mvp-cell {
+    color: #b45309;
+    font-weight: 700;
+  }
+  #weeklyTable .mvp-val {
+    font-size: 11px;
+    color: #d97706;
+    font-weight: 500;
+  }
 
   .data-section {
     background: #fff;
@@ -575,7 +591,26 @@ function renderWeeklyTable(wd) {
   const grandTotal = weekTotals.reduce((s, v) => s + v, 0);
   html += '<tfoot><tr><td>TOTAL</td>';
   weekTotals.forEach(v => { html += `<td>${v}</td>`; });
-  html += `<td>${grandTotal}</td></tr></tfoot>`;
+  html += `<td>${grandTotal}</td></tr>`;
+
+  html += '<tr class="weekly-mvp-row"><td>\u{1F3C6} Weekly MVP</td>';
+  wd.weeks.forEach((_, wi) => {
+    if (wi > wd.currentWeek) {
+      html += '<td>-</td>';
+      return;
+    }
+    let best = '', bestVal = 0;
+    sorted.forEach(d => {
+      if (d.weekly[wi] > bestVal) { bestVal = d.weekly[wi]; best = d.employee; }
+    });
+    if (bestVal === 0) {
+      html += '<td>-</td>';
+    } else {
+      const firstName = best.split(' ')[0];
+      html += `<td class="mvp-cell">${firstName}<br><span class="mvp-val">${bestVal}</span></td>`;
+    }
+  });
+  html += '<td></td></tr></tfoot>';
 
   table.innerHTML = html;
 }
