@@ -89,6 +89,64 @@
   .legend-dot { width: 14px; height: 14px; border-radius: 3px; }
   .chart-wrap { position: relative; width: 100%; }
 
+  .mvp-banner {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .mvp-card {
+    flex: 1;
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  }
+  .mvp-card.gold {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #f59e0b;
+  }
+  .mvp-card.silver {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    border: 2px solid #94a3b8;
+  }
+  .mvp-card.bronze {
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+    border: 2px solid #ea580c;
+  }
+  .mvp-icon {
+    font-size: 32px;
+    line-height: 1;
+  }
+  .mvp-info { min-width: 0; }
+  .mvp-rank {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .gold .mvp-rank { color: #b45309; }
+  .silver .mvp-rank { color: #64748b; }
+  .bronze .mvp-rank { color: #c2410c; }
+  .mvp-name {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mvp-count {
+    font-size: 13px;
+    color: #475569;
+    font-weight: 500;
+  }
+
+  @media (max-width: 700px) {
+    .mvp-banner { flex-direction: column; }
+  }
+
   .weekly-section {
     background: #fff;
     border-radius: 12px;
@@ -204,6 +262,8 @@
       <div class="value" id="sumEmp">0</div>
     </div>
   </div>
+
+  <div class="mvp-banner" id="mvpBanner"></div>
 
   <div class="chart-section">
     <div class="legend">
@@ -341,6 +401,27 @@ function render(data) {
   document.getElementById('sumTask').textContent = totTask;
   document.getElementById('sumAll').textContent  = totInc + totTask;
   document.getElementById('sumEmp').textContent  = active;
+
+  const mvpStyles = [
+    { cls: 'gold',   icon: '\u{1F451}', rank: '1st Place' },
+    { cls: 'silver', icon: '\u{1F948}', rank: '2nd Place' },
+    { cls: 'bronze', icon: '\u{1F949}', rank: '3rd Place' },
+  ];
+  const mvpEl = document.getElementById('mvpBanner');
+  mvpEl.innerHTML = '';
+  const top3 = data.filter(d => d.incidents + d.tasks > 0).slice(0, 3);
+  top3.forEach((d, i) => {
+    const total = d.incidents + d.tasks;
+    const s = mvpStyles[i];
+    mvpEl.innerHTML += '<div class="mvp-card ' + s.cls + '">' +
+      '<div class="mvp-icon">' + s.icon + '</div>' +
+      '<div class="mvp-info">' +
+        '<div class="mvp-rank">' + s.rank + '</div>' +
+        '<div class="mvp-name">' + d.employee + '</div>' +
+        '<div class="mvp-count">' + total + ' tickets (Inc ' + d.incidents + ' / Task ' + d.tasks + ')</div>' +
+      '</div>' +
+    '</div>';
+  });
 
   const rowH = 32;
   const h = Math.max(360, data.length * rowH + 40);
