@@ -271,7 +271,7 @@
     <h1>Monthly Completed Tickets</h1>
     <div class="meta">
       <div class="month" id="monthTitle"></div>
-      <div class="updated" id="updatedTime">Updated: 2026/7/9 09:03</div>
+      <div class="updated" id="updatedTime">Updated: 2026/7/9 11:00</div>
       <div style="font-size:11px;opacity:.6;margin-top:2px;">每日 9:00 / 11:00 / 13:00 / 15:00 / 17:00 更新</div>
     </div>
   </div>
@@ -337,16 +337,16 @@
    DATA — replace this array with real query output, or paste below
    ================================================================ */
 let DATA = [
-  { employee: 'Roy Wei', incidents: 3, tasks: 57 },
+  { employee: 'Roy Wei', incidents: 3, tasks: 58 },
   { employee: 'Howie Tan', incidents: 2, tasks: 51 },
-  { employee: 'Hooxi Zhu', incidents: 21, tasks: 21 },
+  { employee: 'Hooxi Zhu', incidents: 28, tasks: 21 },
   { employee: 'He Feng', incidents: 5, tasks: 35 },
+  { employee: 'Yang Ding', incidents: 0, tasks: 39 },
   { employee: 'Alex Xu', incidents: 7, tasks: 31 },
   { employee: 'Ping Wang', incidents: 38, tasks: 0 },
   { employee: 'liang Xiang', incidents: 37, tasks: 0 },
-  { employee: 'Yang Ding', incidents: 0, tasks: 35 },
   { employee: 'Xinyu Zhang', incidents: 21, tasks: 11 },
-  { employee: 'Junfeng Deng', incidents: 2, tasks: 28 },
+  { employee: 'Junfeng Deng', incidents: 3, tasks: 28 },
   { employee: 'Dom Chang', incidents: 15, tasks: 7 },
   { employee: 'Vance Chen', incidents: 10, tasks: 12 },
   { employee: 'Jacky Chan', incidents: 1, tasks: 20 },
@@ -357,13 +357,13 @@ let DATA = [
   { employee: 'Thomas Tao', incidents: 9, tasks: 9 },
   { employee: 'Hao Zhu', incidents: 12, tasks: 4 },
   { employee: 'Charles Lee', incidents: 10, tasks: 3 },
-  { employee: 'Allen Guo', incidents: 2, tasks: 9 },
+  { employee: 'Allen Guo', incidents: 2, tasks: 10 },
+  { employee: 'Harry Yip', incidents: 1, tasks: 11 },
   { employee: 'Kenneth Chung', incidents: 6, tasks: 4 },
   { employee: 'Karen Ou Yang', incidents: 5, tasks: 5 },
   { employee: 'Lee Li', incidents: 1, tasks: 8 },
   { employee: 'Freddie Qiang', incidents: 8, tasks: 0 },
   { employee: 'Yibo Wang', incidents: 7, tasks: 0 },
-  { employee: 'Harry Yip', incidents: 0, tasks: 6 },
   { employee: 'Luby Lu', incidents: 3, tasks: 3 },
   { employee: 'Yin Ye', incidents: 3, tasks: 1 },
   { employee: 'Yong Zhao', incidents: 0, tasks: 4 },
@@ -562,7 +562,7 @@ function loadFromPaste() {
 /* ================================================================
    WEEKLY_DATA — weekly breakdown, injected by run_dashboard.py
    ================================================================ */
-let WEEKLY_DATA = {"weeks": ["6/29-7/5", "7/6-12", "7/13-19", "7/20-26", "7/27-8/2"], "currentWeek": 1, "data": [{"employee": "Roy Wei", "weekly": [5, 55, 0, 0, 0], "total": 60}, {"employee": "Howie Tan", "weekly": [21, 32, 0, 0, 0], "total": 53}, {"employee": "Hooxi Zhu", "weekly": [23, 19, 0, 0, 0], "total": 42}, {"employee": "He Feng", "weekly": [11, 29, 0, 0, 0], "total": 40}, {"employee": "Alex Xu", "weekly": [38, 0, 0, 0, 0], "total": 38}, {"employee": "Ping Wang", "weekly": [28, 10, 0, 0, 0], "total": 38}, {"employee": "liang Xiang", "weekly": [16, 21, 0, 0, 0], "total": 37}, {"employee": "Yang Ding", "weekly": [15, 20, 0, 0, 0], "total": 35}, {"employee": "Xinyu Zhang", "weekly": [31, 1, 0, 0, 0], "total": 32}, {"employee": "Junfeng Deng", "weekly": [13, 17, 0, 0, 0], "total": 30}, {"employee": "Dom Chang", "weekly": [8, 14, 0, 0, 0], "total": 22}, {"employee": "Vance Chen", "weekly": [10, 12, 0, 0, 0], "total": 22}, {"employee": "Jacky Chan", "weekly": [12, 9, 0, 0, 0], "total": 21}, {"employee": "Rory Ju", "weekly": [10, 9, 0, 0, 0], "total": 19}, {"employee": "Aaron Jiang", "weekly": [15, 3, 0, 0, 0], "total": 18}, {"employee": "Andy Lan", "weekly": [17, 1, 0, 0, 0], "total": 18}, {"employee": "Bob Liu", "weekly": [3, 15, 0, 0, 0], "total": 18}, {"employee": "Thomas Tao", "weekly": [10, 8, 0, 0, 0], "total": 18}, {"employee": "Hao Zhu", "weekly": [2, 14, 0, 0, 0], "total": 16}, {"employee": "Charles Lee", "weekly": [8, 5, 0, 0, 0], "total": 13}, {"employee": "Allen Guo", "weekly": [3, 8, 0, 0, 0], "total": 11}, {"employee": "Kenneth Chung", "weekly": [8, 2, 0, 0, 0], "total": 10}, {"employee": "Karen Ou Yang", "weekly": [8, 2, 0, 0, 0], "total": 10}, {"employee": "Lee Li", "weekly": [3, 6, 0, 0, 0], "total": 9}, {"employee": "Freddie Qiang", "weekly": [5, 3, 0, 0, 0], "total": 8}, {"employee": "Yibo Wang", "weekly": [1, 6, 0, 0, 0], "total": 7}, {"employee": "Harry Yip", "weekly": [4, 2, 0, 0, 0], "total": 6}, {"employee": "Luby Lu", "weekly": [0, 6, 0, 0, 0], "total": 6}, {"employee": "Yin Ye", "weekly": [3, 1, 0, 0, 0], "total": 4}, {"employee": "Yong Zhao", "weekly": [0, 4, 0, 0, 0], "total": 4}, {"employee": "Zhi Lu", "weekly": [2, 2, 0, 0, 0], "total": 4}, {"employee": "Guichong You", "weekly": [0, 2, 0, 0, 0], "total": 2}, {"employee": "Freddie Liu", "weekly": [0, 0, 0, 0, 0], "total": 0}]};
+let WEEKLY_DATA = {"weeks": ["6/29-7/5", "7/6-12", "7/13-19", "7/20-26", "7/27-8/2"], "currentWeek": 1, "data": [{"employee": "Roy Wei", "weekly": [5, 56, 0, 0, 0], "total": 61}, {"employee": "Howie Tan", "weekly": [21, 32, 0, 0, 0], "total": 53}, {"employee": "Hooxi Zhu", "weekly": [23, 26, 0, 0, 0], "total": 49}, {"employee": "He Feng", "weekly": [11, 29, 0, 0, 0], "total": 40}, {"employee": "Yang Ding", "weekly": [15, 24, 0, 0, 0], "total": 39}, {"employee": "Alex Xu", "weekly": [38, 0, 0, 0, 0], "total": 38}, {"employee": "Ping Wang", "weekly": [28, 10, 0, 0, 0], "total": 38}, {"employee": "liang Xiang", "weekly": [16, 21, 0, 0, 0], "total": 37}, {"employee": "Xinyu Zhang", "weekly": [31, 1, 0, 0, 0], "total": 32}, {"employee": "Junfeng Deng", "weekly": [13, 18, 0, 0, 0], "total": 31}, {"employee": "Dom Chang", "weekly": [8, 14, 0, 0, 0], "total": 22}, {"employee": "Vance Chen", "weekly": [10, 12, 0, 0, 0], "total": 22}, {"employee": "Jacky Chan", "weekly": [12, 9, 0, 0, 0], "total": 21}, {"employee": "Rory Ju", "weekly": [10, 9, 0, 0, 0], "total": 19}, {"employee": "Aaron Jiang", "weekly": [15, 3, 0, 0, 0], "total": 18}, {"employee": "Andy Lan", "weekly": [17, 1, 0, 0, 0], "total": 18}, {"employee": "Bob Liu", "weekly": [3, 15, 0, 0, 0], "total": 18}, {"employee": "Thomas Tao", "weekly": [10, 8, 0, 0, 0], "total": 18}, {"employee": "Hao Zhu", "weekly": [2, 14, 0, 0, 0], "total": 16}, {"employee": "Charles Lee", "weekly": [8, 5, 0, 0, 0], "total": 13}, {"employee": "Allen Guo", "weekly": [3, 9, 0, 0, 0], "total": 12}, {"employee": "Harry Yip", "weekly": [4, 8, 0, 0, 0], "total": 12}, {"employee": "Kenneth Chung", "weekly": [8, 2, 0, 0, 0], "total": 10}, {"employee": "Karen Ou Yang", "weekly": [8, 2, 0, 0, 0], "total": 10}, {"employee": "Lee Li", "weekly": [3, 6, 0, 0, 0], "total": 9}, {"employee": "Freddie Qiang", "weekly": [5, 3, 0, 0, 0], "total": 8}, {"employee": "Yibo Wang", "weekly": [1, 6, 0, 0, 0], "total": 7}, {"employee": "Luby Lu", "weekly": [0, 6, 0, 0, 0], "total": 6}, {"employee": "Yin Ye", "weekly": [3, 1, 0, 0, 0], "total": 4}, {"employee": "Yong Zhao", "weekly": [0, 4, 0, 0, 0], "total": 4}, {"employee": "Zhi Lu", "weekly": [2, 2, 0, 0, 0], "total": 4}, {"employee": "Guichong You", "weekly": [0, 2, 0, 0, 0], "total": 2}, {"employee": "Freddie Liu", "weekly": [0, 0, 0, 0, 0], "total": 0}]};
 
 function renderWeeklyTable(wd) {
   if (!wd || !wd.weeks || wd.weeks.length === 0) return;
