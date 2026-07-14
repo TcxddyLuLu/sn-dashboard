@@ -219,6 +219,10 @@
     color: #d97706;
     font-weight: 500;
   }
+  #weeklyTable .wk-inc { color: #3b82f6; font-weight: 600; }
+  #weeklyTable .wk-task { color: #f97316; font-weight: 600; }
+  #weeklyTable .wk-plus { color: #94a3b8; font-weight: 400; }
+  #weeklyTable td.wk-cell { white-space: nowrap; }
 
   .data-section {
     background: #fff;
@@ -562,7 +566,35 @@ function loadFromPaste() {
 /* ================================================================
    WEEKLY_DATA — weekly breakdown, injected by run_dashboard.py
    ================================================================ */
-let WEEKLY_DATA = {"weeks": ["6/29-7/5", "7/6-12", "7/13-19", "7/20-26", "7/27-8/2"], "currentWeek": 2, "data": [{"employee": "Howie Tan", "weekly": [21, 46, 1, 0, 0], "total": 68}, {"employee": "Hooxi Zhu", "weekly": [23, 38, 2, 0, 0], "total": 63}, {"employee": "Roy Wei", "weekly": [5, 56, 1, 0, 0], "total": 62}, {"employee": "liang Xiang", "weekly": [16, 31, 12, 0, 0], "total": 59}, {"employee": "Ping Wang", "weekly": [28, 17, 12, 0, 0], "total": 57}, {"employee": "He Feng", "weekly": [11, 36, 7, 0, 0], "total": 54}, {"employee": "Xinyu Zhang", "weekly": [31, 22, 0, 0, 0], "total": 53}, {"employee": "Yang Ding", "weekly": [15, 31, 1, 0, 0], "total": 47}, {"employee": "Alex Xu", "weekly": [38, 6, 0, 0, 0], "total": 44}, {"employee": "Harry Yip", "weekly": [4, 25, 13, 0, 0], "total": 42}, {"employee": "Junfeng Deng", "weekly": [13, 27, 0, 0, 0], "total": 40}, {"employee": "Andy Lan", "weekly": [17, 19, 1, 0, 0], "total": 37}, {"employee": "Karen Ou Yang", "weekly": [8, 24, 0, 0, 0], "total": 32}, {"employee": "Dom Chang", "weekly": [8, 22, 0, 0, 0], "total": 30}, {"employee": "Vance Chen", "weekly": [10, 16, 4, 0, 0], "total": 30}, {"employee": "Charles Lee", "weekly": [8, 18, 1, 0, 0], "total": 27}, {"employee": "Rory Ju", "weekly": [10, 15, 2, 0, 0], "total": 27}, {"employee": "Aaron Jiang", "weekly": [15, 7, 0, 0, 0], "total": 22}, {"employee": "Jacky Chan", "weekly": [12, 10, 0, 0, 0], "total": 22}, {"employee": "Bob Liu", "weekly": [3, 18, 0, 0, 0], "total": 21}, {"employee": "Hao Zhu", "weekly": [2, 14, 5, 0, 0], "total": 21}, {"employee": "Kenneth Chung", "weekly": [8, 11, 1, 0, 0], "total": 20}, {"employee": "Thomas Tao", "weekly": [10, 8, 2, 0, 0], "total": 20}, {"employee": "Yibo Wang", "weekly": [1, 6, 13, 0, 0], "total": 20}, {"employee": "Allen Guo", "weekly": [3, 10, 4, 0, 0], "total": 17}, {"employee": "Lee Li", "weekly": [3, 11, 0, 0, 0], "total": 14}, {"employee": "Freddie Qiang", "weekly": [5, 5, 0, 0, 0], "total": 10}, {"employee": "Luby Lu", "weekly": [0, 7, 1, 0, 0], "total": 8}, {"employee": "Yin Ye", "weekly": [3, 1, 2, 0, 0], "total": 6}, {"employee": "Yong Zhao", "weekly": [0, 4, 0, 0, 0], "total": 4}, {"employee": "Zhi Lu", "weekly": [2, 2, 0, 0, 0], "total": 4}, {"employee": "Guichong You", "weekly": [0, 2, 0, 0, 0], "total": 2}, {"employee": "Freddie Liu", "weekly": [0, 0, 0, 0, 0], "total": 0}]};
+let WEEKLY_DATA = {"weeks": ["6/29-7/5", "7/6-12", "7/13-19", "7/20-26", "7/27-8/2"], "currentWeek": 2, "data": [{"employee": "Howie Tan", "weekly": [{"inc": 2, "task": 19}, {"inc": 3, "task": 43}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 63}}, {"employee": "Hooxi Zhu", "weekly": [{"inc": 13, "task": 10}, {"inc": 21, "task": 17}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 35, "task": 28}}, {"employee": "Roy Wei", "weekly": [{"inc": 0, "task": 5}, {"inc": 3, "task": 53}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 59}}, {"employee": "liang Xiang", "weekly": [{"inc": 16, "task": 0}, {"inc": 31, "task": 0}, {"inc": 12, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 59, "task": 0}}, {"employee": "Ping Wang", "weekly": [{"inc": 26, "task": 2}, {"inc": 16, "task": 1}, {"inc": 11, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 53, "task": 4}}, {"employee": "He Feng", "weekly": [{"inc": 1, "task": 10}, {"inc": 3, "task": 33}, {"inc": 1, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 49}}, {"employee": "Xinyu Zhang", "weekly": [{"inc": 22, "task": 9}, {"inc": 15, "task": 7}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 37, "task": 16}}, {"employee": "Yang Ding", "weekly": [{"inc": 0, "task": 15}, {"inc": 1, "task": 30}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 46}}, {"employee": "Alex Xu", "weekly": [{"inc": 10, "task": 28}, {"inc": 2, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 12, "task": 32}}, {"employee": "Harry Yip", "weekly": [{"inc": 0, "task": 4}, {"inc": 1, "task": 24}, {"inc": 1, "task": 12}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 40}}, {"employee": "Junfeng Deng", "weekly": [{"inc": 1, "task": 12}, {"inc": 3, "task": 24}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 4, "task": 36}}, {"employee": "Andy Lan", "weekly": [{"inc": 11, "task": 6}, {"inc": 12, "task": 7}, {"inc": 1, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 24, "task": 13}}, {"employee": "Karen Ou Yang", "weekly": [{"inc": 2, "task": 6}, {"inc": 8, "task": 16}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 22}}, {"employee": "Dom Chang", "weekly": [{"inc": 6, "task": 2}, {"inc": 16, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 22, "task": 8}}, {"employee": "Vance Chen", "weekly": [{"inc": 4, "task": 6}, {"inc": 6, "task": 10}, {"inc": 1, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 11, "task": 19}}, {"employee": "Charles Lee", "weekly": [{"inc": 7, "task": 1}, {"inc": 15, "task": 3}, {"inc": 1, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 23, "task": 4}}, {"employee": "Rory Ju", "weekly": [{"inc": 5, "task": 5}, {"inc": 7, "task": 8}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 13, "task": 14}}, {"employee": "Aaron Jiang", "weekly": [{"inc": 1, "task": 14}, {"inc": 0, "task": 7}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 21}}, {"employee": "Jacky Chan", "weekly": [{"inc": 1, "task": 11}, {"inc": 1, "task": 9}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 20}}, {"employee": "Bob Liu", "weekly": [{"inc": 2, "task": 1}, {"inc": 9, "task": 9}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 11, "task": 10}}, {"employee": "Hao Zhu", "weekly": [{"inc": 2, "task": 0}, {"inc": 11, "task": 3}, {"inc": 4, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 17, "task": 4}}, {"employee": "Kenneth Chung", "weekly": [{"inc": 2, "task": 6}, {"inc": 3, "task": 8}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 15}}, {"employee": "Thomas Tao", "weekly": [{"inc": 5, "task": 5}, {"inc": 4, "task": 4}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 10}}, {"employee": "Yibo Wang", "weekly": [{"inc": 1, "task": 0}, {"inc": 5, "task": 1}, {"inc": 11, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 17, "task": 3}}, {"employee": "Allen Guo", "weekly": [{"inc": 1, "task": 2}, {"inc": 2, "task": 8}, {"inc": 1, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 4, "task": 13}}, {"employee": "Lee Li", "weekly": [{"inc": 0, "task": 3}, {"inc": 1, "task": 10}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 13}}, {"employee": "Freddie Qiang", "weekly": [{"inc": 5, "task": 0}, {"inc": 5, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 0}}, {"employee": "Luby Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 3}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 4, "task": 4}}, {"employee": "Yin Ye", "weekly": [{"inc": 2, "task": 1}, {"inc": 1, "task": 0}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 4, "task": 2}}, {"employee": "Yong Zhao", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 4}}, {"employee": "Zhi Lu", "weekly": [{"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 4}}, {"employee": "Guichong You", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 2}}, {"employee": "Freddie Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}]};
+
+function normWeekCell(v) {
+  if (v && typeof v === 'object') {
+    return { inc: v.inc || 0, task: v.task || 0 };
+  }
+  const n = +v || 0;
+  return { inc: 0, task: n };
+}
+
+function weekCellTotal(cell) {
+  const c = normWeekCell(cell);
+  return c.inc + c.task;
+}
+
+function empTotal(emp) {
+  if (emp.total && typeof emp.total === 'object') {
+    return (emp.total.inc || 0) + (emp.total.task || 0);
+  }
+  return +emp.total || 0;
+}
+
+function fmtIncTask(inc, task, zeroRed) {
+  const incCls = (inc === 0 && zeroRed) ? 'wk-inc zero' : 'wk-inc';
+  const taskCls = (task === 0 && zeroRed) ? 'wk-task zero' : 'wk-task';
+  return '<span class="' + incCls + '">' + inc + '</span>' +
+    '<span class="wk-plus"> + </span>' +
+    '<span class="' + taskCls + '">' + task + '</span>';
+}
 
 function renderWeeklyTable(wd) {
   if (!wd || !wd.weeks || wd.weeks.length === 0) return;
@@ -572,9 +604,12 @@ function renderWeeklyTable(wd) {
   section.style.display = '';
 
   let maxVal = 0;
-  wd.data.forEach(d => d.weekly.forEach(v => { if (v > maxVal) maxVal = v; }));
+  wd.data.forEach(d => d.weekly.forEach(v => {
+    const t = weekCellTotal(v);
+    if (t > maxVal) maxVal = t;
+  }));
 
-  const sorted = [...wd.data].sort((a, b) => b.total - a.total || a.employee.localeCompare(b.employee));
+  const sorted = [...wd.data].sort((a, b) => empTotal(b) - empTotal(a) || a.employee.localeCompare(b.employee));
 
   let html = '<thead><tr><th>Employee</th>';
   wd.weeks.forEach((w, i) => {
@@ -584,39 +619,54 @@ function renderWeeklyTable(wd) {
   html += '<th>Total</th></tr></thead>';
 
   html += '<tbody>';
-  sorted.forEach((emp, ri) => {
-    const isZeroTotal = emp.total === 0;
+  sorted.forEach((emp) => {
+    const isZeroTotal = empTotal(emp) === 0;
     const isExempt = emp.employee === 'Luby Lu';
     const rowCls = (isZeroTotal && !isExempt) ? ' class="warn-zero"' : '';
     html += `<tr${rowCls}>`;
     html += `<td>${emp.employee}</td>`;
     emp.weekly.forEach((v, ci) => {
+      const c = normWeekCell(v);
+      const total = c.inc + c.task;
       let style = '';
-      let cls = '';
-      if (v > 0) {
-        const intensity = Math.min(v / Math.max(maxVal, 1), 1);
+      let cls = ' class="wk-cell';
+      if (total > 0) {
+        const intensity = Math.min(total / Math.max(maxVal, 1), 1);
         const alpha = (0.12 + intensity * 0.38).toFixed(2);
         style = ` style="background:rgba(34,197,94,${alpha})"`;
       } else if (ci <= wd.currentWeek && !isExempt) {
         if (ci === wd.currentWeek && !isZeroTotal) {
-          cls = ' class="blink-zero"';
-        } else {
-          cls = ' class="zero"';
+          cls += ' blink-zero';
         }
       }
-      html += `<td${style}${cls}>${v}</td>`;
+      cls += '"';
+      const zeroRed = total === 0 && ci <= wd.currentWeek && !isExempt;
+      html += `<td${style}${cls}>${fmtIncTask(c.inc, c.task, zeroRed)}</td>`;
     });
-    const totalCls = (isZeroTotal && !isExempt) ? ' class="zero"' : '';
-    html += `<td${totalCls}>${emp.total}</td>`;
+    const tot = normWeekCell(emp.total);
+    const totalCls = (isZeroTotal && !isExempt) ? ' class="wk-cell zero"' : ' class="wk-cell"';
+    html += `<td${totalCls}>${fmtIncTask(tot.inc, tot.task, isZeroTotal && !isExempt)}</td>`;
     html += '</tr>';
   });
   html += '</tbody>';
 
-  const weekTotals = wd.weeks.map((_, i) => sorted.reduce((s, d) => s + d.weekly[i], 0));
-  const grandTotal = weekTotals.reduce((s, v) => s + v, 0);
+  const weekTotals = wd.weeks.map((_, i) => {
+    let inc = 0, task = 0;
+    sorted.forEach(d => {
+      const c = normWeekCell(d.weekly[i]);
+      inc += c.inc;
+      task += c.task;
+    });
+    return { inc, task };
+  });
+  const grandInc = weekTotals.reduce((s, v) => s + v.inc, 0);
+  const grandTask = weekTotals.reduce((s, v) => s + v.task, 0);
+
   html += '<tfoot><tr><td>TOTAL</td>';
-  weekTotals.forEach(v => { html += `<td>${v}</td>`; });
-  html += `<td>${grandTotal}</td></tr>`;
+  weekTotals.forEach(v => {
+    html += `<td class="wk-cell">${fmtIncTask(v.inc, v.task, false)}</td>`;
+  });
+  html += `<td class="wk-cell">${fmtIncTask(grandInc, grandTask, false)}</td></tr>`;
 
   html += '<tr class="weekly-mvp-row"><td>\u{1F3C6} Weekly MVP</td>';
   wd.weeks.forEach((_, wi) => {
@@ -624,14 +674,16 @@ function renderWeeklyTable(wd) {
       html += '<td>-</td>';
       return;
     }
-    let best = '', bestVal = 0;
+    let best = '', bestVal = 0, bestCell = { inc: 0, task: 0 };
     sorted.forEach(d => {
-      if (d.weekly[wi] > bestVal) { bestVal = d.weekly[wi]; best = d.employee; }
+      const c = normWeekCell(d.weekly[wi]);
+      const t = c.inc + c.task;
+      if (t > bestVal) { bestVal = t; best = d.employee; bestCell = c; }
     });
     if (bestVal === 0) {
       html += '<td>-</td>';
     } else {
-      html += `<td class="mvp-cell">${best}<br><span class="mvp-val">${bestVal}</span></td>`;
+      html += `<td class="mvp-cell">${best}<br><span class="mvp-val">${fmtIncTask(bestCell.inc, bestCell.task, false)}</span></td>`;
     }
   });
   html += '<td></td></tr></tfoot>';
