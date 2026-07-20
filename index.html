@@ -208,6 +208,8 @@
   #weeklyTable .wk-inc { color: #3b82f6; font-weight: 600; }
   #weeklyTable .wk-task { color: #f97316; font-weight: 600; }
   #weeklyTable .wk-plus { color: #94a3b8; font-weight: 400; }
+  #weeklyTable .wk-sum { color: #1e293b; font-weight: 800; margin-right: 1px; }
+  #weeklyTable .wk-breakdown { font-size: 11px; font-weight: 500; color: #64748b; }
   #weeklyTable td.wk-cell { white-space: nowrap; }
 
   .data-section {
@@ -618,6 +620,18 @@ function fmtIncTask(inc, task, zeroRed) {
     '<span class="' + taskCls + '">' + task + '</span>';
 }
 
+function fmtIncTaskWithSum(inc, task, zeroRed) {
+  const sum = inc + task;
+  const incCls = (inc === 0 && zeroRed) ? 'wk-inc zero' : 'wk-inc';
+  const taskCls = (task === 0 && zeroRed) ? 'wk-task zero' : 'wk-task';
+  return '<span class="wk-sum">' + sum + '</span>' +
+    '<span class="wk-breakdown">(' +
+    '<span class="' + incCls + '">' + inc + '</span>' +
+    '<span class="wk-plus">+</span>' +
+    '<span class="' + taskCls + '">' + task + '</span>' +
+    ')</span>';
+}
+
 function renderWeeklyTable(wd) {
   if (!wd || !wd.weeks || wd.weeks.length === 0) return;
 
@@ -686,9 +700,9 @@ function renderWeeklyTable(wd) {
 
   html += '<tfoot><tr><td>TOTAL</td>';
   weekTotals.forEach(v => {
-    html += `<td class="wk-cell">${fmtIncTask(v.inc, v.task, false)}</td>`;
+    html += `<td class="wk-cell">${fmtIncTaskWithSum(v.inc, v.task, false)}</td>`;
   });
-  html += `<td class="wk-cell">${fmtIncTask(grandInc, grandTask, false)}</td></tr>`;
+  html += `<td class="wk-cell">${fmtIncTaskWithSum(grandInc, grandTask, false)}</td></tr>`;
 
   html += '<tr class="weekly-mvp-row"><td>\u{1F3C6} Weekly MVP</td>';
   wd.weeks.forEach((_, wi) => {
@@ -705,7 +719,7 @@ function renderWeeklyTable(wd) {
     if (bestVal === 0) {
       html += '<td>-</td>';
     } else {
-      html += `<td class="mvp-cell">${best}<br><span class="mvp-val">${fmtIncTask(bestCell.inc, bestCell.task, false)}</span></td>`;
+      html += `<td class="mvp-cell">${best}<br><span class="mvp-val">${fmtIncTaskWithSum(bestCell.inc, bestCell.task, false)}</span></td>`;
     }
   });
   html += '<td></td></tr></tfoot>';
