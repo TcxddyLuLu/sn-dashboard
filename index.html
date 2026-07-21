@@ -208,8 +208,6 @@
   #weeklyTable .wk-inc { color: #3b82f6; font-weight: 600; }
   #weeklyTable .wk-task { color: #f97316; font-weight: 600; }
   #weeklyTable .wk-plus { color: #94a3b8; font-weight: 400; }
-  #weeklyTable .wk-sum { color: #1e293b; font-weight: 800; margin-right: 1px; }
-  #weeklyTable .wk-breakdown { font-size: 11px; font-weight: 500; color: #64748b; }
   #weeklyTable td.wk-cell { white-space: nowrap; }
 
   .data-section {
@@ -271,54 +269,6 @@
   }
   .btn:hover { background: #1d4ed8; }
 
-  .toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-    background: #fff;
-    border-radius: 12px;
-    padding: 12px 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.06);
-  }
-  .month-nav { display: flex; align-items: center; gap: 6px; }
-  .month-nav button {
-    border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 8px;
-    width: 32px; height: 32px; cursor: pointer; font-size: 14px; color: #334155;
-  }
-  .month-nav button:hover { background: #e2e8f0; }
-  #monthSelect {
-    border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 10px;
-    font-size: 14px; font-weight: 600; color: #1e293b; min-width: 150px;
-  }
-  .tab-bar { display: flex; gap: 6px; }
-  .tab-btn {
-    border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 8px;
-    padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; color: #64748b;
-  }
-  .tab-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
-  .btn-export {
-    margin-left: auto; border: none; background: #0f766e; color: #fff;
-    border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
-  }
-  .btn-export:hover { background: #0d9488; }
-
-  .cat-bar-row {
-    display: grid; grid-template-columns: 10px 140px 1fr 40px; gap: 10px;
-    align-items: center; margin-bottom: 8px; font-size: 13px;
-  }
-  .cat-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .cat-name { color: #475569; font-weight: 500; }
-  .cat-bar-bg { background: #f1f5f9; border-radius: 4px; height: 10px; overflow: hidden; }
-  .cat-bar-fill { height: 100%; border-radius: 4px; }
-  .cat-count { text-align: right; font-weight: 700; color: #1e293b; }
-  .cat-radar-wrap { max-width: 420px; margin: 0 auto 20px; }
-  #catTable { font-size: 12px; }
-  #catTable th, #catTable td { padding: 6px 8px; text-align: right; }
-  #catTable th:first-child, #catTable td:first-child { text-align: left; }
-  #catTable .cat-total { font-weight: 700; }
-
   @media print {
     body { padding: 0; background: #fff; }
     .data-section { display: none; }
@@ -329,26 +279,13 @@
 <div class="dashboard">
   <div id="staleBanner"></div>
   <div id="pageStatus"></div>
+  <a href="category/" style="display:inline-block;margin-bottom:16px;font-size:13px;color:#64748b;text-decoration:none;">Category Breakdown Dashboard &rarr;</a>
 
-  <div class="toolbar">
-    <div class="month-nav">
-      <button type="button" id="monthPrev" title="上一月">&#9664;</button>
-      <select id="monthSelect"></select>
-      <button type="button" id="monthNext" title="下一月">&#9654;</button>
-    </div>
-    <div class="tab-bar">
-      <button type="button" class="tab-btn active" data-tab="volume">完成量</button>
-      <button type="button" class="tab-btn" data-tab="category">分类 Breakdown</button>
-    </div>
-    <button type="button" class="btn-export" id="exportBtn">&#128229; 导出 Excel</button>
-  </div>
-
-  <div id="tabVolume">
   <div class="header">
     <h1>Monthly Completed Tickets</h1>
     <div class="meta">
       <div class="month" id="monthTitle"></div>
-      <div class="updated" id="updatedTime">Updated: 2026/7/21 15:03</div>
+      <div class="updated" id="updatedTime">Updated: 2026/7/21 17:04</div>
       <div style="font-size:11px;opacity:.6;margin-top:2px;">每日 9:00 / 11:00 / 13:00 / 15:00 / 17:00 更新</div>
     </div>
   </div>
@@ -407,38 +344,9 @@
     </div>
   </div>
 
-  </div><!-- /tabVolume -->
-
-  <div id="tabCategory" style="display:none">
-    <div class="header">
-      <h1>Ticket Category Breakdown</h1>
-      <div class="meta">
-        <div class="month" id="catMonthTitle"></div>
-      </div>
-    </div>
-    <div class="cards">
-      <div class="card total"><div class="label">Total Tickets</div><div class="value" id="catTotalVal">0</div></div>
-      <div class="card task"><div class="label">Categories</div><div class="value" id="catAxesVal">0</div></div>
-      <div class="card emp"><div class="label">Active Employees</div><div class="value" id="catEmpVal">0</div></div>
-    </div>
-    <div class="chart-section">
-      <h3 style="margin-bottom:12px;font-size:15px;color:#334155">Team Overview</h3>
-      <div class="cat-radar-wrap"><canvas id="catTeamRadar"></canvas></div>
-      <div id="catTeamBars"></div>
-    </div>
-    <div class="weekly-section">
-      <div class="weekly-header"><h3>Employee Category Table</h3></div>
-      <div class="weekly-wrap"><table id="catTable"></table></div>
-    </div>
-  </div>
-
 </div>
 
 <script>
-let DASHBOARD_HISTORY = {};
-let CURRENT_MONTH_KEY = "2026-07";
-let CATEGORY_DATA = {"axes":[],"employees":[],"colors":{}};
-
 /* ================================================================
    DATA — replace this array with real query output, or paste below
    ================================================================ */
@@ -446,26 +354,26 @@ let DATA = [
   { employee: 'Hooxi Zhu', incidents: 70, tasks: 36 },
   { employee: 'He Feng', incidents: 12, tasks: 91 },
   { employee: 'Howie Tan', incidents: 10, tasks: 88 },
+  { employee: 'Roy Wei', incidents: 11, tasks: 70 },
   { employee: 'Ping Wang', incidents: 69, tasks: 11 },
   { employee: 'Junfeng Deng', incidents: 10, tasks: 67 },
-  { employee: 'Roy Wei', incidents: 8, tasks: 66 },
-  { employee: 'liang Xiang', incidents: 73, tasks: 0 },
+  { employee: 'liang Xiang', incidents: 77, tasks: 0 },
+  { employee: 'Yang Ding', incidents: 1, tasks: 69 },
   { employee: 'Xinyu Zhang', incidents: 49, tasks: 20 },
-  { employee: 'Yang Ding', incidents: 1, tasks: 67 },
   { employee: 'Rory Ju', incidents: 45, tasks: 22 },
   { employee: 'Kenneth Chung', incidents: 15, tasks: 46 },
   { employee: 'Alex Xu', incidents: 17, tasks: 39 },
-  { employee: 'Hao Zhu', incidents: 44, tasks: 6 },
-  { employee: 'Harry Yip', incidents: 5, tasks: 44 },
+  { employee: 'Hao Zhu', incidents: 46, tasks: 6 },
+  { employee: 'Harry Yip', incidents: 6, tasks: 45 },
   { employee: 'Dom Chang', incidents: 34, tasks: 14 },
   { employee: 'Vance Chen', incidents: 15, tasks: 32 },
   { employee: 'Charles Lee', incidents: 32, tasks: 12 },
   { employee: 'Andy Lan', incidents: 25, tasks: 17 },
   { employee: 'Thomas Tao', incidents: 17, tasks: 24 },
   { employee: 'Karen Ou Yang', incidents: 10, tasks: 30 },
+  { employee: 'Yibo Wang', incidents: 28, tasks: 9 },
   { employee: 'Jacky Chan', incidents: 7, tasks: 28 },
-  { employee: 'Yibo Wang', incidents: 24, tasks: 9 },
-  { employee: 'Allen Guo', incidents: 4, tasks: 28 },
+  { employee: 'Allen Guo', incidents: 5, tasks: 28 },
   { employee: 'Bob Liu', incidents: 14, tasks: 18 },
   { employee: 'Aaron Jiang', incidents: 5, tasks: 23 },
   { employee: 'Lee Li', incidents: 3, tasks: 24 },
@@ -642,12 +550,10 @@ function renderBarChart(labels, incArr, taskArr, rowCount) {
 const now = new Date();
 const MONTHS = ['January','February','March','April','May','June',
                 'July','August','September','October','November','December'];
+document.getElementById('monthTitle').textContent = MONTHS[now.getMonth()] + ' ' + now.getFullYear();
 const updatedEl = document.getElementById('updatedTime');
 if (!updatedEl.textContent.startsWith('Updated:')) {
   updatedEl.textContent = 'Updated: ' + now.toLocaleString('zh-CN');
-}
-if (!document.getElementById('monthTitle').textContent) {
-  document.getElementById('monthTitle').textContent = MONTHS[now.getMonth()] + ' ' + now.getFullYear();
 }
 
 /* ---------- toggle ---------- */
@@ -682,7 +588,7 @@ function loadFromPaste() {
 /* ================================================================
    WEEKLY_DATA — weekly breakdown, injected by run_dashboard.py
    ================================================================ */
-let WEEKLY_DATA = {"weeks": ["6/29-7/5", "7/6-12", "7/13-19", "7/20-26", "7/27-8/2"], "currentWeek": 3, "data": [{"employee": "Hooxi Zhu", "weekly": [{"inc": 14, "task": 9}, {"inc": 21, "task": 17}, {"inc": 32, "task": 5}, {"inc": 3, "task": 5}, {"inc": 0, "task": 0}], "total": {"inc": 70, "task": 36}}, {"employee": "He Feng", "weekly": [{"inc": 2, "task": 9}, {"inc": 3, "task": 33}, {"inc": 7, "task": 35}, {"inc": 0, "task": 14}, {"inc": 0, "task": 0}], "total": {"inc": 12, "task": 91}}, {"employee": "Howie Tan", "weekly": [{"inc": 2, "task": 19}, {"inc": 3, "task": 43}, {"inc": 5, "task": 25}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 88}}, {"employee": "Ping Wang", "weekly": [{"inc": 28, "task": 0}, {"inc": 16, "task": 1}, {"inc": 18, "task": 7}, {"inc": 7, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 69, "task": 11}}, {"employee": "Junfeng Deng", "weekly": [{"inc": 0, "task": 13}, {"inc": 4, "task": 23}, {"inc": 3, "task": 12}, {"inc": 3, "task": 19}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 67}}, {"employee": "Roy Wei", "weekly": [{"inc": 1, "task": 4}, {"inc": 2, "task": 54}, {"inc": 4, "task": 6}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 8, "task": 66}}, {"employee": "liang Xiang", "weekly": [{"inc": 16, "task": 0}, {"inc": 31, "task": 0}, {"inc": 26, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 73, "task": 0}}, {"employee": "Xinyu Zhang", "weekly": [{"inc": 21, "task": 10}, {"inc": 16, "task": 6}, {"inc": 9, "task": 3}, {"inc": 3, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 49, "task": 20}}, {"employee": "Yang Ding", "weekly": [{"inc": 0, "task": 15}, {"inc": 1, "task": 30}, {"inc": 0, "task": 16}, {"inc": 0, "task": 6}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 67}}, {"employee": "Rory Ju", "weekly": [{"inc": 3, "task": 7}, {"inc": 9, "task": 6}, {"inc": 22, "task": 6}, {"inc": 11, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 45, "task": 22}}, {"employee": "Kenneth Chung", "weekly": [{"inc": 6, "task": 2}, {"inc": 0, "task": 11}, {"inc": 9, "task": 33}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 15, "task": 46}}, {"employee": "Alex Xu", "weekly": [{"inc": 7, "task": 31}, {"inc": 4, "task": 2}, {"inc": 6, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 17, "task": 39}}, {"employee": "Hao Zhu", "weekly": [{"inc": 2, "task": 0}, {"inc": 10, "task": 4}, {"inc": 23, "task": 0}, {"inc": 9, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 44, "task": 6}}, {"employee": "Harry Yip", "weekly": [{"inc": 0, "task": 4}, {"inc": 2, "task": 23}, {"inc": 3, "task": 17}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 44}}, {"employee": "Dom Chang", "weekly": [{"inc": 7, "task": 1}, {"inc": 15, "task": 7}, {"inc": 12, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 34, "task": 14}}, {"employee": "Vance Chen", "weekly": [{"inc": 4, "task": 6}, {"inc": 7, "task": 9}, {"inc": 4, "task": 17}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 15, "task": 32}}, {"employee": "Charles Lee", "weekly": [{"inc": 7, "task": 1}, {"inc": 15, "task": 3}, {"inc": 10, "task": 3}, {"inc": 0, "task": 5}, {"inc": 0, "task": 0}], "total": {"inc": 32, "task": 12}}, {"employee": "Andy Lan", "weekly": [{"inc": 11, "task": 6}, {"inc": 13, "task": 6}, {"inc": 0, "task": 4}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 25, "task": 17}}, {"employee": "Thomas Tao", "weekly": [{"inc": 5, "task": 5}, {"inc": 4, "task": 4}, {"inc": 5, "task": 8}, {"inc": 3, "task": 7}, {"inc": 0, "task": 0}], "total": {"inc": 17, "task": 24}}, {"employee": "Karen Ou Yang", "weekly": [{"inc": 5, "task": 3}, {"inc": 5, "task": 19}, {"inc": 0, "task": 6}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 30}}, {"employee": "Jacky Chan", "weekly": [{"inc": 1, "task": 11}, {"inc": 1, "task": 9}, {"inc": 5, "task": 3}, {"inc": 0, "task": 5}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 28}}, {"employee": "Yibo Wang", "weekly": [{"inc": 1, "task": 0}, {"inc": 6, "task": 0}, {"inc": 16, "task": 7}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 24, "task": 9}}, {"employee": "Allen Guo", "weekly": [{"inc": 0, "task": 3}, {"inc": 2, "task": 8}, {"inc": 2, "task": 16}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 4, "task": 28}}, {"employee": "Bob Liu", "weekly": [{"inc": 1, "task": 2}, {"inc": 10, "task": 8}, {"inc": 2, "task": 5}, {"inc": 1, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 14, "task": 18}}, {"employee": "Aaron Jiang", "weekly": [{"inc": 0, "task": 15}, {"inc": 1, "task": 6}, {"inc": 4, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 23}}, {"employee": "Lee Li", "weekly": [{"inc": 0, "task": 3}, {"inc": 1, "task": 10}, {"inc": 0, "task": 7}, {"inc": 2, "task": 4}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 24}}, {"employee": "Freddie Qiang", "weekly": [{"inc": 5, "task": 0}, {"inc": 5, "task": 0}, {"inc": 8, "task": 0}, {"inc": 3, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 21, "task": 2}}, {"employee": "Luby Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 3}, {"inc": 3, "task": 2}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 6}}, {"employee": "Yin Ye", "weekly": [{"inc": 3, "task": 0}, {"inc": 0, "task": 1}, {"inc": 2, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 3}}, {"employee": "Zhi Lu", "weekly": [{"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 8}}, {"employee": "Yong Zhao", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 4}}, {"employee": "Guichong You", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 3}}, {"employee": "Freddie Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}]};
+let WEEKLY_DATA = {"weeks": ["6/29-7/5", "7/6-12", "7/13-19", "7/20-26", "7/27-8/2"], "currentWeek": 3, "data": [{"employee": "Hooxi Zhu", "weekly": [{"inc": 14, "task": 9}, {"inc": 21, "task": 17}, {"inc": 32, "task": 5}, {"inc": 3, "task": 5}, {"inc": 0, "task": 0}], "total": {"inc": 70, "task": 36}}, {"employee": "He Feng", "weekly": [{"inc": 2, "task": 9}, {"inc": 3, "task": 33}, {"inc": 7, "task": 35}, {"inc": 0, "task": 14}, {"inc": 0, "task": 0}], "total": {"inc": 12, "task": 91}}, {"employee": "Howie Tan", "weekly": [{"inc": 2, "task": 19}, {"inc": 3, "task": 43}, {"inc": 5, "task": 25}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 88}}, {"employee": "Roy Wei", "weekly": [{"inc": 1, "task": 4}, {"inc": 2, "task": 54}, {"inc": 4, "task": 6}, {"inc": 4, "task": 6}, {"inc": 0, "task": 0}], "total": {"inc": 11, "task": 70}}, {"employee": "Ping Wang", "weekly": [{"inc": 28, "task": 0}, {"inc": 16, "task": 1}, {"inc": 18, "task": 7}, {"inc": 7, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 69, "task": 11}}, {"employee": "Junfeng Deng", "weekly": [{"inc": 0, "task": 13}, {"inc": 4, "task": 23}, {"inc": 3, "task": 12}, {"inc": 3, "task": 19}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 67}}, {"employee": "liang Xiang", "weekly": [{"inc": 16, "task": 0}, {"inc": 31, "task": 0}, {"inc": 26, "task": 0}, {"inc": 4, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 77, "task": 0}}, {"employee": "Yang Ding", "weekly": [{"inc": 0, "task": 15}, {"inc": 1, "task": 30}, {"inc": 0, "task": 16}, {"inc": 0, "task": 8}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 69}}, {"employee": "Xinyu Zhang", "weekly": [{"inc": 21, "task": 10}, {"inc": 16, "task": 6}, {"inc": 9, "task": 3}, {"inc": 3, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 49, "task": 20}}, {"employee": "Rory Ju", "weekly": [{"inc": 3, "task": 7}, {"inc": 9, "task": 6}, {"inc": 22, "task": 6}, {"inc": 11, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 45, "task": 22}}, {"employee": "Kenneth Chung", "weekly": [{"inc": 6, "task": 2}, {"inc": 0, "task": 11}, {"inc": 9, "task": 33}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 15, "task": 46}}, {"employee": "Alex Xu", "weekly": [{"inc": 7, "task": 31}, {"inc": 4, "task": 2}, {"inc": 6, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 17, "task": 39}}, {"employee": "Hao Zhu", "weekly": [{"inc": 2, "task": 0}, {"inc": 10, "task": 4}, {"inc": 23, "task": 0}, {"inc": 11, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 46, "task": 6}}, {"employee": "Harry Yip", "weekly": [{"inc": 0, "task": 4}, {"inc": 2, "task": 23}, {"inc": 3, "task": 17}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 6, "task": 45}}, {"employee": "Dom Chang", "weekly": [{"inc": 7, "task": 1}, {"inc": 15, "task": 7}, {"inc": 12, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 34, "task": 14}}, {"employee": "Vance Chen", "weekly": [{"inc": 4, "task": 6}, {"inc": 7, "task": 9}, {"inc": 4, "task": 17}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 15, "task": 32}}, {"employee": "Charles Lee", "weekly": [{"inc": 7, "task": 1}, {"inc": 15, "task": 3}, {"inc": 10, "task": 3}, {"inc": 0, "task": 5}, {"inc": 0, "task": 0}], "total": {"inc": 32, "task": 12}}, {"employee": "Andy Lan", "weekly": [{"inc": 11, "task": 6}, {"inc": 13, "task": 6}, {"inc": 0, "task": 4}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 25, "task": 17}}, {"employee": "Thomas Tao", "weekly": [{"inc": 5, "task": 5}, {"inc": 4, "task": 4}, {"inc": 5, "task": 8}, {"inc": 3, "task": 7}, {"inc": 0, "task": 0}], "total": {"inc": 17, "task": 24}}, {"employee": "Karen Ou Yang", "weekly": [{"inc": 5, "task": 3}, {"inc": 5, "task": 19}, {"inc": 0, "task": 6}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 30}}, {"employee": "Yibo Wang", "weekly": [{"inc": 1, "task": 0}, {"inc": 6, "task": 0}, {"inc": 16, "task": 7}, {"inc": 5, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 28, "task": 9}}, {"employee": "Jacky Chan", "weekly": [{"inc": 1, "task": 11}, {"inc": 1, "task": 9}, {"inc": 5, "task": 3}, {"inc": 0, "task": 5}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 28}}, {"employee": "Allen Guo", "weekly": [{"inc": 0, "task": 3}, {"inc": 2, "task": 8}, {"inc": 2, "task": 16}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 28}}, {"employee": "Bob Liu", "weekly": [{"inc": 1, "task": 2}, {"inc": 10, "task": 8}, {"inc": 2, "task": 5}, {"inc": 1, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 14, "task": 18}}, {"employee": "Aaron Jiang", "weekly": [{"inc": 0, "task": 15}, {"inc": 1, "task": 6}, {"inc": 4, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 23}}, {"employee": "Lee Li", "weekly": [{"inc": 0, "task": 3}, {"inc": 1, "task": 10}, {"inc": 0, "task": 7}, {"inc": 2, "task": 4}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 24}}, {"employee": "Freddie Qiang", "weekly": [{"inc": 5, "task": 0}, {"inc": 5, "task": 0}, {"inc": 8, "task": 0}, {"inc": 3, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 21, "task": 2}}, {"employee": "Luby Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 3}, {"inc": 3, "task": 2}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 6}}, {"employee": "Yin Ye", "weekly": [{"inc": 3, "task": 0}, {"inc": 0, "task": 1}, {"inc": 2, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 3}}, {"employee": "Zhi Lu", "weekly": [{"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 8}}, {"employee": "Yong Zhao", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 4}}, {"employee": "Guichong You", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 3}}, {"employee": "Freddie Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}]};
 
 function normWeekCell(v) {
   if (v && typeof v === 'object') {
@@ -710,18 +616,6 @@ function fmtIncTask(inc, task, zeroRed) {
   return '<span class="' + incCls + '">' + inc + '</span>' +
     '<span class="wk-plus"> + </span>' +
     '<span class="' + taskCls + '">' + task + '</span>';
-}
-
-function fmtIncTaskWithSum(inc, task, zeroRed) {
-  const sum = inc + task;
-  const incCls = (inc === 0 && zeroRed) ? 'wk-inc zero' : 'wk-inc';
-  const taskCls = (task === 0 && zeroRed) ? 'wk-task zero' : 'wk-task';
-  return '<span class="wk-sum">' + sum + '</span>' +
-    '<span class="wk-breakdown">(' +
-    '<span class="' + incCls + '">' + inc + '</span>' +
-    '<span class="wk-plus">+</span>' +
-    '<span class="' + taskCls + '">' + task + '</span>' +
-    ')</span>';
 }
 
 function renderWeeklyTable(wd) {
@@ -792,9 +686,9 @@ function renderWeeklyTable(wd) {
 
   html += '<tfoot><tr><td>TOTAL</td>';
   weekTotals.forEach(v => {
-    html += `<td class="wk-cell">${fmtIncTaskWithSum(v.inc, v.task, false)}</td>`;
+    html += `<td class="wk-cell">${fmtIncTask(v.inc, v.task, false)}</td>`;
   });
-  html += `<td class="wk-cell">${fmtIncTaskWithSum(grandInc, grandTask, false)}</td></tr>`;
+  html += `<td class="wk-cell">${fmtIncTask(grandInc, grandTask, false)}</td></tr>`;
 
   html += '<tr class="weekly-mvp-row"><td>\u{1F3C6} Weekly MVP</td>';
   wd.weeks.forEach((_, wi) => {
@@ -811,7 +705,7 @@ function renderWeeklyTable(wd) {
     if (bestVal === 0) {
       html += '<td>-</td>';
     } else {
-      html += `<td class="mvp-cell">${best}<br><span class="mvp-val">${fmtIncTaskWithSum(bestCell.inc, bestCell.task, false)}</span></td>`;
+      html += `<td class="mvp-cell">${best}<br><span class="mvp-val">${fmtIncTask(bestCell.inc, bestCell.task, false)}</span></td>`;
     }
   });
   html += '<td></td></tr></tfoot>';
@@ -843,13 +737,6 @@ function checkStaleData() {
 
 function bootDashboard() {
   checkStaleData();
-  const payload = DASHBOARD_HISTORY[activeMonthKey];
-  const label = payload && payload.label;
-  if (label) {
-    document.getElementById('monthTitle').textContent = label;
-    const catTitle = document.getElementById('catMonthTitle');
-    if (catTitle) catTitle.textContent = label;
-  }
   try {
     render(DATA);
     renderWeeklyTable(WEEKLY_DATA);
@@ -860,6 +747,12 @@ function bootDashboard() {
   }
 }
 
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootDashboard);
+} else {
+  bootDashboard();
+}
+
 function retryChart() {
   if (!window.__lastChartData || typeof Chart === 'undefined') return;
   const d = window.__lastChartData;
@@ -868,7 +761,5 @@ function retryChart() {
 }
 </script>
 <script src="chart.min.js" defer onload="retryChart()" onerror="showStatus('Chart library could not load, but summary and weekly data are still shown.')"></script>
-<script src="xlsx.full.min.js" defer></script>
-<script src="dashboard-features.js" defer></script>
 </body>
 </html>
