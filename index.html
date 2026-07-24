@@ -269,6 +269,33 @@
   }
   .btn:hover { background: #1d4ed8; }
 
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .month-nav { display: flex; align-items: center; gap: 6px; }
+  .month-nav button {
+    border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 8px;
+    width: 32px; height: 32px; cursor: pointer; font-size: 14px; color: #334155;
+  }
+  .month-nav button:hover { background: #e2e8f0; }
+  #monthSelect {
+    border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 10px;
+    font-size: 14px; font-weight: 600; color: #1e293b; min-width: 150px;
+  }
+  .btn-export {
+    margin-left: auto; border: none; background: #0f766e; color: #fff;
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-export:hover { background: #0d9488; }
+
   @media print {
     body { padding: 0; background: #fff; }
     .data-section { display: none; }
@@ -279,6 +306,16 @@
 <div class="dashboard">
   <div id="staleBanner"></div>
   <div id="pageStatus"></div>
+
+  <div class="toolbar">
+    <div class="month-nav">
+      <button type="button" id="monthPrev" title="Previous month">&#9664;</button>
+      <select id="monthSelect"></select>
+      <button type="button" id="monthNext" title="Next month">&#9654;</button>
+    </div>
+    <button type="button" class="btn-export" id="exportBtn">Export Excel</button>
+  </div>
+
   <a href="category/" style="display:inline-block;margin-bottom:16px;font-size:13px;color:#64748b;text-decoration:none;">Category Breakdown Dashboard &rarr;</a>
 
   <div class="header">
@@ -347,6 +384,10 @@
 </div>
 
 <script>
+let DASHBOARD_HISTORY = {};
+let CURRENT_MONTH_KEY = "2026-07";
+let CATEGORY_DATA = {"axes":[],"employees":[],"colors":{}};
+
 /* ================================================================
    DATA — replace this array with real query output, or paste below
    ================================================================ */
@@ -547,13 +588,9 @@ function renderBarChart(labels, incArr, taskArr, rowCount) {
 }
 
 /* ---------- date header ---------- */
-const now = new Date();
-const MONTHS = ['January','February','March','April','May','June',
-                'July','August','September','October','November','December'];
-document.getElementById('monthTitle').textContent = MONTHS[now.getMonth()] + ' ' + now.getFullYear();
 const updatedEl = document.getElementById('updatedTime');
 if (!updatedEl.textContent.startsWith('Updated:')) {
-  updatedEl.textContent = 'Updated: ' + now.toLocaleString('zh-CN');
+  updatedEl.textContent = 'Updated: ' + new Date().toLocaleString('zh-CN');
 }
 
 /* ---------- toggle ---------- */
@@ -738,6 +775,9 @@ function checkStaleData() {
 function bootDashboard() {
   checkStaleData();
   try {
+    const payload = DASHBOARD_HISTORY && activeMonthKey && DASHBOARD_HISTORY[activeMonthKey];
+    const mt = document.getElementById('monthTitle');
+    if (mt && payload && payload.label) mt.textContent = payload.label;
     render(DATA);
     renderWeeklyTable(WEEKLY_DATA);
     showStatus('');
@@ -747,12 +787,6 @@ function bootDashboard() {
   }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', bootDashboard);
-} else {
-  bootDashboard();
-}
-
 function retryChart() {
   if (!window.__lastChartData || typeof Chart === 'undefined') return;
   const d = window.__lastChartData;
@@ -760,6 +794,8 @@ function retryChart() {
   showStatus('');
 }
 </script>
+<script src="xlsx.full.min.js"></script>
 <script src="chart.min.js" defer onload="retryChart()" onerror="showStatus('Chart library could not load, but summary and weekly data are still shown.')"></script>
+<script src="dashboard-features.js" defer></script>
 </body>
 </html>

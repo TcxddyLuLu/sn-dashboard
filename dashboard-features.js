@@ -253,6 +253,10 @@ async function loadHistoryAndBoot() {
       DATA = p.monthly || DATA;
       WEEKLY_DATA = p.weekly || WEEKLY_DATA;
       CATEGORY_DATA = p.category || CATEGORY_DATA;
+      if (p.label) {
+        const monthTitle = document.getElementById('monthTitle');
+        if (monthTitle) monthTitle.textContent = p.label;
+      }
     }
   } else if (CURRENT_MONTH_KEY) {
     activeMonthKey = CURRENT_MONTH_KEY;
