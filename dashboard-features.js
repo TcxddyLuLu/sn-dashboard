@@ -3,6 +3,67 @@
 let activeMonthKey = typeof CURRENT_MONTH_KEY !== 'undefined' ? CURRENT_MONTH_KEY : '';
 let activeTab = 'volume';
 let categoryCharts = [];
+let INLINE_MONTH_DATA = null;
+
+function snapshotInlineMonth() {
+  INLINE_MONTH_DATA = {
+    monthly: JSON.parse(JSON.stringify(DATA)),
+    weekly: JSON.parse(JSON.stringify(WEEKLY_DATA)),
+  };
+}
+
+function formatMonthLabel(key) {
+  const [y, m] = key.split('-').map(Number);
+  const names = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  return `${names[m - 1]} ${y}`;
+}
+
+function monthPayload(key) {
+  if (key === CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
+    const prev = DASHBOARD_HISTORY[key] || {};
+    return {
+      monthly: INLINE_MONTH_DATA.monthly,
+      weekly: INLINE_MONTH_DATA.weekly,
+      category: prev.category || CATEGORY_DATA,
+      label: prev.label || formatMonthLabel(key),
+    };
+  }
+  const p = DASHBOARD_HISTORY[key];
+  if (!p) return null;
+  return {
+    monthly: p.monthly || [],
+    weekly: p.weekly || { weeks: [], data: [] },
+    category: p.category || { axes: [], employees: [], colors: {} },
+    label: p.label || formatMonthLabel(key),
+  };
+}
+
+function applyMonth(key, renderNow) {
+  const payload = monthPayload(key);
+  if (!payload) return false;
+
+  DATA = payload.monthly;
+  WEEKLY_DATA = payload.weekly;
+  CATEGORY_DATA = payload.category;
+
+  const monthTitle = document.getElementById('monthTitle');
+  if (monthTitle) monthTitle.textContent = payload.label;
+  const catTitle = document.getElementById('catMonthTitle');
+  if (catTitle) catTitle.textContent = payload.label;
+
+  if (!renderNow) return true;
+
+  if (activeTab === 'volume') {
+    render(DATA);
+    renderWeeklyTable(WEEKLY_DATA);
+  } else {
+    renderCategory(CATEGORY_DATA);
+  }
+  return true;
+}
 
 function monthKeys() {
   const keys = Object.keys(DASHBOARD_HISTORY || {});
@@ -51,26 +112,7 @@ function switchMonth(key) {
   activeMonthKey = key;
   const select = document.getElementById('monthSelect');
   if (select) select.value = key;
-
-  const payload = DASHBOARD_HISTORY[key];
-  if (!payload) return;
-
-  DATA = payload.monthly || [];
-  WEEKLY_DATA = payload.weekly || { weeks: [], data: [] };
-  CATEGORY_DATA = payload.category || { axes: [], employees: [], colors: {} };
-
-  const label = payload.label || key;
-  const monthTitle = document.getElementById('monthTitle');
-  if (monthTitle) monthTitle.textContent = label;
-  const catTitle = document.getElementById('catMonthTitle');
-  if (catTitle) catTitle.textContent = label;
-
-  if (activeTab === 'volume') {
-    render(DATA);
-    renderWeeklyTable(WEEKLY_DATA);
-  } else {
-    renderCategory(CATEGORY_DATA);
-  }
+  applyMonth(key, true);
 }
 
 function switchTab(tab) {
@@ -238,29 +280,32 @@ function exportExcel() {
 }
 
 async function loadHistoryAndBoot() {
+  snapshotInlineMonth();
+
   try {
     const resp = await fetch('dashboard_history.json?' + Date.now());
     if (resp.ok) DASHBOARD_HISTORY = await resp.json();
   } catch (_) { /* fallback to inline DATA for current month */ }
 
+  // Inline HTML is always fresher for the current month (updated each automation run).
+  if (CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
+    const prev = DASHBOARD_HISTORY[CURRENT_MONTH_KEY] || {};
+    DASHBOARD_HISTORY[CURRENT_MONTH_KEY] = {
+      ...prev,
+      label: prev.label || formatMonthLabel(CURRENT_MONTH_KEY),
+      monthly: INLINE_MONTH_DATA.monthly,
+      weekly: INLINE_MONTH_DATA.weekly,
+    };
+  }
+
   const keys = monthKeys();
-  if (keys.length) {
-    if (!activeMonthKey || !DASHBOARD_HISTORY[activeMonthKey]) {
-      activeMonthKey = keys[0];
-    }
-    const p = DASHBOARD_HISTORY[activeMonthKey];
-    if (p) {
-      DATA = p.monthly || DATA;
-      WEEKLY_DATA = p.weekly || WEEKLY_DATA;
-      CATEGORY_DATA = p.category || CATEGORY_DATA;
-      if (p.label) {
-        const monthTitle = document.getElementById('monthTitle');
-        if (monthTitle) monthTitle.textContent = p.label;
-      }
-    }
-  } else if (CURRENT_MONTH_KEY) {
+  if (!activeMonthKey || (keys.length && !DASHBOARD_HISTORY[activeMonthKey])) {
+    activeMonthKey = CURRENT_MONTH_KEY || keys[0] || '';
+  } else if (!keys.length && CURRENT_MONTH_KEY) {
     activeMonthKey = CURRENT_MONTH_KEY;
   }
+
+  applyMonth(activeMonthKey, false);
 
   initToolbar();
   if (typeof bootDashboard === 'function') bootDashboard();
