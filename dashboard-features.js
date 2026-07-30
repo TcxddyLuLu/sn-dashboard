@@ -282,6 +282,15 @@ function exportExcel() {
 async function loadHistoryAndBoot() {
   snapshotInlineMonth();
 
+  // Render inline HTML data immediately so the page does not stay at zeros
+  // while dashboard_history.json is loading.
+  if (typeof render === 'function' && INLINE_MONTH_DATA?.monthly?.length) {
+    render(INLINE_MONTH_DATA.monthly);
+    if (typeof renderWeeklyTable === 'function' && INLINE_MONTH_DATA.weekly) {
+      renderWeeklyTable(INLINE_MONTH_DATA.weekly);
+    }
+  }
+
   try {
     const resp = await fetch('dashboard_history.json?' + Date.now());
     if (resp.ok) DASHBOARD_HISTORY = await resp.json();
