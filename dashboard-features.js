@@ -1,8 +1,6 @@
-/* Month picker, category tab, Excel export for SN Dashboard */
+/* Month picker and Excel export for SN Dashboard */
 
 let activeMonthKey = typeof CURRENT_MONTH_KEY !== 'undefined' ? CURRENT_MONTH_KEY : '';
-let activeTab = 'volume';
-let categoryCharts = [];
 let INLINE_MONTH_DATA = null;
 
 function snapshotInlineMonth() {
@@ -27,7 +25,6 @@ function monthPayload(key) {
     return {
       monthly: INLINE_MONTH_DATA.monthly,
       weekly: INLINE_MONTH_DATA.weekly,
-      category: prev.category || CATEGORY_DATA,
       label: prev.label || formatMonthLabel(key),
     };
   }
@@ -36,7 +33,6 @@ function monthPayload(key) {
   return {
     monthly: p.monthly || [],
     weekly: p.weekly || { weeks: [], data: [] },
-    category: p.category || { axes: [], employees: [], colors: {} },
     label: p.label || formatMonthLabel(key),
   };
 }
@@ -47,21 +43,14 @@ function applyMonth(key, renderNow) {
 
   DATA = payload.monthly;
   WEEKLY_DATA = payload.weekly;
-  CATEGORY_DATA = payload.category;
 
   const monthTitle = document.getElementById('monthTitle');
   if (monthTitle) monthTitle.textContent = payload.label;
-  const catTitle = document.getElementById('catMonthTitle');
-  if (catTitle) catTitle.textContent = payload.label;
 
   if (!renderNow) return true;
 
-  if (activeTab === 'volume') {
-    render(DATA);
-    renderWeeklyTable(WEEKLY_DATA);
-  } else {
-    renderCategory(CATEGORY_DATA);
-  }
+  render(DATA);
+  renderWeeklyTable(WEEKLY_DATA);
   return true;
 }
 
@@ -91,10 +80,6 @@ function initToolbar() {
   select.onchange = () => switchMonth(select.value);
   document.getElementById('monthPrev')?.addEventListener('click', () => shiftMonth(1));
   document.getElementById('monthNext')?.addEventListener('click', () => shiftMonth(-1));
-
-  document.querySelectorAll('.tab-btn').forEach((btn) => {
-    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-  });
   document.getElementById('exportBtn')?.addEventListener('click', exportExcel);
 }
 
@@ -115,108 +100,6 @@ function switchMonth(key) {
   applyMonth(key, true);
 }
 
-function switchTab(tab) {
-  activeTab = tab;
-  document.querySelectorAll('.tab-btn').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.tab === tab);
-  });
-  const vol = document.getElementById('tabVolume');
-  const cat = document.getElementById('tabCategory');
-  if (vol) vol.style.display = tab === 'volume' ? '' : 'none';
-  if (cat) cat.style.display = tab === 'category' ? '' : 'none';
-
-  if (tab === 'category') {
-    renderCategory(CATEGORY_DATA);
-  } else if (window.__lastChartData && typeof Chart !== 'undefined') {
-    retryChart();
-  }
-}
-
-function renderCategory(D) {
-  if (!D || !D.axes || !D.employees) return;
-
-  const axes = D.axes;
-  const emps = D.employees.filter((e) => e.total > 0);
-  const colors = D.colors || {};
-  const fallback = '#94a3b8';
-
-  const totalTickets = emps.reduce((s, e) => s + e.total, 0);
-  document.getElementById('catTotalVal').textContent = totalTickets;
-  document.getElementById('catAxesVal').textContent = axes.length;
-  document.getElementById('catEmpVal').textContent = emps.length;
-
-  const teamCounts = axes.map((_, ai) =>
-    emps.reduce((s, e) => s + (e.counts[ai] || 0), 0)
-  );
-  const teamMax = Math.max(...teamCounts, 1);
-
-  const barsEl = document.getElementById('catTeamBars');
-  barsEl.innerHTML = '';
-  axes
-    .map((cat, i) => ({ cat, count: teamCounts[i] }))
-    .sort((a, b) => b.count - a.count)
-    .forEach((item) => {
-      const pct = (item.count / teamMax) * 100;
-      const row = document.createElement('div');
-      row.className = 'cat-bar-row';
-      row.innerHTML =
-        `<span class="cat-dot" style="background:${colors[item.cat] || fallback}"></span>` +
-        `<span class="cat-name">${item.cat}</span>` +
-        `<div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%;background:${colors[item.cat] || fallback}"></div></div>` +
-        `<span class="cat-count">${item.count}</span>`;
-      barsEl.appendChild(row);
-    });
-
-  let html = '<thead><tr><th>Employee</th><th>Total</th>';
-  axes.forEach((a) => { html += `<th>${a}</th>`; });
-  html += '</tr></thead><tbody>';
-
-  emps.forEach((emp) => {
-    html += `<tr><td>${emp.name}</td><td class="cat-total">${emp.total}</td>`;
-    emp.counts.forEach((c) => {
-      html += `<td>${c || ''}</td>`;
-    });
-    html += '</tr>';
-  });
-  html += '</tbody>';
-  document.getElementById('catTable').innerHTML = html;
-
-  categoryCharts.forEach((c) => c.destroy());
-  categoryCharts = [];
-
-  const canvas = document.getElementById('catTeamRadar');
-  if (!canvas || typeof Chart === 'undefined') return;
-
-  const teamPcts = teamCounts.map((c) =>
-    totalTickets > 0 ? Math.round((c / totalTickets) * 100) : 0
-  );
-  categoryCharts.push(new Chart(canvas.getContext('2d'), {
-    type: 'radar',
-    data: {
-      labels: axes,
-      datasets: [{
-        data: teamPcts,
-        borderColor: 'rgba(37, 99, 235, 0.85)',
-        backgroundColor: 'rgba(37, 99, 235, 0.12)',
-        borderWidth: 2,
-        pointRadius: 3,
-      }],
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        r: {
-          beginAtZero: true,
-          ticks: { display: false },
-          grid: { color: '#e2e8f0' },
-          pointLabels: { font: { size: 10 }, color: '#64748b' },
-        },
-      },
-    },
-  }));
-}
-
 function exportExcel() {
   if (typeof XLSX === 'undefined') {
     alert('Excel 导出库未加载，请刷新页面重试');
@@ -230,7 +113,6 @@ function exportExcel() {
   }
 
   const wb = XLSX.utils.book_new();
-  const label = payload.label || activeMonthKey;
 
   const monthlyRows = (payload.monthly || []).map((r) => ({
     Employee: r.employee,
@@ -263,16 +145,6 @@ function exportExcel() {
   });
   if (weeklyRows.length) {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(weeklyRows), 'Weekly');
-  }
-
-  const cat = payload.category || { axes: [], employees: [] };
-  if (cat.axes && cat.axes.length) {
-    const catRows = (cat.employees || []).map((emp) => {
-      const row = { Employee: emp.name, Total: emp.total };
-      cat.axes.forEach((axis, i) => { row[axis] = emp.counts[i] || 0; });
-      return row;
-    });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(catRows), 'Category');
   }
 
   const fname = `SN_Dashboard_${activeMonthKey.replace('-', '')}.xlsx`;
