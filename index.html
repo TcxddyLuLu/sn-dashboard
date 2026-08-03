@@ -475,28 +475,40 @@ const top10Divider = {
     const bar11th = meta.data[10];
     if (!bar10th || !bar11th) return;
 
-    const { ctx, chartArea, canvas } = chart;
+    const { ctx, chartArea } = chart;
     const y = (bar10th.y + bar11th.y) / 2;
     const colTotal = chartArea.right + 100;
     const x1 = chart.scales.y?.left ?? 0;
     const x2 = colTotal + 6;
     const yellow = '#eab308';
+    const brightBlue = '#0ea5e9';
+    const label = 'TOP 10';
+    const gap = 8;
 
     ctx.save();
+    ctx.font = '700 13px system-ui, sans-serif';
+    const textWidth = ctx.measureText(label).width;
+    const textX = (chartArea.left + chartArea.right) / 2 - textWidth / 2;
+
     ctx.strokeStyle = yellow;
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 4]);
+
     ctx.beginPath();
     ctx.moveTo(x1, y);
+    ctx.lineTo(textX - gap, y);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(textX + textWidth + gap, y);
     ctx.lineTo(x2, y);
     ctx.stroke();
 
     ctx.setLineDash([]);
-    ctx.fillStyle = yellow;
-    ctx.font = '700 12px system-ui, sans-serif';
+    ctx.fillStyle = brightBlue;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('TOP 10', colTotal + 12, y);
+    ctx.fillText(label, textX, y);
     ctx.restore();
   }
 };
