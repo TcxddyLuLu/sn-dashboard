@@ -2,6 +2,7 @@
 
 let activeMonthKey = typeof CURRENT_MONTH_KEY !== 'undefined' ? CURRENT_MONTH_KEY : '';
 let INLINE_MONTH_DATA = null;
+let DASHBOARD_TICKETS = {};
 
 function snapshotInlineMonth() {
   INLINE_MONTH_DATA = {
@@ -147,6 +148,17 @@ function exportExcel() {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(weeklyRows), 'Weekly');
   }
 
+  const tickets = DASHBOARD_TICKETS[activeMonthKey] || payload.tickets || [];
+  if (tickets.length) {
+    const ticketRows = tickets.map((t) => ({
+      Employee: t.employee,
+      Type: t.type,
+      'Ticket #': t.number,
+      'Closed Date': t.closed,
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ticketRows), 'Tickets');
+  }
+
   const fname = `SN_Dashboard_${activeMonthKey.replace('-', '')}.xlsx`;
   XLSX.writeFile(wb, fname);
 }
@@ -167,6 +179,11 @@ async function loadHistoryAndBoot() {
     const resp = await fetch('dashboard_history.json?' + Date.now());
     if (resp.ok) DASHBOARD_HISTORY = await resp.json();
   } catch (_) { /* fallback to inline DATA for current month */ }
+
+  try {
+    const ticketResp = await fetch('dashboard_tickets.json?' + Date.now());
+    if (ticketResp.ok) DASHBOARD_TICKETS = await ticketResp.json();
+  } catch (_) { /* ticket details optional for older months */ }
 
   // Inline HTML is always fresher for the current month (updated each automation run).
   if (CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
