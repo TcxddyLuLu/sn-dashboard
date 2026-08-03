@@ -4,6 +4,28 @@ let activeMonthKey = typeof CURRENT_MONTH_KEY !== 'undefined' ? CURRENT_MONTH_KE
 let INLINE_MONTH_DATA = null;
 let DASHBOARD_TICKETS = {};
 
+function monthlyFromTickets(tickets) {
+  const totals = {};
+  for (const t of tickets) {
+    if (!totals[t.employee]) {
+      totals[t.employee] = { employee: t.employee, incidents: 0, tasks: 0 };
+    }
+    if (t.type === 'Incident') totals[t.employee].incidents += 1;
+    else totals[t.employee].tasks += 1;
+  }
+  return Object.values(totals).sort((a, b) => {
+    const diff = (b.incidents + b.tasks) - (a.incidents + a.tasks);
+    return diff !== 0 ? diff : a.employee.localeCompare(b.employee);
+  });
+}
+
+function reconcileHistoryFromTickets() {
+  for (const [monthKey, tickets] of Object.entries(DASHBOARD_TICKETS || {})) {
+    if (!tickets?.length || !DASHBOARD_HISTORY[monthKey]) continue;
+    DASHBOARD_HISTORY[monthKey].monthly = monthlyFromTickets(tickets);
+  }
+}
+
 function snapshotInlineMonth() {
   INLINE_MONTH_DATA = {
     monthly: JSON.parse(JSON.stringify(DATA)),
@@ -115,7 +137,12 @@ function exportExcel() {
 
   const wb = XLSX.utils.book_new();
 
-  const monthlyRows = (payload.monthly || []).map((r) => ({
+  const tickets = DASHBOARD_TICKETS[activeMonthKey] || payload.tickets || [];
+  const monthlySource = tickets.length
+    ? monthlyFromTickets(tickets)
+    : (payload.monthly || []);
+
+  const monthlyRows = monthlySource.map((r) => ({
     Employee: r.employee,
     Incidents: r.incidents,
     'SC Tasks': r.tasks,
@@ -148,7 +175,6 @@ function exportExcel() {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(weeklyRows), 'Weekly');
   }
 
-  const tickets = DASHBOARD_TICKETS[activeMonthKey] || payload.tickets || [];
   if (tickets.length) {
     const ticketRows = tickets.map((t) => ({
       Employee: t.employee,
@@ -185,6 +211,8 @@ async function loadHistoryAndBoot() {
     if (ticketResp.ok) DASHBOARD_TICKETS = await ticketResp.json();
   } catch (_) { /* ticket details optional for older months */ }
 
+  reconcileHistoryFromTickets();
+
   // Inline HTML is always fresher for the current month (updated each automation run).
   if (CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
     const prev = DASHBOARD_HISTORY[CURRENT_MONTH_KEY] || {};
@@ -195,6 +223,8 @@ async function loadHistoryAndBoot() {
       weekly: INLINE_MONTH_DATA.weekly,
     };
   }
+
+  reconcileHistoryFromTickets();
 
   const keys = monthKeys();
   if (!activeMonthKey || (keys.length && !DASHBOARD_HISTORY[activeMonthKey])) {
