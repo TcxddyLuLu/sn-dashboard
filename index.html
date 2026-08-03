@@ -475,26 +475,28 @@ const top10Divider = {
     const bar11th = meta.data[10];
     if (!bar10th || !bar11th) return;
 
-    const { ctx, chartArea } = chart;
+    const { ctx, chartArea, canvas } = chart;
     const y = (bar10th.y + bar11th.y) / 2;
-    const x1 = chartArea.left;
-    const x2 = chartArea.right + 110;
+    const colTotal = chartArea.right + 100;
+    const x1 = chart.scales.y?.left ?? 0;
+    const x2 = colTotal + 6;
+    const yellow = '#eab308';
 
     ctx.save();
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = yellow;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
     ctx.beginPath();
     ctx.moveTo(x1, y);
     ctx.lineTo(x2, y);
     ctx.stroke();
 
     ctx.setLineDash([]);
-    ctx.fillStyle = '#64748b';
-    ctx.font = '600 11px system-ui, sans-serif';
+    ctx.fillStyle = yellow;
+    ctx.font = '700 12px system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('TOP 10', x1 + 2, y - 5);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('TOP 10', colTotal + 12, y);
     ctx.restore();
   }
 };
