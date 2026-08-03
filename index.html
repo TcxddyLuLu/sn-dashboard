@@ -465,6 +465,40 @@ const rightAnnotations = {
   }
 };
 
+const top10Divider = {
+  id: 'top10Divider',
+  afterDraw(chart) {
+    const meta = chart.getDatasetMeta(0);
+    if (!meta.data || meta.data.length <= 10) return;
+
+    const bar10th = meta.data[9];
+    const bar11th = meta.data[10];
+    if (!bar10th || !bar11th) return;
+
+    const { ctx, chartArea } = chart;
+    const y = (bar10th.y + bar11th.y) / 2;
+    const x1 = chartArea.left;
+    const x2 = chartArea.right + 110;
+
+    ctx.save();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x1, y);
+    ctx.lineTo(x2, y);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#64748b';
+    ctx.font = '600 11px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('TOP 10', x1 + 2, y - 5);
+    ctx.restore();
+  }
+};
+
 let chart = null;
 
 function render(data) {
@@ -580,7 +614,7 @@ function renderBarChart(labels, incArr, taskArr, rowCount) {
         }
       }
     },
-    plugins: [rightAnnotations]
+    plugins: [rightAnnotations, top10Divider]
   });
 }
 
