@@ -32,6 +32,10 @@ def format_updated_time() -> str:
     return now_display().strftime("%Y/%-m/%-d %H:%M")
 
 
+def today_display() -> date:
+    return now_display().date()
+
+
 def output_dir() -> Path:
     if CI_MODE:
         return Path(os.environ.get("GITHUB_WORKSPACE", SCRIPT_DIR.parent))
@@ -123,7 +127,7 @@ def _run_queries_once():
     ticket_rows = []
     ticket_cols = []
     if not skip_tickets:
-        now = datetime.now()
+        now = now_display()
         cursor.execute(build_ticket_details_sql(now.year, now.month))
         ticket_rows = cursor.fetchall()
         ticket_cols = [d[0] for d in cursor.description]
@@ -141,7 +145,7 @@ def _run_queries_once():
 
 def load_cached_ticket_details(month_key=None):
     if month_key is None:
-        month_key = datetime.now().strftime("%Y-%m")
+        month_key = now_display().strftime("%Y-%m")
     tickets_path = output_dir() / "dashboard_tickets.json"
     if not tickets_path.exists():
         return []
@@ -176,7 +180,7 @@ def query_databricks():
 
 def get_month_weeks():
     """Compute all Mon-Sun weeks overlapping the current month."""
-    today = date.today()
+    today = today_display()
     first_day = date(today.year, today.month, 1)
     if today.month == 12:
         last_day = date(today.year + 1, 1, 1) - timedelta(days=1)
@@ -209,7 +213,7 @@ def _to_date(val):
 def process_weekly_data(weekly_rows, monthly_rows):
     weeks = get_month_weeks()
     week_starts = [w["start"] for w in weeks]
-    today = date.today()
+    today = today_display()
 
     weekly_lookup = {}
     for row in weekly_rows:
@@ -341,7 +345,7 @@ def refresh_history_monthly(month_key, rows):
 
 def update_dashboard_tickets(tickets, month_key=None):
     if month_key is None:
-        month_key = datetime.now().strftime("%Y-%m")
+        month_key = now_display().strftime("%Y-%m")
     tickets_path = output_dir() / "dashboard_tickets.json"
 
     if tickets_path.exists():
@@ -418,7 +422,7 @@ def backfill_month(month_key: str) -> int:
 
 def seal_previous_month_if_needed():
     """On the 1st, re-query and lock the previous month's data once per day."""
-    today = date.today()
+    today = today_display()
     if today.day != 1:
         return
 
@@ -479,7 +483,7 @@ def update_html(rows, weekly_info=None):
         html,
     )
 
-    month_key = datetime.now().strftime("%Y-%m")
+    month_key = now_display().strftime("%Y-%m")
     html = re.sub(
         r'let CURRENT_MONTH_KEY = ".*?";',
         f'let CURRENT_MONTH_KEY = "{month_key}";',
@@ -493,8 +497,8 @@ def update_html(rows, weekly_info=None):
 
 def update_dashboard_history(rows, weekly_info=None):
     """Persist current month snapshot for month-picker on GitHub Pages."""
-    month_key = datetime.now().strftime("%Y-%m")
-    month_label = datetime.now().strftime("%B %Y")
+    month_key = now_display().strftime("%Y-%m")
+    month_label = now_display().strftime("%B %Y")
     history_path = output_dir() / "dashboard_history.json"
 
     if history_path.exists():
@@ -554,10 +558,10 @@ def take_screenshot(html_path):
 
 
 def build_html_table(rows):
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    now_str = now_display().strftime("%Y-%m-%d %H:%M")
     total_inc = sum(r["incident_count"] for r in rows)
     total_task = sum(r["task_count"] for r in rows)
-    month_label = datetime.now().strftime("%B %Y")
+    month_label = now_display().strftime("%B %Y")
 
     html = f"""
     <div style="font-family:system-ui,-apple-system,sans-serif;max-width:800px">
@@ -689,7 +693,7 @@ def push_to_github(html_path) -> bool:
     _ensure_git_config(repo_dir)
 
     pull_result = subprocess.run(
-        ["git", "-C", str(repo_dir), "pull", "--rebase"],
+        ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
         env=env, capture_output=True, text=True,
     )
     if pull_result.returncode != 0:
@@ -724,9 +728,9 @@ def push_to_github(html_path) -> bool:
         log.info("GitHub Pages: no changes to push")
         return True
 
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    now_str = now_display().strftime("%Y-%m-%d %H:%M")
     commit_result = subprocess.run(
-        ["git", "-C", str(repo_dir), "commit", "-m", f"Update dashboard {now_str}"],
+        ["git", "-C", str(repo_dir), "commit", "-m", f"Update dashboard {now_str} CST"],
         capture_output=True, text=True, env=env,
     )
     if commit_result.returncode != 0:
@@ -741,6 +745,21 @@ def push_to_github(html_path) -> bool:
     if push_result.returncode == 0:
         log.info("GitHub Pages updated successfully")
         return True
+
+    if "rejected" in (push_result.stderr or "").lower():
+        log.warning("Push rejected, retrying after pull --rebase --autostash")
+        retry_pull = subprocess.run(
+            ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
+            env=env, capture_output=True, text=True,
+        )
+        if retry_pull.returncode == 0:
+            push_result = subprocess.run(
+                ["git", "-C", str(repo_dir), "push"],
+                capture_output=True, text=True, env=env,
+            )
+            if push_result.returncode == 0:
+                log.info("GitHub Pages updated successfully (after retry)")
+                return True
 
     log.warning(f"GitHub push failed: {push_result.stderr}")
     notify_push_failure("SN Dashboard", "git push", push_result.stderr)
@@ -767,9 +786,9 @@ def push_to_github_ci() -> bool:
         log.info("GitHub Pages: no changes to push")
         return True
 
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    now_str = now_display().strftime("%Y-%m-%d %H:%M")
     subprocess.run(
-        ["git", "commit", "-m", f"Update dashboard {now_str}"],
+        ["git", "commit", "-m", f"Update dashboard {now_str} CST"],
         cwd=repo_dir, check=True,
     )
     subprocess.run(["git", "push"], cwd=repo_dir, check=True)
@@ -796,7 +815,7 @@ def main():
     args = parser.parse_args()
     CI_MODE = args.ci or os.environ.get("CI", "").lower() == "true"
 
-    now = datetime.now()
+    now = now_display()
     month_label = now.strftime("%B %Y")
     now_str = now.strftime("%Y-%m-%d %H:%M")
 
@@ -837,7 +856,7 @@ def main():
         subject = f"[Dashboard] Monthly Completed Tickets - {month_label} (Updated {now_str})"
         recipient = os.environ.get("EMAIL_TO", "luby.lu@nike.com")
 
-        days_left = (TOKEN_EXPIRY - date.today()).days
+        days_left = (TOKEN_EXPIRY - today_display()).days
         if days_left <= TOKEN_WARN_DAYS:
             warning = (
                 f'<div style="background:#fef2f2;border:2px solid #ef4444;border-radius:8px;'
