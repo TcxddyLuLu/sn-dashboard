@@ -1,0 +1,40 @@
+name: Update Dashboard
+
+on:
+  schedule:
+    # 9:00 / 11:00 / 13:00 / 15:00 / 17:00 China Standard Time (UTC+8)
+    - cron: "0 1,3,5,7,9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sn-dashboard-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: automation
+        run: pip install -r requirements-ci.txt
+
+      - name: Update dashboard from Databricks
+        working-directory: automation
+        env:
+          CI: "true"
+          DATABRICKS_SERVER_HOSTNAME: ${{ secrets.DATABRICKS_SERVER_HOSTNAME }}
+          DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: python run_dashboard.py --ci
