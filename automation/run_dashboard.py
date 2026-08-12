@@ -12,6 +12,7 @@ Daily Dashboard Automation
 import os, sys, json, re, subprocess, logging, shutil, argparse
 from pathlib import Path
 from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
 from databricks_connect import ensure_databricks_http_path, run_with_hard_timeout
@@ -19,6 +20,16 @@ from dashboard_alerts import notify_failure, notify_push_failure
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CI_MODE = False
+DISPLAY_TZ = ZoneInfo("Asia/Shanghai")
+
+
+def now_display() -> datetime:
+    """Dashboard timestamps are always shown in China Standard Time."""
+    return datetime.now(DISPLAY_TZ)
+
+
+def format_updated_time() -> str:
+    return now_display().strftime("%Y/%-m/%-d %H:%M")
 
 
 def output_dir() -> Path:
@@ -461,7 +472,7 @@ def update_html(rows, weekly_info=None):
             flags=re.DOTALL,
         )
 
-    now_str = datetime.now().strftime("%Y/%-m/%-d %H:%M")
+    now_str = format_updated_time()
     html = re.sub(
         r'(<div class="updated" id="updatedTime">).*?(</div>)',
         rf'\1Updated: {now_str}\2',
