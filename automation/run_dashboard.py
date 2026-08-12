@@ -69,7 +69,14 @@ TICKET_DETAILS_SQL = (SCRIPT_DIR / "ticket_details_query.sql").read_text()
 _TS_YEAR = "YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _TS_MONTH = "MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 
-QUERY_TIMEOUT = 300
+QUERY_TIMEOUT_LOCAL = 300
+QUERY_TIMEOUT_CI = 600
+
+
+def query_timeout_seconds() -> int:
+    if CI_MODE or os.environ.get("CI", "").lower() == "true":
+        return QUERY_TIMEOUT_CI
+    return QUERY_TIMEOUT_LOCAL
 
 
 def build_ticket_details_sql(year: int, month: int) -> str:
@@ -120,9 +127,11 @@ def query_databricks():
     for attempt in range(1, 3):
         log.info(f"Connecting to Databricks... (attempt {attempt}/2)")
         try:
+            timeout = query_timeout_seconds()
+            log.info(f"Query hard timeout: {timeout}s")
             monthly, weekly, tickets = run_with_hard_timeout(
                 "databricks_query_worker:run_dashboard_queries",
-                QUERY_TIMEOUT,
+                timeout,
                 "Databricks dashboard queries",
             )
             log.info(f"Got {len(monthly)} monthly rows, {len(weekly)} weekly rows, {len(tickets)} ticket rows")
