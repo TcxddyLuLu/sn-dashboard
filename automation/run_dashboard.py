@@ -69,7 +69,7 @@ TICKET_DETAILS_SQL = (SCRIPT_DIR / "ticket_details_query.sql").read_text()
 _TS_YEAR = "YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _TS_MONTH = "MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 
-QUERY_TIMEOUT_LOCAL = 300
+QUERY_TIMEOUT_LOCAL = 900
 QUERY_TIMEOUT_CI = 600
 
 
@@ -92,6 +92,8 @@ def build_dashboard_sql(year: int, month: int) -> str:
 def _run_queries_once():
     from databricks import sql as dbsql
 
+    skip_tickets = os.environ.get("SKIP_TICKETS") == "1"
+
     conn = dbsql.connect(
         server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
         http_path=os.environ["DATABRICKS_HTTP_PATH"],
@@ -107,10 +109,15 @@ def _run_queries_once():
     weekly_rows = cursor.fetchall()
     weekly_cols = [d[0] for d in cursor.description]
 
-    now = datetime.now()
-    cursor.execute(build_ticket_details_sql(now.year, now.month))
-    ticket_rows = cursor.fetchall()
-    ticket_cols = [d[0] for d in cursor.description]
+    ticket_rows = []
+    ticket_cols = []
+    if not skip_tickets:
+        now = datetime.now()
+        cursor.execute(build_ticket_details_sql(now.year, now.month))
+        ticket_rows = cursor.fetchall()
+        ticket_cols = [d[0] for d in cursor.description]
+    else:
+        log.info("SKIP_TICKETS=1: skipping ticket details query (using cache)")
 
     cursor.close()
     conn.close()
@@ -119,6 +126,16 @@ def _run_queries_once():
     weekly = [dict(zip(weekly_cols, r)) for r in weekly_rows]
     tickets = [dict(zip(ticket_cols, r)) for r in ticket_rows]
     return monthly, weekly, tickets
+
+
+def load_cached_ticket_details(month_key=None):
+    if month_key is None:
+        month_key = datetime.now().strftime("%Y-%m")
+    tickets_path = output_dir() / "dashboard_tickets.json"
+    if not tickets_path.exists():
+        return []
+    store = json.loads(tickets_path.read_text(encoding="utf-8"))
+    return store.get(month_key, [])
 
 
 def query_databricks():
@@ -788,10 +805,14 @@ def main():
     rows.sort(key=lambda r: (-(r["incident_count"] + r["task_count"]), r["employee_id"]))
 
     weekly_info = process_weekly_data(weekly_rows, rows)
-    ticket_details = process_ticket_details(ticket_rows, rows)
+    if os.environ.get("SKIP_TICKETS") == "1":
+        ticket_details = load_cached_ticket_details()
+        log.info(f"Using cached ticket details ({len(ticket_details)} tickets)")
+    else:
+        ticket_details = process_ticket_details(ticket_rows, rows)
+        update_dashboard_tickets(ticket_details)
 
     update_dashboard_history(rows, weekly_info)
-    update_dashboard_tickets(ticket_details)
     html_path = update_html(rows, weekly_info)
 
     if not CI_MODE:
