@@ -4,8 +4,6 @@ Daily Dashboard Automation
 - Queries Databricks for monthly completed ticket counts
 - Updates dashboard.html with fresh data
 - On the 1st of each month, seals the previous month (summary + ticket details)
-- Takes a screenshot of the dashboard
-- Sends email with screenshot + table to luby.lu@nike.com
 - Pushes to GitHub Pages
 """
 
@@ -43,8 +41,6 @@ def output_dir() -> Path:
 
 
 load_dotenv(SCRIPT_DIR / ".env")
-
-os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(SCRIPT_DIR / ".browsers")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -534,90 +530,6 @@ def update_dashboard_history(rows, weekly_info=None):
     return history_path
 
 
-def take_screenshot(html_path):
-    from playwright.sync_api import sync_playwright
-
-    png_path = SCRIPT_DIR / "dashboard_screenshot.png"
-    log.info("Taking screenshot with Playwright...")
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(viewport={"width": 1280, "height": 900})
-        page.goto(f"file://{html_path}")
-        page.wait_for_timeout(2000)
-
-        full_height = page.evaluate("document.body.scrollHeight")
-        page.set_viewport_size({"width": 1280, "height": full_height + 50})
-        page.wait_for_timeout(500)
-
-        page.screenshot(path=str(png_path), full_page=True)
-        browser.close()
-
-    log.info(f"Screenshot saved: {png_path}")
-    return png_path
-
-
-def build_html_table(rows):
-    now_str = now_display().strftime("%Y-%m-%d %H:%M")
-    total_inc = sum(r["incident_count"] for r in rows)
-    total_task = sum(r["task_count"] for r in rows)
-    month_label = now_display().strftime("%B %Y")
-
-    html = f"""
-    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:800px">
-      <h2 style="color:#1e3a5f">Monthly Completed Tickets - {month_label}</h2>
-      <p style="color:#64748b;font-size:13px">Data updated: {now_str} CST</p>
-      <table style="border-collapse:collapse;width:100%;font-size:13px">
-        <tr style="background:#1e3a5f;color:#fff">
-          <th style="padding:8px 12px;text-align:left">Employee</th>
-          <th style="padding:8px 12px;text-align:right">Incidents</th>
-          <th style="padding:8px 12px;text-align:right">SC Tasks</th>
-          <th style="padding:8px 12px;text-align:right;font-weight:bold">Total</th>
-        </tr>"""
-
-    for i, r in enumerate(rows):
-        total = r["incident_count"] + r["task_count"]
-        bg = "#f8fafc" if i % 2 == 0 else "#fff"
-        html += f"""
-        <tr style="background:{bg}">
-          <td style="padding:6px 12px">{r['employee_name']}</td>
-          <td style="padding:6px 12px;text-align:right;color:#3b82f6">{r['incident_count']}</td>
-          <td style="padding:6px 12px;text-align:right;color:#f97316">{r['task_count']}</td>
-          <td style="padding:6px 12px;text-align:right;font-weight:bold">{total}</td>
-        </tr>"""
-
-    html += f"""
-        <tr style="background:#1e3a5f;color:#fff;font-weight:bold">
-          <td style="padding:8px 12px">TOTAL</td>
-          <td style="padding:8px 12px;text-align:right">{total_inc}</td>
-          <td style="padding:8px 12px;text-align:right">{total_task}</td>
-          <td style="padding:8px 12px;text-align:right">{total_inc + total_task}</td>
-        </tr>
-      </table>
-    </div>"""
-    return html
-
-
-def send_email_applescript(subject, html_body, screenshot_path, recipient):
-    log.info(f"Sending email via Outlook to {recipient}...")
-    screenshot_posix = str(screenshot_path)
-
-    ascript = f'''
-    tell application "Microsoft Outlook"
-        set newMsg to make new outgoing message with properties {{subject:"{subject}", content:"{html_body.replace('"', '\\"').replace(chr(10), "")}"}}
-        make new to recipient at newMsg with properties {{email address:{{address:"{recipient}"}}}}
-        make new attachment at newMsg with properties {{file:POSIX file "{screenshot_posix}"}}
-        send newMsg
-    end tell
-    '''
-    result = subprocess.run(["osascript", "-e", ascript], capture_output=True, text=True)
-    if result.returncode != 0:
-        log.warning(f"Outlook AppleScript failed: {result.stderr}")
-        return send_email_open_mailto(subject, recipient)
-    log.info("Email sent via Outlook")
-    return True
-
-
 GITHUB_REPO_DIR = str(Path.home() / ".sn-dashboard-repo")
 GITHUB_REPO_URL = "https://github.com/TcxddyLuLu/sn-dashboard.git"
 GITHUB_USER = "TcxddyLuLu"
@@ -796,27 +708,18 @@ def push_to_github_ci() -> bool:
     return True
 
 
-def send_email_open_mailto(subject, recipient):
-    log.warning("Falling back to mailto: link (manual send required)")
-    import urllib.parse
-    url = f"mailto:{recipient}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote('Please see attached dashboard screenshot.')}"
-    subprocess.run(["open", url])
-    return False
-
-
 def main():
     global CI_MODE
     parser = argparse.ArgumentParser(description="SN Dashboard automation")
     parser.add_argument(
         "--ci",
         action="store_true",
-        help="CI mode: skip email/screenshot, commit to GITHUB_WORKSPACE",
+        help="CI mode: commit updated dashboard to GITHUB_WORKSPACE",
     )
     args = parser.parse_args()
     CI_MODE = args.ci or os.environ.get("CI", "").lower() == "true"
 
     now = now_display()
-    month_label = now.strftime("%B %Y")
     now_str = now.strftime("%Y-%m-%d %H:%M")
 
     log.info(f"=== Dashboard automation started at {now_str} (ci={CI_MODE}) ===")
@@ -845,35 +748,15 @@ def main():
     update_dashboard_history(rows, weekly_info)
     html_path = update_html(rows, weekly_info)
 
+    days_left = (TOKEN_EXPIRY - today_display()).days
+    if days_left <= TOKEN_WARN_DAYS:
+        log.warning(
+            "Databricks token expires in %s days (%s); renew before automation stops",
+            days_left,
+            TOKEN_EXPIRY,
+        )
+
     if not CI_MODE:
-        try:
-            screenshot_path = take_screenshot(html_path)
-        except Exception as e:
-            log.error(f"Screenshot failed: {e}")
-            screenshot_path = None
-
-        table_html = build_html_table(rows)
-        subject = f"[Dashboard] Monthly Completed Tickets - {month_label} (Updated {now_str})"
-        recipient = os.environ.get("EMAIL_TO", "luby.lu@nike.com")
-
-        days_left = (TOKEN_EXPIRY - today_display()).days
-        if days_left <= TOKEN_WARN_DAYS:
-            warning = (
-                f'<div style="background:#fef2f2;border:2px solid #ef4444;border-radius:8px;'
-                f'padding:12px 16px;margin-bottom:16px;font-size:14px;color:#991b1b">'
-                f'<strong>⚠ Databricks Token 即将到期！</strong><br>'
-                f'Token 将在 <strong>{days_left} 天后（{TOKEN_EXPIRY}）</strong>过期。'
-                f'请尽快在 Cursor 中让我帮你续期，否则自动化将停止工作。</div>'
-            )
-            table_html = warning + table_html
-            subject = f"[⚠ TOKEN {days_left}d] " + subject
-            log.warning(f"Token expires in {days_left} days!")
-
-        if screenshot_path:
-            send_email_applescript(subject, table_html, screenshot_path, recipient)
-        else:
-            log.warning("No screenshot available, skipping email")
-
         if not push_to_github(html_path):
             log.error("GitHub Pages push failed; public dashboard may be stale")
     else:

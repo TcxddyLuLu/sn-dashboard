@@ -51,7 +51,6 @@ def notify_push_failure(job_name: str, stage: str, detail: str) -> None:
         f"{job_name} updated local files at {now_str}, but GitHub Pages was not updated.\n\n"
         f"Stage: {stage}\n"
         f"Detail: {detail.strip() or '(no details)'}\n\n"
-        "You may have received an email with fresh data, but the public dashboard "
-        "may still show older numbers until this is fixed."
+        "The public dashboard may still show older numbers until this is fixed."
     )
     send_text_email(subject, body, recipient)
