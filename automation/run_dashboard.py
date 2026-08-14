@@ -80,14 +80,22 @@ TICKET_DETAILS_SQL = (SCRIPT_DIR / "ticket_details_query.sql").read_text()
 _TS_YEAR = "YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _TS_MONTH = "MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 
-QUERY_TIMEOUT_LOCAL = 900
-QUERY_TIMEOUT_CI = 600
+QUERY_TIMEOUT_SUMMARY_LOCAL = 300
+QUERY_TIMEOUT_SUMMARY_CI = 180
+QUERY_TIMEOUT_TICKETS_LOCAL = 1200
+QUERY_TIMEOUT_TICKETS_CI = 1500
 
 
-def query_timeout_seconds() -> int:
+def summary_timeout_seconds() -> int:
     if CI_MODE or os.environ.get("CI", "").lower() == "true":
-        return QUERY_TIMEOUT_CI
-    return QUERY_TIMEOUT_LOCAL
+        return QUERY_TIMEOUT_SUMMARY_CI
+    return QUERY_TIMEOUT_SUMMARY_LOCAL
+
+
+def ticket_timeout_seconds() -> int:
+    if CI_MODE or os.environ.get("CI", "").lower() == "true":
+        return QUERY_TIMEOUT_TICKETS_CI
+    return QUERY_TIMEOUT_TICKETS_LOCAL
 
 
 def build_ticket_details_sql(year: int, month: int) -> str:
@@ -100,10 +108,8 @@ def build_dashboard_sql(year: int, month: int) -> str:
     return DASHBOARD_SQL.replace(_TS_YEAR, str(year)).replace(_TS_MONTH, str(month))
 
 
-def _run_queries_once():
+def _run_summary_queries_once():
     from databricks import sql as dbsql
-
-    skip_tickets = os.environ.get("SKIP_TICKETS") == "1"
 
     conn = dbsql.connect(
         server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
@@ -120,22 +126,41 @@ def _run_queries_once():
     weekly_rows = cursor.fetchall()
     weekly_cols = [d[0] for d in cursor.description]
 
-    ticket_rows = []
-    ticket_cols = []
-    if not skip_tickets:
-        now = now_display()
-        cursor.execute(build_ticket_details_sql(now.year, now.month))
-        ticket_rows = cursor.fetchall()
-        ticket_cols = [d[0] for d in cursor.description]
-    else:
-        log.info("SKIP_TICKETS=1: skipping ticket details query (using cache)")
-
     cursor.close()
     conn.close()
 
     monthly = [dict(zip(monthly_cols, r)) for r in monthly_rows]
     weekly = [dict(zip(weekly_cols, r)) for r in weekly_rows]
-    tickets = [dict(zip(ticket_cols, r)) for r in ticket_rows]
+    return monthly, weekly
+
+
+def _run_ticket_queries_once():
+    from databricks import sql as dbsql
+
+    conn = dbsql.connect(
+        server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
+        http_path=os.environ["DATABRICKS_HTTP_PATH"],
+        access_token=os.environ["DATABRICKS_TOKEN"],
+    )
+    cursor = conn.cursor()
+
+    now = now_display()
+    cursor.execute(build_ticket_details_sql(now.year, now.month))
+    ticket_rows = cursor.fetchall()
+    ticket_cols = [d[0] for d in cursor.description]
+
+    cursor.close()
+    conn.close()
+
+    return [dict(zip(ticket_cols, r)) for r in ticket_rows]
+
+
+def _run_queries_once():
+    monthly, weekly = _run_summary_queries_once()
+    if os.environ.get("SKIP_TICKETS") == "1":
+        log.info("SKIP_TICKETS=1: skipping ticket details query (using cache)")
+        return monthly, weekly, []
+    tickets = _run_ticket_queries_once()
     return monthly, weekly, tickets
 
 
@@ -152,26 +177,50 @@ def load_cached_ticket_details(month_key=None):
 def query_databricks():
     ensure_databricks_http_path(SCRIPT_DIR / ".env")
 
+    monthly = weekly = None
     for attempt in range(1, 3):
-        log.info(f"Connecting to Databricks... (attempt {attempt}/2)")
+        log.info(f"Running summary queries (attempt {attempt}/2)...")
         try:
-            timeout = query_timeout_seconds()
-            log.info(f"Query hard timeout: {timeout}s")
-            monthly, weekly, tickets = run_with_hard_timeout(
-                "databricks_query_worker:run_dashboard_queries",
+            timeout = summary_timeout_seconds()
+            log.info(f"Summary query hard timeout: {timeout}s")
+            monthly, weekly = run_with_hard_timeout(
+                "databricks_query_worker:run_summary_queries",
                 timeout,
-                "Databricks dashboard queries",
+                "Databricks summary queries",
             )
-            log.info(f"Got {len(monthly)} monthly rows, {len(weekly)} weekly rows, {len(tickets)} ticket rows")
-            return monthly, weekly, tickets
+            break
         except Exception as e:
-            log.warning(f"Attempt {attempt} failed: {e}")
+            log.warning(f"Summary query attempt {attempt} failed: {e}")
             if attempt < 2:
                 log.info("Retrying in 10 seconds...")
                 import time
                 time.sleep(10)
             else:
                 raise
+
+    tickets = []
+    tickets_fetched = False
+    if os.environ.get("SKIP_TICKETS") == "1":
+        log.info("SKIP_TICKETS=1: skipping ticket details query (using cache)")
+    else:
+        try:
+            timeout = ticket_timeout_seconds()
+            log.info(f"Running ticket details query (timeout {timeout}s)...")
+            tickets = run_with_hard_timeout(
+                "databricks_query_worker:run_ticket_queries",
+                timeout,
+                "Databricks ticket details query",
+            )
+            tickets_fetched = True
+            log.info(f"Got {len(tickets)} ticket rows")
+        except Exception as e:
+            log.warning(f"Ticket details query failed: {e}; will use cached tickets")
+
+    log.info(
+        f"Got {len(monthly)} monthly rows, {len(weekly)} weekly rows, "
+        f"{len(tickets)} ticket rows (fetched={tickets_fetched})"
+    )
+    return monthly, weekly, tickets, tickets_fetched
 
 
 def get_month_weeks():
@@ -727,7 +776,7 @@ def main():
     seal_previous_month_if_needed()
 
     try:
-        rows, weekly_rows, ticket_rows = query_databricks()
+        rows, weekly_rows, ticket_rows, tickets_fetched = query_databricks()
     except Exception as e:
         log.error(f"Databricks query failed: {e}")
         notify_failure_safe("SN Dashboard", e)
@@ -738,12 +787,12 @@ def main():
     rows.sort(key=lambda r: (-(r["incident_count"] + r["task_count"]), r["employee_id"]))
 
     weekly_info = process_weekly_data(weekly_rows, rows)
-    if os.environ.get("SKIP_TICKETS") == "1":
-        ticket_details = load_cached_ticket_details()
-        log.info(f"Using cached ticket details ({len(ticket_details)} tickets)")
-    else:
+    if tickets_fetched:
         ticket_details = process_ticket_details(ticket_rows, rows)
         update_dashboard_tickets(ticket_details)
+    else:
+        ticket_details = load_cached_ticket_details()
+        log.info(f"Using cached ticket details ({len(ticket_details)} tickets)")
 
     update_dashboard_history(rows, weekly_info)
     html_path = update_html(rows, weekly_info)

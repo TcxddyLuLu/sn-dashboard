@@ -16,3 +16,17 @@ def run_dashboard_queries():
     from run_dashboard import _run_queries_once
 
     return _run_queries_once()
+
+
+def run_summary_queries():
+    _load_env()
+    from run_dashboard import _run_summary_queries_once
+
+    return _run_summary_queries_once()
+
+
+def run_ticket_queries():
+    _load_env()
+    from run_dashboard import _run_ticket_queries_once
+
+    return _run_ticket_queries_once()
