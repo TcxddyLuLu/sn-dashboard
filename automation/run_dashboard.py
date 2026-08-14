@@ -79,6 +79,8 @@ WEEKLY_SQL = (SCRIPT_DIR / "weekly_query.sql").read_text()
 TICKET_DETAILS_SQL = (SCRIPT_DIR / "ticket_details_query.sql").read_text()
 _TS_YEAR = "YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _TS_MONTH = "MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
+_MONTH_START = "date_trunc('month', from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
+_MONTH_END = "add_months(date_trunc('month', from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai')), 1)"
 
 QUERY_TIMEOUT_SUMMARY_LOCAL = 300
 QUERY_TIMEOUT_SUMMARY_CI = 180
@@ -99,8 +101,10 @@ def ticket_timeout_seconds() -> int:
 
 
 def build_ticket_details_sql(year: int, month: int) -> str:
+    month_start = f"make_timestamp({year}, {month}, 1)"
+    month_end = f"add_months(make_timestamp({year}, {month}, 1), 1)"
     return (
-        TICKET_DETAILS_SQL.replace(_TS_YEAR, str(year)).replace(_TS_MONTH, str(month))
+        TICKET_DETAILS_SQL.replace(_MONTH_START, month_start).replace(_MONTH_END, month_end)
     )
 
 
@@ -174,10 +178,10 @@ def load_cached_ticket_details(month_key=None):
     return store.get(month_key, [])
 
 
-def query_databricks():
+def query_summary():
+    """Fetch monthly + weekly aggregates. Required for every run."""
     ensure_databricks_http_path(SCRIPT_DIR / ".env")
 
-    monthly = weekly = None
     for attempt in range(1, 3):
         log.info(f"Running summary queries (attempt {attempt}/2)...")
         try:
@@ -188,7 +192,8 @@ def query_databricks():
                 timeout,
                 "Databricks summary queries",
             )
-            break
+            log.info(f"Got {len(monthly)} monthly rows, {len(weekly)} weekly rows")
+            return monthly, weekly
         except Exception as e:
             log.warning(f"Summary query attempt {attempt} failed: {e}")
             if attempt < 2:
@@ -198,29 +203,48 @@ def query_databricks():
             else:
                 raise
 
-    tickets = []
-    tickets_fetched = False
-    if os.environ.get("SKIP_TICKETS") == "1":
-        log.info("SKIP_TICKETS=1: skipping ticket details query (using cache)")
-    else:
-        try:
-            timeout = ticket_timeout_seconds()
-            log.info(f"Running ticket details query (timeout {timeout}s)...")
-            tickets = run_with_hard_timeout(
-                "databricks_query_worker:run_ticket_queries",
-                timeout,
-                "Databricks ticket details query",
-            )
-            tickets_fetched = True
-            log.info(f"Got {len(tickets)} ticket rows")
-        except Exception as e:
-            log.warning(f"Ticket details query failed: {e}; will use cached tickets")
 
-    log.info(
-        f"Got {len(monthly)} monthly rows, {len(weekly)} weekly rows, "
-        f"{len(tickets)} ticket rows (fetched={tickets_fetched})"
-    )
-    return monthly, weekly, tickets, tickets_fetched
+def fetch_tickets_optional():
+    """Fetch ticket details. Returns None on skip, timeout, or error."""
+    if os.environ.get("SKIP_TICKETS") == "1":
+        log.info("SKIP_TICKETS=1: skipping ticket details query")
+        return None
+
+    try:
+        timeout = ticket_timeout_seconds()
+        log.info(f"Running ticket details query (timeout {timeout}s)...")
+        tickets = run_with_hard_timeout(
+            "databricks_query_worker:run_ticket_queries",
+            timeout,
+            "Databricks ticket details query",
+        )
+        log.info(f"Got {len(tickets)} ticket rows")
+        return tickets
+    except Exception as e:
+        log.warning(f"Ticket details query failed: {e}")
+        return None
+
+
+def publish_dashboard(rows, weekly_info):
+    update_dashboard_history(rows, weekly_info)
+    return update_html(rows, weekly_info)
+
+
+def push_dashboard(html_path, *, required: bool) -> bool:
+    if CI_MODE:
+        ok = push_to_github_ci()
+    else:
+        ok = push_to_github(html_path)
+
+    if ok:
+        return True
+    if required:
+        log.error("GitHub Pages push failed; public dashboard may be stale")
+        if CI_MODE:
+            sys.exit(1)
+    else:
+        log.warning("Optional GitHub Pages push failed (ticket details may be local only)")
+    return False
 
 
 def get_month_weeks():
@@ -776,26 +800,16 @@ def main():
     seal_previous_month_if_needed()
 
     try:
-        rows, weekly_rows, ticket_rows, tickets_fetched = query_databricks()
+        monthly, weekly = query_summary()
     except Exception as e:
         log.error(f"Databricks query failed: {e}")
         notify_failure_safe("SN Dashboard", e)
         sys.exit(1)
 
-    rows = apply_name_overrides(rows)
-
+    rows = apply_name_overrides(monthly)
     rows.sort(key=lambda r: (-(r["incident_count"] + r["task_count"]), r["employee_id"]))
-
-    weekly_info = process_weekly_data(weekly_rows, rows)
-    if tickets_fetched:
-        ticket_details = process_ticket_details(ticket_rows, rows)
-        update_dashboard_tickets(ticket_details)
-    else:
-        ticket_details = load_cached_ticket_details()
-        log.info(f"Using cached ticket details ({len(ticket_details)} tickets)")
-
-    update_dashboard_history(rows, weekly_info)
-    html_path = update_html(rows, weekly_info)
+    weekly_info = process_weekly_data(weekly, rows)
+    html_path = publish_dashboard(rows, weekly_info)
 
     days_left = (TOKEN_EXPIRY - today_display()).days
     if days_left <= TOKEN_WARN_DAYS:
@@ -805,13 +819,18 @@ def main():
             TOKEN_EXPIRY,
         )
 
-    if not CI_MODE:
-        if not push_to_github(html_path):
-            log.error("GitHub Pages push failed; public dashboard may be stale")
+    push_dashboard(html_path, required=True)
+    log.info("Phase 1 complete: chart/summary data published")
+
+    ticket_rows = fetch_tickets_optional()
+    if ticket_rows is None:
+        cached = load_cached_ticket_details()
+        log.info(f"Ticket details unchanged ({len(cached)} cached tickets)")
     else:
-        if not push_to_github_ci():
-            log.error("GitHub Pages push failed in CI")
-            sys.exit(1)
+        ticket_details = process_ticket_details(ticket_rows, rows)
+        update_dashboard_tickets(ticket_details)
+        push_dashboard(html_path, required=False)
+        log.info(f"Phase 2 complete: {len(ticket_details)} ticket details published")
 
     log.info("=== Dashboard automation completed ===")
 

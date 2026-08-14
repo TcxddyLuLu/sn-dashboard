@@ -32,8 +32,9 @@ incidents AS (
   FROM published_domain.rese_prd_servicenow.incident i
   JOIN employee_names n ON i.assigned_to = n.employee_name
   WHERE i.state IN ('Resolved', 'Closed')
-    AND YEAR(from_utc_timestamp(i.resolved_at, 'Asia/Shanghai')) = YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))
-    AND MONTH(from_utc_timestamp(i.resolved_at, 'Asia/Shanghai')) = MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))
+    AND i.resolved_at IS NOT NULL
+    AND from_utc_timestamp(i.resolved_at, 'Asia/Shanghai') >= {_MONTH_START}
+    AND from_utc_timestamp(i.resolved_at, 'Asia/Shanghai') < {_MONTH_END}
 ),
 tasks AS (
   SELECT
@@ -45,8 +46,9 @@ tasks AS (
   FROM published_domain.rese_prd_servicenow.sc_task t
   JOIN employee_names n ON t.assigned_to = n.employee_name
   WHERE t.state IN ('Resolved','Closed','Closed Complete','Closed Incomplete')
-    AND YEAR(from_utc_timestamp(t.closed_at, 'Asia/Shanghai')) = YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))
-    AND MONTH(from_utc_timestamp(t.closed_at, 'Asia/Shanghai')) = MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))
+    AND t.closed_at IS NOT NULL
+    AND from_utc_timestamp(t.closed_at, 'Asia/Shanghai') >= {_MONTH_START}
+    AND from_utc_timestamp(t.closed_at, 'Asia/Shanghai') < {_MONTH_END}
 )
 SELECT employee_id, employee_name, ticket_number, ticket_type, closed_date
 FROM incidents
