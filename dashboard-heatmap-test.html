@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monthly Completed Tickets — Heatmap Test</title>
+<link rel="preload" href="chart.min.js" as="script">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+    padding: 24px;
+  }
+  .dashboard { max-width: 1200px; margin: 0 auto; }
+
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    color: #fff;
+    padding: 28px 32px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header h1 { font-size: 24px; font-weight: 700; }
+  .header .meta { text-align: right; }
+  .header .month { font-size: 18px; opacity: .92; }
+  .header .updated { font-size: 12px; opacity: .65; margin-top: 4px; }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .card .label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .card .value { font-size: 32px; font-weight: 700; margin-top: 2px; }
+  .card.incident .value { color: #3b82f6; }
+  .card.task .value    { color: #f97316; }
+  .card.total .value   { color: #1e293b; }
+  .card.emp .value     { color: #8b5cf6; }
+
+  .chart-section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    margin-bottom: 20px;
+  }
+  .legend {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #475569;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 3px; }
+  .chart-wrap { position: relative; width: 100%; }
+
+  .mvp-banner {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .mvp-card {
+    flex: 1;
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  }
+  .mvp-card.gold {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #f59e0b;
+  }
+  .mvp-card.silver {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    border: 2px solid #94a3b8;
+  }
+  .mvp-card.bronze {
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+    border: 2px solid #ea580c;
+  }
+  .mvp-icon {
+    font-size: 32px;
+    line-height: 1;
+  }
+  .mvp-info { min-width: 0; }
+  .mvp-rank {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .gold .mvp-rank { color: #b45309; }
+  .silver .mvp-rank { color: #64748b; }
+  .bronze .mvp-rank { color: #c2410c; }
+  .mvp-name {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mvp-count {
+    font-size: 13px;
+    color: #475569;
+    font-weight: 500;
+  }
+
+  @media (max-width: 700px) {
+    .mvp-banner { flex-direction: column; }
+  }
+
+  .weekly-section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    margin-bottom: 20px;
+  }
+  .weekly-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px;
+  }
+  .weekly-header h3 { font-size: 16px; font-weight: 700; color: #1e293b; }
+  .weekly-header span { font-size: 11px; color: #94a3b8; }
+  .weekly-wrap { overflow-x: auto; }
+  #weeklyTable {
+    border-collapse: collapse; width: 100%; font-size: 13px;
+  }
+  #weeklyTable th {
+    background: #1e3a5f; color: #fff;
+    padding: 8px 10px; font-weight: 600; text-align: center; white-space: nowrap;
+  }
+  #weeklyTable th:first-child { text-align: left; }
+  #weeklyTable th.current-week {
+    background: #2563eb;
+    box-shadow: inset 0 -3px 0 #60a5fa;
+  }
+  #weeklyTable td {
+    padding: 6px 10px; text-align: center;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  #weeklyTable td:first-child {
+    text-align: left; font-weight: 500; color: #334155; white-space: nowrap;
+  }
+  #weeklyTable td:last-child { font-weight: 700; }
+  #weeklyTable tr:hover td { background: #f8fafc !important; }
+  #weeklyTable .zero { color: #ff1744; font-weight: 700; }
+
+  @keyframes blink-warn {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(255, 23, 68, 0.12); }
+  }
+  #weeklyTable .blink-zero {
+    animation: blink-warn 2s ease-in-out infinite;
+    color: #ff1744 !important;
+    font-weight: 700 !important;
+  }
+  #weeklyTable .warn-zero td {
+    background: #fef2f2 !important;
+  }
+  #weeklyTable .warn-zero td:first-child {
+    color: #334155;
+  }
+  #weeklyTable tfoot td {
+    font-weight: 700; border-top: 2px solid #e2e8f0;
+    background: #f8fafc !important;
+  }
+  #weeklyTable .weekly-mvp-row td {
+    background: #fffbeb !important;
+    border-top: 2px solid #f59e0b;
+    font-size: 12px;
+    color: #92400e;
+    font-weight: 600;
+  }
+  #weeklyTable .mvp-cell {
+    color: #b45309;
+    font-weight: 700;
+  }
+  #weeklyTable .mvp-val {
+    font-size: 11px;
+    color: #d97706;
+    font-weight: 500;
+  }
+  #weeklyTable .wk-inc { color: #3b82f6; font-weight: 600; }
+  #weeklyTable .wk-task { color: #f97316; font-weight: 600; }
+  #weeklyTable .wk-plus { color: #94a3b8; font-weight: 400; }
+  #weeklyTable td.wk-cell { white-space: nowrap; }
+
+  .data-section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .footer-note {
+    text-align: center;
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 20px;
+    line-height: 1.6;
+  }
+  .footer-note a { color: #3b82f6; text-decoration: none; }
+  .footer-note a:hover { text-decoration: underline; }
+  #pageStatus {
+    display: none;
+    background: #fff7ed;
+    border: 1px solid #fdba74;
+    color: #9a3412;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  #staleBanner {
+    display: none;
+    background: #fef2f2;
+    border: 1px solid #ef4444;
+    color: #991b1b;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .data-toggle {
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer; font-size: 14px; font-weight: 600;
+    color: #3b82f6; border: none; background: none; padding: 0;
+  }
+  .data-toggle:hover { color: #1d4ed8; }
+  .data-content { display: none; margin-top: 14px; }
+  .data-content.open { display: block; }
+  .data-content textarea {
+    width: 100%; height: 180px;
+    font-family: 'SF Mono', Consolas, 'Courier New', monospace;
+    font-size: 12px; padding: 12px;
+    border: 1px solid #e2e8f0; border-radius: 8px; resize: vertical;
+  }
+  .data-content .hint { font-size: 12px; color: #94a3b8; margin-top: 6px; line-height: 1.5; }
+  .btn {
+    display: inline-block; padding: 8px 20px; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 10px;
+    background: #3b82f6; color: #fff; transition: background .15s;
+  }
+  .btn:hover { background: #1d4ed8; }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .month-nav { display: flex; align-items: center; gap: 6px; }
+  .month-nav button {
+    border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 8px;
+    width: 32px; height: 32px; cursor: pointer; font-size: 14px; color: #334155;
+  }
+  .month-nav button:hover { background: #e2e8f0; }
+  #monthSelect {
+    border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 10px;
+    font-size: 14px; font-weight: 600; color: #1e293b; min-width: 150px;
+  }
+  .btn-export {
+    margin-left: auto; border: none; background: #0f766e; color: #fff;
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-export:hover { background: #0d9488; }
+
+  .preview-banner {
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .daily-alert {
+    display: none;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+  .heatmap-wrap { overflow: auto; max-height: 62vh; }
+  table.heatmap {
+    border-collapse: separate;
+    border-spacing: 2px;
+    font-size: 12px;
+    min-width: 100%;
+  }
+  table.heatmap th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #1e3a5f;
+    color: #fff;
+    padding: 6px 4px;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    min-width: 34px;
+  }
+  table.heatmap th.emp-col {
+    left: 0;
+    z-index: 3;
+    text-align: left;
+    min-width: 130px;
+    padding-left: 10px;
+  }
+  table.heatmap td.emp-col {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #fff;
+    font-weight: 500;
+    text-align: left;
+    padding: 6px 10px;
+    white-space: nowrap;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  table.heatmap td.cell { text-align: center; padding: 0; border-bottom: 1px solid #f8fafc; }
+  table.heatmap td.cell .cell-inner {
+    display: flex; align-items: center; justify-content: center;
+    min-width: 34px; height: 30px; border-radius: 4px; font-weight: 600;
+  }
+  table.heatmap td.cell.weekend .cell-inner {
+    background: #f8fafc !important; color: #cbd5e1; font-weight: 500;
+  }
+  table.heatmap td.cell.today .cell-inner {
+    outline: 2px solid #2563eb; outline-offset: -1px;
+  }
+  table.heatmap td.cell .cell-inner.blink-zero {
+    animation: blink-warn 2s ease-in-out infinite;
+    color: #ff1744 !important;
+  }
+  .heatmap-legend {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    margin-top: 12px; font-size: 12px; color: #94a3b8;
+  }
+  .heatmap-legend i {
+    display: inline-block; width: 18px; height: 18px; border-radius: 4px;
+    vertical-align: middle; margin-right: 4px;
+  }
+
+  @media print {
+    body { padding: 0; background: #fff; }
+    .data-section { display: none; }
+    .preview-banner { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="dashboard">
+  <div class="preview-banner">
+    <strong>测试页</strong> — 保留现有 dashboard 上半部分（汇总 / MVP / 柱状图），底部周表已替换为每日热力图。
+    热力图数据为<strong>虚构演示</strong>，正式版将接 Databricks 日聚合。时区：Asia/Shanghai (CST)。
+  </div>
+  <div id="staleBanner"></div>
+  <div id="pageStatus"></div>
+
+  <div class="toolbar">
+    <div class="month-nav">
+      <button type="button" id="monthPrev" title="Previous month">&#9664;</button>
+      <select id="monthSelect"></select>
+      <button type="button" id="monthNext" title="Next month">&#9654;</button>
+    </div>
+    <button type="button" class="btn-export" id="exportBtn">Export Excel</button>
+  </div>
+
+  <div class="header">
+    <h1>Monthly Completed Tickets</h1>
+    <div class="meta">
+      <div class="month" id="monthTitle"></div>
+      <div class="updated" id="updatedTime">Updated: 2026/8/17 09:14</div>
+      <div style="font-size:11px;opacity:.6;margin-top:2px;">每日 9:00 / 11:00 / 13:00 / 15:00 / 17:00 更新</div>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card incident">
+      <div class="label">Incidents</div>
+      <div class="value" id="sumInc">0</div>
+    </div>
+    <div class="card task">
+      <div class="label">SC Tasks</div>
+      <div class="value" id="sumTask">0</div>
+    </div>
+    <div class="card total">
+      <div class="label">Total Completed</div>
+      <div class="value" id="sumAll">0</div>
+    </div>
+    <div class="card emp">
+      <div class="label">Active Employees</div>
+      <div class="value" id="sumEmp">0</div>
+    </div>
+  </div>
+
+  <div class="mvp-banner" id="mvpBanner"></div>
+
+  <div class="chart-section">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Incident</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f97316"></div>SC Task</div>
+      <div class="legend-item" style="color:#94a3b8;font-size:12px">右侧列: Inc | Task | Total</div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+  <div class="weekly-section" id="dailySection">
+    <div class="weekly-header">
+      <h3>Daily Heatmap</h3>
+      <span>关单日期 CST · 每人每天总数 · 工作日 0 单淡红闪烁</span>
+    </div>
+    <div class="daily-alert" id="complianceAlert"></div>
+    <div class="heatmap-wrap">
+      <table class="heatmap" id="heatmapTable"></table>
+    </div>
+    <div class="heatmap-legend" id="heatmapLegend"></div>
+  </div>
+
+  <div class="data-section">
+    <button class="data-toggle" onclick="toggleInput()">&#9654; Update Data (Paste from Databricks)</button>
+    <div class="data-content" id="inputPanel">
+      <p class="hint">
+        在 Databricks 中运行 <code>dashboard_query.sql</code>，复制查询结果（Tab 分隔或逗号分隔），粘贴到下方文本框。<br>
+        格式：<code>employee_id &lt;tab&gt; employee_name &lt;tab&gt; incident_count &lt;tab&gt; task_count &lt;tab&gt; total_count</code>（首行表头可选）
+      </p>
+      <textarea id="rawInput" placeholder="BLiu60&#9;Bob Liu&#9;12&#9;8&#9;20&#10;AGuo22&#9;Alice Guo&#9;5&#9;3&#9;8&#10;..."></textarea>
+      <button class="btn" onclick="loadFromPaste()">Update Chart</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let DASHBOARD_HISTORY = {};
+let CURRENT_MONTH_KEY = "2026-08";
+
+/* ================================================================
+   DATA — replace this array with real query output, or paste below
+   ================================================================ */
+let DATA = [
+  { employee: 'Howie Tan', incidents: 10, tasks: 75 },
+  { employee: 'Junfeng Deng', incidents: 13, tasks: 54 },
+  { employee: 'Hao Zhu', incidents: 61, tasks: 5 },
+  { employee: 'liang Xiang', incidents: 64, tasks: 0 },
+  { employee: 'Karen Ou Yang', incidents: 31, tasks: 31 },
+  { employee: 'He Feng', incidents: 9, tasks: 50 },
+  { employee: 'Ping Wang', incidents: 47, tasks: 10 },
+  { employee: 'Kenneth Chung', incidents: 15, tasks: 38 },
+  { employee: 'Yang Ding', incidents: 2, tasks: 50 },
+  { employee: 'Hooxi Zhu', incidents: 25, tasks: 25 },
+  { employee: 'Freddie Qiang', incidents: 34, tasks: 13 },
+  { employee: 'Thomas Tao', incidents: 32, tasks: 15 },
+  { employee: 'Rory Ju', incidents: 24, tasks: 17 },
+  { employee: 'Xinyu Zhang', incidents: 29, tasks: 11 },
+  { employee: 'Dom Chang', incidents: 33, tasks: 6 },
+  { employee: 'Charles Lee', incidents: 29, tasks: 4 },
+  { employee: 'Jacky Chan', incidents: 6, tasks: 27 },
+  { employee: 'Vance Chen', incidents: 9, tasks: 23 },
+  { employee: 'Harry Yip', incidents: 9, tasks: 22 },
+  { employee: 'Alex Xu', incidents: 12, tasks: 18 },
+  { employee: 'Andy Lan', incidents: 12, tasks: 15 },
+  { employee: 'Lee Li', incidents: 1, tasks: 23 },
+  { employee: 'Roy Wei', incidents: 6, tasks: 17 },
+  { employee: 'Allen Guo', incidents: 2, tasks: 14 },
+  { employee: 'Bob Liu', incidents: 5, tasks: 10 },
+  { employee: 'Aaron Jiang', incidents: 3, tasks: 10 },
+  { employee: 'Yibo Wang', incidents: 9, tasks: 2 },
+  { employee: 'Luby Lu', incidents: 6, tasks: 0 },
+  { employee: 'Guichong You', incidents: 0, tasks: 4 },
+  { employee: 'Zhi Lu', incidents: 0, tasks: 4 },
+  { employee: 'Yin Ye', incidents: 1, tasks: 2 },
+  { employee: 'Yong Zhao', incidents: 0, tasks: 2 },
+  { employee: 'Freddie Liu', incidents: 0, tasks: 0 }
+];
+
+/* ================================================================ */
+
+const COL = { inc: '#3b82f6', task: '#f97316', txt: '#374151', light: '#94a3b8' };
+
+const rightAnnotations = {
+  id: 'rightAnnotations',
+  afterDraw(chart) {
+    const { ctx, chartArea } = chart;
+    const colInc   = chartArea.right + 22;
+    const colTask  = chartArea.right + 58;
+    const colTotal = chartArea.right + 100;
+
+    ctx.save();
+    ctx.textAlign = 'right';
+
+    ctx.textBaseline = 'bottom';
+    ctx.font = '600 10px system-ui, sans-serif';
+    const headY = chartArea.top - 5;
+    ctx.fillStyle = COL.inc;  ctx.fillText('Inc',   colInc,   headY);
+    ctx.fillStyle = COL.task; ctx.fillText('Task',  colTask,  headY);
+    ctx.fillStyle = COL.txt;  ctx.fillText('Total', colTotal, headY);
+
+    ctx.textBaseline = 'middle';
+    const meta = chart.getDatasetMeta(0);
+    meta.data.forEach((bar, i) => {
+      const inc  = chart.data.datasets[0].data[i];
+      const tsk  = chart.data.datasets[1].data[i];
+      const total = inc + tsk;
+      const y = bar.y;
+
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.fillStyle = COL.inc;  ctx.fillText(String(inc),  colInc,  y);
+      ctx.fillStyle = COL.task; ctx.fillText(String(tsk),  colTask, y);
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.fillStyle = COL.txt;  ctx.fillText(String(total), colTotal, y);
+    });
+
+    ctx.restore();
+  }
+};
+
+const top10Divider = {
+  id: 'top10Divider',
+  afterDraw(chart) {
+    const meta = chart.getDatasetMeta(0);
+    if (!meta.data || meta.data.length <= 10) return;
+
+    const bar10th = meta.data[9];
+    const bar11th = meta.data[10];
+    if (!bar10th || !bar11th) return;
+
+    const { ctx, chartArea } = chart;
+    const y = (bar10th.y + bar11th.y) / 2;
+    const colTotal = chartArea.right + 100;
+    const x1 = chart.scales.y?.left ?? 0;
+    const x2 = colTotal + 6;
+    const yellow = '#eab308';
+    const brightBlue = '#0ea5e9';
+    const label = 'TOP 10';
+    const gap = 8;
+
+    ctx.save();
+    ctx.font = '700 13px system-ui, sans-serif';
+    const textWidth = ctx.measureText(label).width;
+    const textX = (chartArea.left + chartArea.right) / 2 - textWidth / 2;
+
+    ctx.strokeStyle = yellow;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y);
+    ctx.lineTo(textX - gap, y);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(textX + textWidth + gap, y);
+    ctx.lineTo(x2, y);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.fillStyle = brightBlue;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, textX, y);
+    ctx.restore();
+  }
+};
+
+let chart = null;
+
+function render(data) {
+  data.sort((a, b) => {
+    const diff = (b.incidents + b.tasks) - (a.incidents + a.tasks);
+    return diff !== 0 ? diff : a.employee.localeCompare(b.employee);
+  });
+
+  const labels   = data.map(d => d.employee);
+  const incArr   = data.map(d => d.incidents);
+  const taskArr  = data.map(d => d.tasks);
+
+  const totInc  = incArr.reduce((s, v) => s + v, 0);
+  const totTask = taskArr.reduce((s, v) => s + v, 0);
+  const active  = data.filter(d => d.incidents + d.tasks > 0).length;
+
+  document.getElementById('sumInc').textContent  = totInc;
+  document.getElementById('sumTask').textContent = totTask;
+  document.getElementById('sumAll').textContent  = totInc + totTask;
+  document.getElementById('sumEmp').textContent  = active;
+
+  const mvpStyles = [
+    { cls: 'gold',   icon: '\u{1F451}', rank: '1st Place' },
+    { cls: 'silver', icon: '\u{1F948}', rank: '2nd Place' },
+    { cls: 'bronze', icon: '\u{1F949}', rank: '3rd Place' },
+  ];
+  const mvpEl = document.getElementById('mvpBanner');
+  mvpEl.innerHTML = '';
+  const top3 = data.filter(d => d.incidents + d.tasks > 0).slice(0, 3);
+  top3.forEach((d, i) => {
+    const total = d.incidents + d.tasks;
+    const s = mvpStyles[i];
+    mvpEl.innerHTML += '<div class="mvp-card ' + s.cls + '">' +
+      '<div class="mvp-icon">' + s.icon + '</div>' +
+      '<div class="mvp-info">' +
+        '<div class="mvp-rank">' + s.rank + '</div>' +
+        '<div class="mvp-name">' + d.employee + '</div>' +
+        '<div class="mvp-count">' + total + ' tickets (Inc ' + d.incidents + ' / Task ' + d.tasks + ')</div>' +
+      '</div>' +
+    '</div>';
+  });
+
+  renderBarChart(labels, incArr, taskArr, data.length);
+  window.__lastChartData = { labels, incArr, taskArr, n: data.length };
+}
+
+function renderBarChart(labels, incArr, taskArr, rowCount) {
+  const wrap = document.querySelector('.chart-wrap');
+  if (typeof Chart === 'undefined') {
+    wrap.innerHTML = '<p style="padding:24px;color:#64748b;text-align:center">Chart library still loading or blocked. Summary cards and weekly table are available below.</p>';
+    return;
+  }
+
+  const rowH = 32;
+  const h = Math.max(360, rowCount * rowH + 40);
+  const canvas = document.getElementById('chart');
+  if (!canvas) return;
+  canvas.style.height = h + 'px';
+  canvas.parentElement.style.height = h + 'px';
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Incident',
+          data: incArr,
+          backgroundColor: COL.inc,
+          barPercentage: 0.65,
+          categoryPercentage: 0.82
+        },
+        {
+          label: 'SC Task',
+          data: taskArr,
+          backgroundColor: COL.task,
+          barPercentage: 0.65,
+          categoryPercentage: 0.82
+        }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { right: 110, top: 18 } },
+      scales: {
+        x: {
+          stacked: true,
+          beginAtZero: true,
+          grid: { color: '#f1f5f9' },
+          ticks: { font: { size: 11 }, precision: 0 }
+        },
+        y: {
+          stacked: true,
+          grid: { display: false },
+          ticks: { font: { size: 12, weight: '600' }, color: '#334155' }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            afterBody(items) {
+              const idx = items[0].dataIndex;
+              const inc = chart.data.datasets[0].data[idx];
+              const tsk = chart.data.datasets[1].data[idx];
+              return 'Total: ' + (inc + tsk);
+            }
+          }
+        }
+      }
+    },
+    plugins: [rightAnnotations, top10Divider]
+  });
+}
+
+/* ---------- date header ---------- */
+const updatedEl = document.getElementById('updatedTime');
+if (!updatedEl.textContent.startsWith('Updated:')) {
+  updatedEl.textContent = 'Updated: ' + new Date().toLocaleString('zh-CN');
+}
+
+/* ---------- toggle ---------- */
+function toggleInput() {
+  const panel = document.getElementById('inputPanel');
+  const btn = panel.previousElementSibling;
+  panel.classList.toggle('open');
+  btn.innerHTML = (panel.classList.contains('open') ? '&#9660;' : '&#9654;')
+    + ' Update Data (Paste from Databricks)';
+}
+
+/* ---------- paste handler ---------- */
+function loadFromPaste() {
+  const raw = document.getElementById('rawInput').value.trim();
+  if (!raw) { alert('请先粘贴数据'); return; }
+  const rows = raw.split('\n');
+  const parsed = [];
+  for (const row of rows) {
+    const cols = row.split(/\t/).map(s => s.trim());
+    if (cols[0] === 'employee_id') continue;
+    if (cols.length >= 5) {
+      parsed.push({ employee: cols[1] || cols[0], incidents: +cols[2] || 0, tasks: +cols[3] || 0 });
+    } else if (cols.length >= 3) {
+      parsed.push({ employee: cols[0], incidents: +cols[1] || 0, tasks: +cols[2] || 0 });
+    }
+  }
+  if (!parsed.length) { alert('未解析到有效数据'); return; }
+  DATA = parsed;
+  render(DATA);
+}
+
+/* ================================================================
+   WEEKLY_DATA — weekly breakdown, injected by run_dashboard.py
+   ================================================================ */
+let WEEKLY_DATA = {"weeks": ["7/27-8/2", "8/3-9", "8/10-16", "8/17-23", "8/24-30", "8/31-9/6"], "currentWeek": 3, "data": [{"employee": "Howie Tan", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 30}, {"inc": 5, "task": 44}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 75}}, {"employee": "Junfeng Deng", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 26}, {"inc": 7, "task": 28}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 13, "task": 54}}, {"employee": "Hao Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 29, "task": 1}, {"inc": 32, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 61, "task": 5}}, {"employee": "liang Xiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 43, "task": 0}, {"inc": 21, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 64, "task": 0}}, {"employee": "Karen Ou Yang", "weekly": [{"inc": 0, "task": 0}, {"inc": 13, "task": 14}, {"inc": 18, "task": 17}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 31, "task": 31}}, {"employee": "He Feng", "weekly": [{"inc": 0, "task": 0}, {"inc": 9, "task": 41}, {"inc": 0, "task": 0}, {"inc": 0, "task": 9}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 50}}, {"employee": "Ping Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 32, "task": 7}, {"inc": 15, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 47, "task": 10}}, {"employee": "Kenneth Chung", "weekly": [{"inc": 0, "task": 0}, {"inc": 10, "task": 35}, {"inc": 5, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 15, "task": 38}}, {"employee": "Yang Ding", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 13}, {"inc": 0, "task": 37}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 50}}, {"employee": "Hooxi Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 11, "task": 5}, {"inc": 14, "task": 20}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 25, "task": 25}}, {"employee": "Freddie Qiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 17, "task": 7}, {"inc": 17, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 34, "task": 13}}, {"employee": "Thomas Tao", "weekly": [{"inc": 0, "task": 0}, {"inc": 8, "task": 9}, {"inc": 23, "task": 6}, {"inc": 1, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 32, "task": 15}}, {"employee": "Rory Ju", "weekly": [{"inc": 0, "task": 0}, {"inc": 15, "task": 7}, {"inc": 9, "task": 10}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 24, "task": 17}}, {"employee": "Xinyu Zhang", "weekly": [{"inc": 3, "task": 0}, {"inc": 12, "task": 3}, {"inc": 14, "task": 8}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 29, "task": 11}}, {"employee": "Dom Chang", "weekly": [{"inc": 4, "task": 0}, {"inc": 5, "task": 4}, {"inc": 23, "task": 0}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 33, "task": 6}}, {"employee": "Charles Lee", "weekly": [{"inc": 0, "task": 0}, {"inc": 20, "task": 1}, {"inc": 9, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 29, "task": 4}}, {"employee": "Jacky Chan", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 3}, {"inc": 2, "task": 24}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 6, "task": 27}}, {"employee": "Vance Chen", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 13}, {"inc": 5, "task": 10}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 23}}, {"employee": "Harry Yip", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 10}, {"inc": 8, "task": 12}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 22}}, {"employee": "Alex Xu", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 6}, {"inc": 6, "task": 12}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 12, "task": 18}}, {"employee": "Andy Lan", "weekly": [{"inc": 0, "task": 0}, {"inc": 12, "task": 14}, {"inc": 0, "task": 0}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 12, "task": 15}}, {"employee": "Lee Li", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 18}, {"inc": 1, "task": 5}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 23}}, {"employee": "Roy Wei", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 5}, {"inc": 6, "task": 12}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 6, "task": 17}}, {"employee": "Allen Guo", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 9}, {"inc": 2, "task": 5}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 14}}, {"employee": "Bob Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 3, "task": 7}, {"inc": 2, "task": 2}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 10}}, {"employee": "Aaron Jiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 9}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 10}}, {"employee": "Yibo Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 0}, {"inc": 8, "task": 1}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 2}}, {"employee": "Luby Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 0}, {"inc": 1, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 6, "task": 0}}, {"employee": "Guichong You", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 4}}, {"employee": "Zhi Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 4}}, {"employee": "Yin Ye", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 2}}, {"employee": "Yong Zhao", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 2}}, {"employee": "Freddie Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}]};
+
+/* ================================================================
+   DAILY HEATMAP — mock daily data for test page (CST)
+   ================================================================ */
+const DAILY_DATA_CACHE = {};
+const HEATMAP_TZ = 'Asia/Shanghai';
+const HEATMAP_WD = ['日', '一', '二', '三', '四', '五', '六'];
+
+function parseMonthKey(key) {
+  const [y, m] = key.split('-').map(Number);
+  return { y, m };
+}
+
+function daysInMonth(y, m) {
+  return new Date(y, m, 0).getDate();
+}
+
+function dailyDateKey(y, m, d) {
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function isHeatmapWeekend(y, m, d) {
+  const wd = new Date(y, m - 1, d).getDay();
+  return wd === 0 || wd === 6;
+}
+
+function heatmapWeekdayLabel(y, m, d) {
+  return HEATMAP_WD[new Date(y, m - 1, d).getDay()];
+}
+
+function cstTodayParts() {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: HEATMAP_TZ,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date())
+      .filter((x) => x.type !== 'literal')
+      .map((x) => [x.type, x.value])
+  );
+  return { y: +parts.year, m: +parts.month, d: +parts.day };
+}
+
+function mockDailyCount(emp, y, m, day) {
+  const seed = `${emp}|${y}-${m}-${day}`.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
+  const r = ((seed * 9301 + 49297) % 233280) / 233280;
+  if (r < 0.08) return 0;
+  if (r < 0.38) return 1;
+  if (r < 0.72) return 2 + Math.floor(r * 4);
+  return 4 + Math.floor(r * 7);
+}
+
+function getEmployeesForDaily(monthKey) {
+  if (monthKey === activeMonthKey && DATA?.length) {
+    return DATA.map((r) => r.employee);
+  }
+  const p = DASHBOARD_HISTORY?.[monthKey];
+  if (p?.monthly?.length) return p.monthly.map((r) => r.employee);
+  return (DATA || []).map((r) => r.employee);
+}
+
+function buildMockDaily(employees, y, m) {
+  const dim = daysInMonth(y, m);
+  const today = cstTodayParts();
+  const isCurrentMonth = y === today.y && m === today.m;
+  const days = [];
+  const matrix = {};
+  let maxVal = 1;
+
+  for (let d = 1; d <= dim; d++) {
+    const weekend = isHeatmapWeekend(y, m, d);
+    days.push({
+      key: dailyDateKey(y, m, d),
+      day: d,
+      weekend,
+      wd: heatmapWeekdayLabel(y, m, d),
+      future: isCurrentMonth && d > today.d,
+    });
+  }
+
+  employees.forEach((emp) => {
+    matrix[emp] = {};
+    days.forEach(({ key, day, weekend, future }) => {
+      let v = 0;
+      if (!weekend && !future) v = mockDailyCount(emp, y, m, day);
+      matrix[emp][key] = v;
+      if (v > maxVal) maxVal = v;
+    });
+  });
+
+  const sorted = [...employees].sort((a, b) => {
+    const sumA = days.reduce((s, d) => s + (matrix[a][d.key] || 0), 0);
+    const sumB = days.reduce((s, d) => s + (matrix[b][d.key] || 0), 0);
+    return sumB - sumA || a.localeCompare(b);
+  });
+
+  return { year: y, month: m, days, matrix, maxVal, isCurrentMonth, employees: sorted };
+}
+
+function getDailyData(monthKey) {
+  if (!monthKey) return null;
+  if (DAILY_DATA_CACHE[monthKey]) return DAILY_DATA_CACHE[monthKey];
+  const { y, m } = parseMonthKey(monthKey);
+  const employees = getEmployeesForDaily(monthKey);
+  if (!employees.length) return null;
+  const data = buildMockDaily(employees, y, m);
+  DAILY_DATA_CACHE[monthKey] = data;
+  return data;
+}
+
+function dailyHeatColor(v, max) {
+  if (v === 0) return null;
+  const t = Math.min(v / Math.max(max, 1), 1);
+  const r = Math.round(219 - t * 140);
+  const g = Math.round(234 - t * 60);
+  const b = Math.round(254 - t * 10);
+  const text = t > 0.55 ? '#fff' : '#1e3a5f';
+  return { bg: `rgb(${r},${g},${b})`, text };
+}
+
+function renderDailyHeatmap(monthKey) {
+  const key = monthKey || (typeof activeMonthKey !== 'undefined' ? activeMonthKey : CURRENT_MONTH_KEY);
+  const data = getDailyData(key);
+  if (!data) return;
+
+  const table = document.getElementById('heatmapTable');
+  const legend = document.getElementById('heatmapLegend');
+  const alert = document.getElementById('complianceAlert');
+  const today = cstTodayParts();
+  const todayKey = dailyDateKey(today.y, today.m, today.d);
+
+  let todayMissing = [];
+  if (data.isCurrentMonth) {
+    const todayCol = data.days.find((d) => d.key === todayKey);
+    if (todayCol && !todayCol.weekend && !todayCol.future) {
+      data.employees.forEach((emp) => {
+        if ((data.matrix[emp][todayKey] || 0) < 1) todayMissing.push(emp.split(' ')[0]);
+      });
+    }
+  }
+
+  if (todayMissing.length) {
+    alert.style.display = 'block';
+    alert.textContent = `⚠ 今日（工作日）尚未关单 ≥1：${todayMissing.join('、')}`;
+  } else {
+    alert.style.display = 'none';
+  }
+
+  let html = '<thead><tr><th class="emp-col">Employee</th>';
+  data.days.forEach((d) => {
+    const style = d.weekend ? ' style="opacity:.65"' : '';
+    html += `<th${style} title="${d.key}">${d.day}<br><span style="font-weight:400;font-size:10px">${d.wd}</span></th>`;
+  });
+  html += '<th>Σ</th></tr></thead><tbody>';
+
+  data.employees.forEach((emp) => {
+    let rowTotal = 0;
+    html += `<tr><td class="emp-col">${emp}</td>`;
+    data.days.forEach((d) => {
+      const v = data.matrix[emp][d.key] || 0;
+      rowTotal += v;
+      const cls = ['cell'];
+      if (d.weekend) cls.push('weekend');
+      if (d.key === todayKey && data.isCurrentMonth) cls.push('today');
+
+      let innerCls = 'cell-inner';
+      let innerStyle = '';
+      let text = d.weekend ? '·' : (d.future ? '' : String(v));
+
+      if (!d.weekend && !d.future && v === 0) innerCls += ' blink-zero';
+      else if (v > 0) {
+        const c = dailyHeatColor(v, data.maxVal);
+        innerStyle = ` style="background:${c.bg};color:${c.text}"`;
+      } else if (d.future) {
+        innerStyle = ' style="background:#f8fafc;color:#e2e8f0"';
+      }
+
+      html += `<td class="${cls.join(' ')}"><div class="${innerCls}"${innerStyle} title="${emp} · ${d.key} · ${v}">${text}</div></td>`;
+    });
+    html += `<td style="text-align:center;font-weight:700">${rowTotal}</td></tr>`;
+  });
+  html += '</tbody>';
+
+  table.innerHTML = html;
+  legend.innerHTML = [
+    '<span><i style="background:#fef2f2;border:1px solid #fecaca"></i> 0（工作日，闪烁）</span>',
+    '<span><i style="background:rgb(219,234,254)"></i> 1–2</span>',
+    '<span><i style="background:rgb(120,170,244)"></i> 较高</span>',
+    '<span><i style="background:#f8fafc;border:1px solid #e2e8f0"></i> 周末 / 未来</span>',
+    `<span>本月最高单日: ${data.maxVal}</span>`,
+    '<span style="color:#f59e0b">演示数据</span>',
+  ].join('');
+}
+
+function renderWeeklyTable() {
+  renderDailyHeatmap(typeof activeMonthKey !== 'undefined' ? activeMonthKey : CURRENT_MONTH_KEY);
+}
+
+/* ---------- initial render ---------- */
+function showStatus(msg) {
+  const el = document.getElementById('pageStatus');
+  if (!msg) { el.style.display = 'none'; el.textContent = ''; return; }
+  el.style.display = 'block';
+  el.textContent = msg;
+}
+
+function checkStaleData() {
+  const UPDATE_SCHEDULE_HOURS_CST = [9, 11, 13, 15, 17];
+  const STALE_GRACE_MS = 60 * 60 * 1000;
+
+  function cstParts(date) {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Shanghai',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(date)
+        .filter(p => p.type !== 'literal')
+        .map(p => [p.type, p.value])
+    );
+    return {
+      y: +parts.year,
+      m: +parts.month,
+      d: +parts.day,
+      h: +parts.hour,
+      min: +parts.minute,
+    };
+  }
+
+  function makeCstInstant(y, m, d, h, min) {
+    const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00+08:00`;
+    return new Date(iso).getTime();
+  }
+
+  function staleDeadlineAfter(updated) {
+    const { y, m, d } = cstParts(updated);
+    const updatedMs = updated.getTime();
+
+    for (const hour of UPDATE_SCHEDULE_HOURS_CST) {
+      const slotMs = makeCstInstant(y, m, d, hour, 0);
+      if (slotMs > updatedMs) {
+        return slotMs + STALE_GRACE_MS;
+      }
+    }
+
+    const noon = makeCstInstant(y, m, d, 12, 0);
+    const nextDay = cstParts(new Date(noon + 24 * 60 * 60 * 1000));
+    return makeCstInstant(nextDay.y, nextDay.m, nextDay.d, UPDATE_SCHEDULE_HOURS_CST[0], 0) + STALE_GRACE_MS;
+  }
+
+  const text = document.getElementById('updatedTime').textContent;
+  const m = text.match(/Updated:\s*(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/);
+  if (!m) return;
+  const iso = `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}T${String(m[4]).padStart(2, '0')}:${m[5]}:00+08:00`;
+  const updated = new Date(iso);
+  if (Number.isNaN(updated.getTime())) return;
+
+  if (Date.now() <= staleDeadlineAfter(updated)) return;
+
+  const hours = (Date.now() - updated.getTime()) / 3600000;
+  const el = document.getElementById('staleBanner');
+  const hrs = Math.floor(hours);
+  el.style.display = 'block';
+  el.textContent = `⚠ 数据可能已过期（上次更新约 ${hrs} 小时前，已超过预定更新时间）。定时任务可能失败，请联系 Luby 检查自动化。`;
+}
+
+function bootDashboard() {
+  checkStaleData();
+  try {
+    const payload = DASHBOARD_HISTORY && activeMonthKey && DASHBOARD_HISTORY[activeMonthKey];
+    const mt = document.getElementById('monthTitle');
+    if (mt && payload && payload.label) mt.textContent = payload.label;
+    render(DATA);
+    renderDailyHeatmap(activeMonthKey);
+    showStatus('');
+  } catch (err) {
+    console.error(err);
+    showStatus('Dashboard data failed to load. Please refresh the page or try again later.');
+  }
+}
+
+function retryChart() {
+  if (!window.__lastChartData || typeof Chart === 'undefined') return;
+  const d = window.__lastChartData;
+  renderBarChart(d.labels, d.incArr, d.taskArr, d.n);
+  showStatus('');
+}
+</script>
+<script src="xlsx.full.min.js"></script>
+<script src="chart.min.js" defer onload="retryChart()" onerror="showStatus('Chart library could not load, but summary and heatmap data are still shown.')"></script>
+<script src="dashboard-heatmap-test-features.js" defer></script>
+</body>
+</html>
