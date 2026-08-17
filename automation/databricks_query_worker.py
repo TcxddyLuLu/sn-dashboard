@@ -18,6 +18,13 @@ def run_dashboard_queries():
     return _run_queries_once()
 
 
+def run_team_tickets_query():
+    _load_env()
+    from run_dashboard import _run_team_tickets_once
+
+    return _run_team_tickets_once()
+
+
 def run_summary_queries():
     _load_env()
     from run_dashboard import _run_summary_queries_once

@@ -83,15 +83,23 @@ DASHBOARD_SQL = (SCRIPT_DIR / "dashboard_query.sql").read_text()
 WEEKLY_SQL = (SCRIPT_DIR / "weekly_query.sql").read_text()
 DAILY_SQL = (SCRIPT_DIR / "daily_query.sql").read_text()
 TICKET_DETAILS_SQL = (SCRIPT_DIR / "ticket_details_query.sql").read_text()
+TEAM_TICKETS_SQL = (SCRIPT_DIR / "team_tickets_query.sql").read_text()
 _TS_YEAR = "YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _TS_MONTH = "MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _MONTH_START_PH = "__MONTH_START__"
 _MONTH_END_PH = "__MONTH_END__"
+_MONTH_START_DATE_PH = "__MONTH_START_DATE__"
+_MONTH_END_DATE_PH = "__MONTH_END_DATE__"
+_UPPER_EMPLOYEE_IDS_PH = "__UPPER_EMPLOYEE_IDS__"
 
 QUERY_TIMEOUT_SUMMARY_LOCAL = 300
 QUERY_TIMEOUT_SUMMARY_CI = 180
 QUERY_TIMEOUT_TICKETS_LOCAL = 1200
 QUERY_TIMEOUT_TICKETS_CI = 1500
+QUERY_TIMEOUT_TEAM_LOCAL = 300
+QUERY_TIMEOUT_TEAM_CI = 240
+
+CANONICAL_EMPLOYEE_ID = {employee_id.upper(): employee_id for employee_id in EMPLOYEE_IDS}
 
 
 def summary_timeout_seconds() -> int:
@@ -104,6 +112,134 @@ def ticket_timeout_seconds() -> int:
     if CI_MODE or os.environ.get("CI", "").lower() == "true":
         return QUERY_TIMEOUT_TICKETS_CI
     return QUERY_TIMEOUT_TICKETS_LOCAL
+
+
+def team_query_timeout_seconds() -> int:
+    if CI_MODE or os.environ.get("CI", "").lower() == "true":
+        return QUERY_TIMEOUT_TEAM_CI
+    return QUERY_TIMEOUT_TEAM_LOCAL
+
+
+def canonical_employee_id(raw_id: str) -> str:
+    return CANONICAL_EMPLOYEE_ID.get((raw_id or "").upper(), raw_id)
+
+
+def month_date_range(year: int, month: int) -> tuple[str, str]:
+    start = f"{year:04d}-{month:02d}-01"
+    if month == 12:
+        end = f"{year + 1:04d}-01-01"
+    else:
+        end = f"{year:04d}-{month + 1:02d}-01"
+    return start, end
+
+
+def build_team_tickets_sql(year: int, month: int) -> str:
+    month_start, month_end = month_date_range(year, month)
+    upper_ids = ", ".join(f"'{employee_id.upper()}'" for employee_id in EMPLOYEE_IDS)
+    return (
+        TEAM_TICKETS_SQL.replace(_UPPER_EMPLOYEE_IDS_PH, upper_ids)
+        .replace(_MONTH_START_DATE_PH, f"'{month_start}'")
+        .replace(_MONTH_END_DATE_PH, f"'{month_end}'")
+    )
+
+
+def normalize_ticket_rows(rows: list[dict]) -> list[dict]:
+    """Canonicalize employee IDs and drop duplicate ticket rows."""
+    seen: set[tuple[str, str, str]] = set()
+    normalized: list[dict] = []
+    for row in rows:
+        employee_id = canonical_employee_id(row.get("employee_id", ""))
+        if employee_id not in EMPLOYEE_IDS:
+            continue
+        ticket_number = row.get("ticket_number")
+        ticket_type = row.get("ticket_type")
+        dedupe_key = (employee_id, ticket_number, ticket_type)
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        normalized.append({
+            **row,
+            "employee_id": employee_id,
+            "employee_name": NAME_OVERRIDES.get(
+                employee_id, row.get("employee_name") or employee_id
+            ),
+        })
+    return normalized
+
+
+def build_monthly_rows(ticket_rows: list[dict]) -> list[dict]:
+    normalized = normalize_ticket_rows(ticket_rows)
+    counts = {employee_id: {"incident_count": 0, "task_count": 0} for employee_id in EMPLOYEE_IDS}
+    names = {employee_id: NAME_OVERRIDES.get(employee_id, employee_id) for employee_id in EMPLOYEE_IDS}
+    for row in normalized:
+        employee_id = row["employee_id"]
+        names[employee_id] = NAME_OVERRIDES.get(
+            employee_id, row.get("employee_name") or names[employee_id]
+        )
+        if row["ticket_type"] == "incident":
+            counts[employee_id]["incident_count"] += 1
+        else:
+            counts[employee_id]["task_count"] += 1
+
+    monthly_rows = []
+    for employee_id in EMPLOYEE_IDS:
+        incident_count = counts[employee_id]["incident_count"]
+        task_count = counts[employee_id]["task_count"]
+        monthly_rows.append({
+            "employee_id": employee_id,
+            "employee_name": names[employee_id],
+            "incident_count": incident_count,
+            "task_count": task_count,
+            "total_count": incident_count + task_count,
+        })
+    return monthly_rows
+
+
+def aggregate_weekly_rows(ticket_rows: list[dict]) -> list[dict]:
+    normalized = normalize_ticket_rows(ticket_rows)
+    tally: dict[tuple[str, date], dict[str, int]] = {}
+    for row in normalized:
+        closed = _to_date(row["closed_date"])
+        if not closed:
+            continue
+        week_start = closed - timedelta(days=closed.weekday())
+        key = (row["employee_id"], week_start)
+        if key not in tally:
+            tally[key] = {"incident_count": 0, "task_count": 0}
+        if row["ticket_type"] == "incident":
+            tally[key]["incident_count"] += 1
+        else:
+            tally[key]["task_count"] += 1
+    return [
+        {"employee_id": employee_id, "week_start": week_start, **counts}
+        for (employee_id, week_start), counts in sorted(tally.items())
+    ]
+
+
+def aggregate_daily_rows(ticket_rows: list[dict]) -> list[dict]:
+    normalized = normalize_ticket_rows(ticket_rows)
+    tally: dict[tuple[str, date], dict[str, int]] = {}
+    for row in normalized:
+        closed = _to_date(row["closed_date"])
+        if not closed:
+            continue
+        key = (row["employee_id"], closed)
+        if key not in tally:
+            tally[key] = {"incident_count": 0, "task_count": 0}
+        if row["ticket_type"] == "incident":
+            tally[key]["incident_count"] += 1
+        else:
+            tally[key]["task_count"] += 1
+    return [
+        {
+            "employee_id": employee_id,
+            "closed_date": closed,
+            "incident_count": counts["incident_count"],
+            "task_count": counts["task_count"],
+            "total_count": counts["incident_count"] + counts["task_count"],
+        }
+        for (employee_id, closed), counts in sorted(tally.items())
+    ]
 
 
 def build_ticket_details_sql(year: int, month: int) -> str:
@@ -170,6 +306,44 @@ def maybe_alert_ticket_failure_streak(streak: int, error: str = "") -> None:
 
 def build_dashboard_sql(year: int, month: int) -> str:
     return DASHBOARD_SQL.replace(_TS_YEAR, str(year)).replace(_TS_MONTH, str(month))
+
+
+def _run_team_tickets_once():
+    from databricks import sql as dbsql
+
+    now = now_display()
+    sql = build_team_tickets_sql(now.year, now.month)
+    conn = dbsql.connect(
+        server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
+        http_path=os.environ["DATABRICKS_HTTP_PATH"],
+        access_token=os.environ["DATABRICKS_TOKEN"],
+    )
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    ticket_rows = cursor.fetchall()
+    ticket_cols = [d[0] for d in cursor.description]
+    cursor.close()
+    conn.close()
+    return [dict(zip(ticket_cols, r)) for r in ticket_rows]
+
+
+def _fetch_team_tickets_for_month(year: int, month: int) -> list[dict]:
+    from databricks import sql as dbsql
+
+    ensure_databricks_http_path(SCRIPT_DIR / ".env")
+    sql = build_team_tickets_sql(year, month)
+    conn = dbsql.connect(
+        server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
+        http_path=os.environ["DATABRICKS_HTTP_PATH"],
+        access_token=os.environ["DATABRICKS_TOKEN"],
+    )
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    rows = cursor.fetchall()
+    cols = [d[0] for d in cursor.description]
+    cursor.close()
+    conn.close()
+    return normalize_ticket_rows([dict(zip(cols, r)) for r in rows])
 
 
 def _run_summary_queries_once():
@@ -260,6 +434,33 @@ def load_cached_ticket_details(month_key=None):
         month_key = now_display().strftime("%Y-%m")
     tickets = load_ticket_store().get(month_key, [])
     return tickets if isinstance(tickets, list) else []
+
+
+def query_team_tickets():
+    """Fetch team ticket details once; monthly/weekly/daily are derived in Python."""
+    ensure_databricks_http_path(SCRIPT_DIR / ".env")
+
+    for attempt in range(1, 3):
+        log.info("Running team tickets query (attempt %s/2)...", attempt)
+        try:
+            timeout = team_query_timeout_seconds()
+            log.info("Team tickets query hard timeout: %ss", timeout)
+            rows = run_with_hard_timeout(
+                "databricks_query_worker:run_team_tickets_query",
+                timeout,
+                "Databricks team tickets query",
+            )
+            rows = normalize_ticket_rows(rows)
+            log.info("Got %s team ticket rows", len(rows))
+            return rows
+        except Exception as e:
+            log.warning("Team tickets query attempt %s failed: %s", attempt, e)
+            if attempt < 2:
+                log.info("Retrying in 10 seconds...")
+                import time
+                time.sleep(10)
+            else:
+                raise
 
 
 def query_summary():
@@ -566,40 +767,12 @@ MONTH_SEAL_STAMP = SCRIPT_DIR / ".month_seal_stamp"
 
 
 def fetch_dashboard_for_month(year: int, month: int):
-    from databricks import sql as dbsql
-
-    ensure_databricks_http_path(SCRIPT_DIR / ".env")
-    conn = dbsql.connect(
-        server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
-        http_path=os.environ["DATABRICKS_HTTP_PATH"],
-        access_token=os.environ["DATABRICKS_TOKEN"],
-    )
-    cursor = conn.cursor()
-    cursor.execute(build_dashboard_sql(year, month))
-    rows = cursor.fetchall()
-    cols = [d[0] for d in cursor.description]
-    cursor.close()
-    conn.close()
-    return [dict(zip(cols, r)) for r in rows]
+    monthly_rows = build_monthly_rows(_fetch_team_tickets_for_month(year, month))
+    return apply_name_overrides(monthly_rows)
 
 
 def fetch_tickets_for_month(year: int, month: int):
-    from databricks import sql as dbsql
-
-    ensure_databricks_http_path(SCRIPT_DIR / ".env")
-    sql = validate_ticket_sql(year, month)
-    conn = dbsql.connect(
-        server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
-        http_path=os.environ["DATABRICKS_HTTP_PATH"],
-        access_token=os.environ["DATABRICKS_TOKEN"],
-    )
-    cursor = conn.cursor()
-    cursor.execute(sql)
-    rows = cursor.fetchall()
-    cols = [d[0] for d in cursor.description]
-    cursor.close()
-    conn.close()
-    return [dict(zip(cols, r)) for r in rows]
+    return _fetch_team_tickets_for_month(year, month)
 
 
 def backfill_month(month_key: str) -> int:
@@ -974,16 +1147,19 @@ def main():
     seal_previous_month_if_needed()
 
     try:
-        monthly, weekly, daily = query_summary()
+        ticket_rows = query_team_tickets()
+        record_ticket_query_success()
     except Exception as e:
         log.error(f"Databricks query failed: {e}")
+        record_ticket_query_failure(str(e))
+        maybe_alert_ticket_failure_streak(load_ticket_health()["consecutive_failures"], str(e))
         notify_failure_safe("SN Dashboard", e)
         sys.exit(1)
 
-    rows = apply_name_overrides(monthly)
+    rows = apply_name_overrides(build_monthly_rows(ticket_rows))
     rows.sort(key=lambda r: (-(r["incident_count"] + r["task_count"]), r["employee_id"]))
-    weekly_info = process_weekly_data(weekly, rows)
-    daily_info = process_daily_data(daily, rows)
+    weekly_info = process_weekly_data(aggregate_weekly_rows(ticket_rows), rows)
+    daily_info = process_daily_data(aggregate_daily_rows(ticket_rows), rows)
     html_path = publish_dashboard(rows, weekly_info, daily_info)
 
     days_left = (TOKEN_EXPIRY - today_display()).days
@@ -998,24 +1174,16 @@ def main():
     log.info("Phase 1 complete: chart/summary data published")
 
     if should_refresh_ticket_details():
-        ticket_rows, ticket_error = fetch_tickets_optional()
-    else:
-        log.info(
-            "Skipping ticket details query (Excel refresh runs at 9:00 and 17:00 CST only)"
-        )
-        ticket_rows, ticket_error = None, None
-    if ticket_rows is None:
-        cached = load_cached_ticket_details()
-        log.info(f"Ticket details unchanged ({len(cached)} cached tickets)")
-        if ticket_error:
-            streak = record_ticket_query_failure(ticket_error)
-            maybe_alert_ticket_failure_streak(streak, ticket_error)
-    else:
-        record_ticket_query_success()
         ticket_details = process_ticket_details(ticket_rows, rows)
         update_dashboard_tickets(ticket_details)
         push_dashboard(html_path, required=False)
         log.info(f"Phase 2 complete: {len(ticket_details)} ticket details published")
+    else:
+        cached = load_cached_ticket_details()
+        log.info(
+            "Excel ticket file unchanged (%s cached tickets; refresh at 9:00 and 17:00 CST)",
+            len(cached),
+        )
 
     log.info("=== Dashboard automation completed ===")
 
