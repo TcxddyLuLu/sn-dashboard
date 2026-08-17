@@ -79,6 +79,7 @@ EMPLOYEE_IDS = [
 
 DASHBOARD_SQL = (SCRIPT_DIR / "dashboard_query.sql").read_text()
 WEEKLY_SQL = (SCRIPT_DIR / "weekly_query.sql").read_text()
+DAILY_SQL = (SCRIPT_DIR / "daily_query.sql").read_text()
 TICKET_DETAILS_SQL = (SCRIPT_DIR / "ticket_details_query.sql").read_text()
 _TS_YEAR = "YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _TS_MONTH = "MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
@@ -187,12 +188,17 @@ def _run_summary_queries_once():
     weekly_rows = cursor.fetchall()
     weekly_cols = [d[0] for d in cursor.description]
 
+    cursor.execute(DAILY_SQL)
+    daily_rows = cursor.fetchall()
+    daily_cols = [d[0] for d in cursor.description]
+
     cursor.close()
     conn.close()
 
     monthly = [dict(zip(monthly_cols, r)) for r in monthly_rows]
     weekly = [dict(zip(weekly_cols, r)) for r in weekly_rows]
-    return monthly, weekly
+    daily = [dict(zip(daily_cols, r)) for r in daily_rows]
+    return monthly, weekly, daily
 
 
 def _run_ticket_queries_once():
@@ -245,13 +251,15 @@ def query_summary():
         try:
             timeout = summary_timeout_seconds()
             log.info(f"Summary query hard timeout: {timeout}s")
-            monthly, weekly = run_with_hard_timeout(
+            monthly, weekly, daily = run_with_hard_timeout(
                 "databricks_query_worker:run_summary_queries",
                 timeout,
                 "Databricks summary queries",
             )
-            log.info(f"Got {len(monthly)} monthly rows, {len(weekly)} weekly rows")
-            return monthly, weekly
+            log.info(
+                f"Got {len(monthly)} monthly rows, {len(weekly)} weekly rows, {len(daily)} daily rows"
+            )
+            return monthly, weekly, daily
         except Exception as e:
             log.warning(f"Summary query attempt {attempt} failed: {e}")
             if attempt < 2:
@@ -292,9 +300,9 @@ def fetch_tickets_optional():
         return None, msg
 
 
-def publish_dashboard(rows, weekly_info):
-    update_dashboard_history(rows, weekly_info)
-    return update_html(rows, weekly_info)
+def publish_dashboard(rows, weekly_info, daily_info=None):
+    update_dashboard_history(rows, weekly_info, daily_info)
+    return update_html(rows, weekly_info, daily_info)
 
 
 def push_dashboard(html_path, *, required: bool) -> bool:
@@ -396,6 +404,38 @@ def process_weekly_data(weekly_rows, monthly_rows):
         "weeks": week_labels,
         "currentWeek": current_week,
         "data": result_data,
+    }
+
+
+def process_daily_data(daily_rows, monthly_rows):
+    """Build per-employee per-day ticket totals (CST) for the heatmap."""
+    today = today_display()
+    name_by_id = {r["employee_id"]: r["employee_name"] for r in monthly_rows}
+    matrix = {}
+    max_val = 1
+
+    for row in daily_rows:
+        eid = row["employee_id"]
+        name = NAME_OVERRIDES.get(eid, name_by_id.get(eid, eid))
+        closed = _to_date(row["closed_date"])
+        if not closed:
+            continue
+        key = closed.isoformat()
+        total = int(row.get("total_count") or 0)
+        if name not in matrix:
+            matrix[name] = {}
+        matrix[name][key] = matrix[name].get(key, 0) + total
+        if matrix[name][key] > max_val:
+            max_val = matrix[name][key]
+
+    for emp in monthly_rows:
+        matrix.setdefault(emp["employee_name"], {})
+
+    return {
+        "year": today.year,
+        "month": today.month,
+        "matrix": matrix,
+        "maxVal": max_val,
     }
 
 
@@ -584,7 +624,7 @@ def seal_previous_month_if_needed():
         notify_failure_safe("SN Dashboard Month Seal", e)
 
 
-def update_html(rows, weekly_info=None):
+def update_html(rows, weekly_info=None, daily_info=None):
     template_path = SCRIPT_DIR / "dashboard.html"
     html_path = (output_dir() / "index.html") if CI_MODE else (SCRIPT_DIR / "dashboard.html")
     html = template_path.read_text(encoding="utf-8")
@@ -613,6 +653,15 @@ def update_html(rows, weekly_info=None):
             flags=re.DOTALL,
         )
 
+    if daily_info:
+        daily_js = json.dumps(daily_info, ensure_ascii=False)
+        html = re.sub(
+            r"let DAILY_DATA = \{.*?\};",
+            f"let DAILY_DATA = {daily_js};",
+            html,
+            flags=re.DOTALL,
+        )
+
     now_str = format_updated_time()
     html = re.sub(
         r'(<div class="updated" id="updatedTime">).*?(</div>)',
@@ -632,7 +681,7 @@ def update_html(rows, weekly_info=None):
     return html_path
 
 
-def update_dashboard_history(rows, weekly_info=None):
+def update_dashboard_history(rows, weekly_info=None, daily_info=None):
     """Persist current month snapshot for month-picker on GitHub Pages."""
     month_key = now_display().strftime("%Y-%m")
     month_label = now_display().strftime("%B %Y")
@@ -664,6 +713,7 @@ def update_dashboard_history(rows, weekly_info=None):
         "label": month_label,
         "monthly": monthly,
         "weekly": weekly_info or prev.get("weekly", {"weeks": [], "data": []}),
+        "daily": daily_info or prev.get("daily"),
     }
 
     history_path.write_text(json.dumps(history, ensure_ascii=False), encoding="utf-8")
@@ -904,7 +954,7 @@ def main():
     seal_previous_month_if_needed()
 
     try:
-        monthly, weekly = query_summary()
+        monthly, weekly, daily = query_summary()
     except Exception as e:
         log.error(f"Databricks query failed: {e}")
         notify_failure_safe("SN Dashboard", e)
@@ -913,7 +963,8 @@ def main():
     rows = apply_name_overrides(monthly)
     rows.sort(key=lambda r: (-(r["incident_count"] + r["task_count"]), r["employee_id"]))
     weekly_info = process_weekly_data(weekly, rows)
-    html_path = publish_dashboard(rows, weekly_info)
+    daily_info = process_daily_data(daily, rows)
+    html_path = publish_dashboard(rows, weekly_info, daily_info)
 
     days_left = (TOKEN_EXPIRY - today_display()).days
     if days_left <= TOKEN_WARN_DAYS:
