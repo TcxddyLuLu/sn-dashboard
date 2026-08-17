@@ -76,7 +76,7 @@ EMPLOYEE_IDS = [
     'KOuYan','VCHE11','YWei29','LXIAN2',
     'JQIANG','HZhu8','DCha49','PWan61','YDin23','XZh302',
     'FL22','YY7','YZh33','Z36','GYo2',
-    'HZh8',
+    'HZh8','PZh105',
 ]
 
 DASHBOARD_SQL = (SCRIPT_DIR / "dashboard_query.sql").read_text()
