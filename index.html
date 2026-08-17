@@ -291,10 +291,23 @@
     font-size: 14px; font-weight: 600; color: #1e293b; min-width: 150px;
   }
   .btn-export {
-    margin-left: auto; border: none; background: #0f766e; color: #fff;
+    border: none; background: #0f766e; color: #fff;
     border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
   }
   .btn-export:hover { background: #0d9488; }
+  .export-block {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .export-meta {
+    font-size: 11px;
+    opacity: 0.65;
+    line-height: 1.35;
+    text-align: right;
+    color: #475569;
+  }
 
   .heatmap-wrap { overflow: auto; max-height: 62vh; }
   table.heatmap {
@@ -428,7 +441,13 @@
       <select id="monthSelect"></select>
       <button type="button" id="monthNext" title="Next month">&#9654;</button>
     </div>
-    <button type="button" class="btn-export" id="exportBtn">Export Excel</button>
+    <div class="export-block">
+      <button type="button" class="btn-export" id="exportBtn">Export Excel</button>
+      <div class="export-meta">
+        <div>每日 9:00、17:00 更新 Excel 明细</div>
+        <div id="excelUpdatedTime">Excel 明细最近更新：—</div>
+      </div>
+    </div>
   </div>
 
   <div class="header">
@@ -847,7 +866,8 @@ function getEmployeesForDaily(monthKey) {
 }
 
 function dailyFromTickets(monthKey) {
-  const tickets = DASHBOARD_TICKETS[monthKey] || DASHBOARD_HISTORY?.[monthKey]?.tickets || [];
+  const raw = DASHBOARD_TICKETS[monthKey] || DASHBOARD_HISTORY?.[monthKey]?.tickets || [];
+  const tickets = Array.isArray(raw) ? raw : [];
   const matrix = {};
   tickets.forEach((t) => {
     if (!t.closed) return;

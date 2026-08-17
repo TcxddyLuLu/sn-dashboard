@@ -21,9 +21,17 @@ function monthlyFromTickets(tickets) {
 
 function reconcileHistoryFromTickets() {
   for (const [monthKey, tickets] of Object.entries(DASHBOARD_TICKETS || {})) {
-    if (!tickets?.length || !DASHBOARD_HISTORY[monthKey]) continue;
+    if (monthKey.startsWith('_') || !Array.isArray(tickets) || !tickets.length) continue;
+    if (!DASHBOARD_HISTORY[monthKey]) continue;
     DASHBOARD_HISTORY[monthKey].monthly = monthlyFromTickets(tickets);
   }
+}
+
+function updateExcelMeta() {
+  const el = document.getElementById('excelUpdatedTime');
+  if (!el) return;
+  const ts = DASHBOARD_TICKETS._excel_updated_at;
+  el.textContent = ts ? `Excel 明细最近更新：${ts}` : 'Excel 明细最近更新：—';
 }
 
 function snapshotInlineMonth() {
@@ -150,7 +158,8 @@ function exportExcel() {
 
   const wb = XLSX.utils.book_new();
 
-  const tickets = DASHBOARD_TICKETS[activeMonthKey] || payload.tickets || [];
+  const ticketsRaw = DASHBOARD_TICKETS[activeMonthKey] || payload.tickets || [];
+  const tickets = Array.isArray(ticketsRaw) ? ticketsRaw : [];
   const monthlySource = tickets.length
     ? monthlyFromTickets(tickets)
     : (payload.monthly || []);
@@ -235,6 +244,7 @@ async function loadHistoryAndBoot() {
   } catch (_) { /* ticket details optional for older months */ }
 
   reconcileHistoryFromTickets();
+  updateExcelMeta();
 
   if (CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
     const prev = DASHBOARD_HISTORY[CURRENT_MONTH_KEY] || {};
@@ -248,6 +258,7 @@ async function loadHistoryAndBoot() {
   }
 
   reconcileHistoryFromTickets();
+  updateExcelMeta();
 
   const keys = monthKeys();
   if (!activeMonthKey || (keys.length && !DASHBOARD_HISTORY[activeMonthKey])) {

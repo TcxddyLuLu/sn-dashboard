@@ -56,6 +56,8 @@ TOKEN_EXPIRY = date(2026, 9, 8)
 TOKEN_WARN_DAYS = 14
 TICKET_FAIL_ALERT_THRESHOLD = 3
 TICKET_HEALTH_FILE = SCRIPT_DIR / "ticket_query_health.json"
+TICKET_META_EXCEL_UPDATED = "_excel_updated_at"
+TICKET_REFRESH_HOURS_CST = (9, 17)
 SQL_PLACEHOLDER_RE = re.compile(r"__MONTH_[A-Z_]+__|\{_MONTH_[A-Z_]+\}")
 
 NAME_OVERRIDES = {
@@ -232,14 +234,32 @@ def _run_queries_once():
     return monthly, weekly, tickets
 
 
+def should_refresh_ticket_details(now: datetime | None = None) -> bool:
+    """Excel ticket details refresh at 9:00 and 17:00 CST only."""
+    if os.environ.get("FORCE_TICKETS") == "1":
+        return True
+    if os.environ.get("SKIP_TICKETS") == "1":
+        return False
+    now = now or now_display()
+    return now.hour in TICKET_REFRESH_HOURS_CST
+
+
+def load_ticket_store(tickets_path: Path | None = None) -> dict:
+    tickets_path = tickets_path or (output_dir() / "dashboard_tickets.json")
+    if not tickets_path.exists():
+        return {}
+    try:
+        store = json.loads(tickets_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return store if isinstance(store, dict) else {}
+
+
 def load_cached_ticket_details(month_key=None):
     if month_key is None:
         month_key = now_display().strftime("%Y-%m")
-    tickets_path = output_dir() / "dashboard_tickets.json"
-    if not tickets_path.exists():
-        return []
-    store = json.loads(tickets_path.read_text(encoding="utf-8"))
-    return store.get(month_key, [])
+    tickets = load_ticket_store().get(month_key, [])
+    return tickets if isinstance(tickets, list) else []
 
 
 def query_summary():
@@ -524,21 +544,21 @@ def update_dashboard_tickets(tickets, month_key=None):
         month_key = now_display().strftime("%Y-%m")
     tickets_path = output_dir() / "dashboard_tickets.json"
 
-    if tickets_path.exists():
-        try:
-            store = json.loads(tickets_path.read_text(encoding="utf-8"))
-        except Exception:
-            store = {}
-    else:
+    store = load_ticket_store(tickets_path)
+    if not store:
         repo_tickets = Path(GITHUB_REPO_DIR) / "dashboard_tickets.json"
         if repo_tickets.exists():
-            store = json.loads(repo_tickets.read_text(encoding="utf-8"))
-        else:
-            store = {}
+            store = load_ticket_store(repo_tickets)
 
     store[month_key] = tickets
+    store[TICKET_META_EXCEL_UPDATED] = format_updated_time()
     tickets_path.write_text(json.dumps(store, ensure_ascii=False), encoding="utf-8")
-    log.info(f"dashboard_tickets.json updated for {month_key} ({len(tickets)} tickets)")
+    log.info(
+        "dashboard_tickets.json updated for %s (%s tickets, excel_updated_at=%s)",
+        month_key,
+        len(tickets),
+        store[TICKET_META_EXCEL_UPDATED],
+    )
     return tickets_path
 
 
@@ -977,7 +997,13 @@ def main():
     push_dashboard(html_path, required=True)
     log.info("Phase 1 complete: chart/summary data published")
 
-    ticket_rows, ticket_error = fetch_tickets_optional()
+    if should_refresh_ticket_details():
+        ticket_rows, ticket_error = fetch_tickets_optional()
+    else:
+        log.info(
+            "Skipping ticket details query (Excel refresh runs at 9:00 and 17:00 CST only)"
+        )
+        ticket_rows, ticket_error = None, None
     if ticket_rows is None:
         cached = load_cached_ticket_details()
         log.info(f"Ticket details unchanged ({len(cached)} cached tickets)")
