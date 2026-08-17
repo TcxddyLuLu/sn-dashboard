@@ -913,23 +913,23 @@ function getDailyData(monthKey) {
 }
 
 const HEATMAP_BLUE_MAX = 15;
-const HEATMAP_BLUE_SCALE = (() => {
-  const start = [219, 234, 254];
-  const end = [30, 58, 95];
-  const scale = [];
-  for (let i = 0; i < HEATMAP_BLUE_MAX; i++) {
-    const t = i / (HEATMAP_BLUE_MAX - 1);
-    const r = Math.round(start[0] + t * (end[0] - start[0]));
-    const g = Math.round(start[1] + t * (end[1] - start[1]));
-    const b = Math.round(start[2] + t * (end[2] - start[2]));
-    scale.push({
-      bg: `rgb(${r},${g},${b})`,
-      text: i >= 8 ? '#fff' : '#1e3a5f',
-      level: i + 1,
-    });
-  }
-  return scale;
-})();
+const HEATMAP_BLUE_SCALE = [
+  { bg: '#e8f4ff', text: '#1e3a5f' }, // 1
+  { bg: '#cfe8ff', text: '#1e3a5f' }, // 2
+  { bg: '#b3d9ff', text: '#1e3a5f' }, // 3
+  { bg: '#94c8ff', text: '#1e3a5f' }, // 4
+  { bg: '#73b4ff', text: '#1e3a5f' }, // 5
+  { bg: '#529eff', text: '#ffffff' }, // 6
+  { bg: '#3b82f6', text: '#ffffff' }, // 7
+  { bg: '#2f6fe8', text: '#ffffff' }, // 8
+  { bg: '#245fd4', text: '#ffffff' }, // 9
+  { bg: '#1d50bf', text: '#ffffff' }, // 10
+  { bg: '#1744ab', text: '#ffffff' }, // 11
+  { bg: '#133a96', text: '#ffffff' }, // 12
+  { bg: '#0f3282', text: '#ffffff' }, // 13
+  { bg: '#0c2b6e', text: '#ffffff' }, // 14
+  { bg: '#09255c', text: '#ffffff' }, // 15+
+];
 
 function dailyHeatColor(v) {
   if (v <= 0) return null;
@@ -1053,7 +1053,7 @@ function renderDailyHeatmap(monthKey) {
       if (!d.weekend && !d.future && v === 0) innerCls += ' blink-zero';
       else if (v > 0) {
         const c = dailyHeatColor(v);
-        innerStyle = ` style="background:${c.bg};color:${c.text}"`;
+        innerStyle = ` style="background:${c.bg} !important;color:${c.text} !important"`;
       } else if (d.future) {
         innerStyle = ' style="background:#f8fafc;color:#e2e8f0"';
       }
