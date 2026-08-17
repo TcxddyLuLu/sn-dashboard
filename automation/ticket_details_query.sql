@@ -33,8 +33,8 @@ incidents AS (
   JOIN employee_names n ON i.assigned_to = n.employee_name
   WHERE i.state IN ('Resolved', 'Closed')
     AND i.resolved_at IS NOT NULL
-    AND from_utc_timestamp(i.resolved_at, 'Asia/Shanghai') >= {_MONTH_START}
-    AND from_utc_timestamp(i.resolved_at, 'Asia/Shanghai') < {_MONTH_END}
+    AND from_utc_timestamp(i.resolved_at, 'Asia/Shanghai') >= __MONTH_START__
+    AND from_utc_timestamp(i.resolved_at, 'Asia/Shanghai') < __MONTH_END__
 ),
 tasks AS (
   SELECT
@@ -47,8 +47,8 @@ tasks AS (
   JOIN employee_names n ON t.assigned_to = n.employee_name
   WHERE t.state IN ('Resolved','Closed','Closed Complete','Closed Incomplete')
     AND t.closed_at IS NOT NULL
-    AND from_utc_timestamp(t.closed_at, 'Asia/Shanghai') >= {_MONTH_START}
-    AND from_utc_timestamp(t.closed_at, 'Asia/Shanghai') < {_MONTH_END}
+    AND from_utc_timestamp(t.closed_at, 'Asia/Shanghai') >= __MONTH_START__
+    AND from_utc_timestamp(t.closed_at, 'Asia/Shanghai') < __MONTH_END__
 )
 SELECT employee_id, employee_name, ticket_number, ticket_type, closed_date
 FROM incidents

@@ -79,8 +79,8 @@ WEEKLY_SQL = (SCRIPT_DIR / "weekly_query.sql").read_text()
 TICKET_DETAILS_SQL = (SCRIPT_DIR / "ticket_details_query.sql").read_text()
 _TS_YEAR = "YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _TS_MONTH = "MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
-_MONTH_START = "date_trunc('month', from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
-_MONTH_END = "add_months(date_trunc('month', from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai')), 1)"
+_MONTH_START_PH = "__MONTH_START__"
+_MONTH_END_PH = "__MONTH_END__"
 
 QUERY_TIMEOUT_SUMMARY_LOCAL = 300
 QUERY_TIMEOUT_SUMMARY_CI = 180
@@ -101,10 +101,10 @@ def ticket_timeout_seconds() -> int:
 
 
 def build_ticket_details_sql(year: int, month: int) -> str:
-    month_start = f"make_timestamp({year}, {month}, 1)"
-    month_end = f"add_months(make_timestamp({year}, {month}, 1), 1)"
+    month_start = f"to_timestamp('{year:04d}-{month:02d}-01')"
+    month_end = f"add_months(to_timestamp('{year:04d}-{month:02d}-01'), 1)"
     return (
-        TICKET_DETAILS_SQL.replace(_MONTH_START, month_start).replace(_MONTH_END, month_end)
+        TICKET_DETAILS_SQL.replace(_MONTH_START_PH, month_start).replace(_MONTH_END_PH, month_end)
     )
 
 
@@ -677,13 +677,21 @@ def push_to_github(html_path) -> bool:
 
     _ensure_git_config(repo_dir)
 
-    pull_result = subprocess.run(
-        ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
-        env=env, capture_output=True, text=True,
-    )
-    if pull_result.returncode != 0:
-        log.warning(f"Git pull failed: {pull_result.stderr}")
-        notify_push_failure("SN Dashboard", "git pull", pull_result.stderr)
+    pull_result = None
+    for attempt in range(1, 4):
+        pull_result = subprocess.run(
+            ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
+            env=env, capture_output=True, text=True,
+        )
+        if pull_result.returncode == 0:
+            break
+        log.warning(f"Git pull attempt {attempt}/3 failed: {pull_result.stderr.strip()}")
+        if attempt < 3:
+            import time
+            time.sleep(5)
+    if pull_result is None or pull_result.returncode != 0:
+        log.warning(f"Git pull failed: {pull_result.stderr if pull_result else 'unknown'}")
+        notify_push_failure("SN Dashboard", "git pull", pull_result.stderr if pull_result else "")
         return False
 
     shutil.copy2(str(html_path), str(repo_dir / "index.html"))
