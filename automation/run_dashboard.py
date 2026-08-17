@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
 from databricks_connect import ensure_databricks_http_path, run_with_hard_timeout
-from dashboard_alerts import notify_failure, notify_push_failure
+from dashboard_alerts import notify_failure, notify_push_failure, notify_ticket_failure_streak
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CI_MODE = False
@@ -54,6 +54,9 @@ log = logging.getLogger(__name__)
 
 TOKEN_EXPIRY = date(2026, 9, 8)
 TOKEN_WARN_DAYS = 14
+TICKET_FAIL_ALERT_THRESHOLD = 3
+TICKET_HEALTH_FILE = SCRIPT_DIR / "ticket_query_health.json"
+SQL_PLACEHOLDER_RE = re.compile(r"__MONTH_[A-Z_]+__|\{_MONTH_[A-Z_]+\}")
 
 NAME_OVERRIDES = {
     "JQIANG": "Freddie Qiang",
@@ -108,6 +111,60 @@ def build_ticket_details_sql(year: int, month: int) -> str:
     )
 
 
+def validate_ticket_sql(year: int, month: int) -> str:
+    """Ensure ticket SQL placeholders were substituted before hitting Databricks."""
+    sql = build_ticket_details_sql(year, month)
+    if _MONTH_START_PH in sql or _MONTH_END_PH in sql or SQL_PLACEHOLDER_RE.search(sql):
+        raise RuntimeError("Ticket SQL still contains unreplaced month placeholders")
+    return sql
+
+
+def load_ticket_health() -> dict:
+    if not TICKET_HEALTH_FILE.exists():
+        return {"consecutive_failures": 0}
+    try:
+        return json.loads(TICKET_HEALTH_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {"consecutive_failures": 0}
+
+
+def save_ticket_health(health: dict) -> None:
+    TICKET_HEALTH_FILE.write_text(json.dumps(health, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def record_ticket_query_success() -> None:
+    health = load_ticket_health()
+    health["consecutive_failures"] = 0
+    health["last_success"] = now_display().strftime("%Y-%m-%d %H:%M")
+    health.pop("last_error", None)
+    save_ticket_health(health)
+
+
+def record_ticket_query_failure(error: str) -> int:
+    health = load_ticket_health()
+    streak = int(health.get("consecutive_failures", 0)) + 1
+    health["consecutive_failures"] = streak
+    health["last_failure"] = now_display().strftime("%Y-%m-%d %H:%M")
+    health["last_error"] = error[:2000]
+    save_ticket_health(health)
+    return streak
+
+
+def maybe_alert_ticket_failure_streak(streak: int, error: str = "") -> None:
+    if streak < TICKET_FAIL_ALERT_THRESHOLD:
+        return
+    if streak % TICKET_FAIL_ALERT_THRESHOLD != 0:
+        return
+    if CI_MODE:
+        log.warning(
+            "Ticket query failed %s times in a row (CI; email alert skipped): %s",
+            streak,
+            error or "unknown",
+        )
+        return
+    notify_ticket_failure_streak(streak, error)
+
+
 def build_dashboard_sql(year: int, month: int) -> str:
     return DASHBOARD_SQL.replace(_TS_YEAR, str(year)).replace(_TS_MONTH, str(month))
 
@@ -149,7 +206,8 @@ def _run_ticket_queries_once():
     cursor = conn.cursor()
 
     now = now_display()
-    cursor.execute(build_ticket_details_sql(now.year, now.month))
+    sql = validate_ticket_sql(now.year, now.month)
+    cursor.execute(sql)
     ticket_rows = cursor.fetchall()
     ticket_cols = [d[0] for d in cursor.description]
 
@@ -205,10 +263,18 @@ def query_summary():
 
 
 def fetch_tickets_optional():
-    """Fetch ticket details. Returns None on skip, timeout, or error."""
+    """Fetch ticket details. Returns (rows, error). rows is None on skip/failure."""
     if os.environ.get("SKIP_TICKETS") == "1":
         log.info("SKIP_TICKETS=1: skipping ticket details query")
-        return None
+        return None, None
+
+    now = now_display()
+    try:
+        validate_ticket_sql(now.year, now.month)
+    except Exception as e:
+        msg = f"Ticket SQL validation failed: {e}"
+        log.error(msg)
+        return None, msg
 
     try:
         timeout = ticket_timeout_seconds()
@@ -219,10 +285,11 @@ def fetch_tickets_optional():
             "Databricks ticket details query",
         )
         log.info(f"Got {len(tickets)} ticket rows")
-        return tickets
+        return tickets, None
     except Exception as e:
-        log.warning(f"Ticket details query failed: {e}")
-        return None
+        msg = str(e) or repr(e)
+        log.warning(f"Ticket details query failed: {msg}")
+        return None, msg
 
 
 def publish_dashboard(rows, weekly_info):
@@ -830,11 +897,15 @@ def main():
     push_dashboard(html_path, required=True)
     log.info("Phase 1 complete: chart/summary data published")
 
-    ticket_rows = fetch_tickets_optional()
+    ticket_rows, ticket_error = fetch_tickets_optional()
     if ticket_rows is None:
         cached = load_cached_ticket_details()
         log.info(f"Ticket details unchanged ({len(cached)} cached tickets)")
+        if ticket_error:
+            streak = record_ticket_query_failure(ticket_error)
+            maybe_alert_ticket_failure_streak(streak, ticket_error)
     else:
+        record_ticket_query_success()
         ticket_details = process_ticket_details(ticket_rows, rows)
         update_dashboard_tickets(ticket_details)
         push_dashboard(html_path, required=False)

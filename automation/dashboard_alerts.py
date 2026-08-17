@@ -54,3 +54,19 @@ def notify_push_failure(job_name: str, stage: str, detail: str) -> None:
         "The public dashboard may still show older numbers until this is fixed."
     )
     send_text_email(subject, body, recipient)
+
+
+def notify_ticket_failure_streak(streak: int, last_error: str = "") -> None:
+    """Alert when ticket detail queries fail repeatedly (chart data may still be fresh)."""
+    recipient = os.environ.get("EMAIL_TO", "luby.lu@nike.com")
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+    subject = f"[SN Dashboard] Ticket query failed {streak} times in a row ({now_str})"
+    detail = last_error.strip() or "(no error detail recorded)"
+    body = (
+        f"Ticket details query has failed {streak} consecutive runs as of {now_str}.\n\n"
+        f"Latest error: {detail}\n\n"
+        "Chart/summary data should still update on schedule, but the ticket drill-down "
+        "list may be stale until this is fixed. Check ticket_details_query.sql and "
+        "Databricks warehouse performance in Cursor."
+    )
+    send_text_email(subject, body, recipient)
