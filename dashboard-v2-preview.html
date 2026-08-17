@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SN Dashboard V2 Preview (Mock Data)</title>
+  <style>
+    :root {
+      --navy: #1e3a5f;
+      --border: #e2e8f0;
+      --muted: #94a3b8;
+      --text: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #f1f5f9;
+      color: var(--text);
+    }
+    .wrap { max-width: 1440px; margin: 0 auto; padding: 20px 24px 40px; }
+    .preview-banner {
+      background: #eff6ff;
+      border: 1px solid #93c5fd;
+      color: #1e40af;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .month-nav { display: flex; align-items: center; gap: 6px; }
+    .month-nav button, .btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .month-nav button:hover, .btn:hover { background: #e2e8f0; }
+    #monthSelect {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      min-width: 160px;
+    }
+    .header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+      color: #fff;
+      border-radius: 14px;
+      padding: 22px 28px;
+      margin-bottom: 18px;
+    }
+    .header h1 { margin: 0 0 6px; font-size: 24px; }
+    .header .meta { opacity: .9; font-size: 13px; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .card .value { font-size: 28px; font-weight: 700; color: var(--navy); margin-top: 4px; }
+    .card .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .alert {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      display: none;
+    }
+    .section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 18px 20px 22px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      margin-bottom: 18px;
+    }
+    .section h2 {
+      margin: 0 0 4px;
+      font-size: 17px;
+      color: #1e293b;
+    }
+    .section .hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .heatmap-wrap { overflow: auto; max-height: 72vh; }
+    table.heatmap {
+      border-collapse: separate;
+      border-spacing: 2px;
+      font-size: 12px;
+      min-width: 100%;
+    }
+    table.heatmap th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--navy);
+      color: #fff;
+      padding: 6px 4px;
+      font-weight: 600;
+      text-align: center;
+      white-space: nowrap;
+      min-width: 34px;
+    }
+    table.heatmap th.emp-col {
+      left: 0;
+      z-index: 3;
+      text-align: left;
+      min-width: 130px;
+      padding-left: 10px;
+    }
+    table.heatmap td.emp-col {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: #fff;
+      font-weight: 500;
+      text-align: left;
+      padding: 6px 10px;
+      white-space: nowrap;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    table.heatmap td.cell {
+      text-align: center;
+      padding: 0;
+      border-bottom: 1px solid #f8fafc;
+    }
+    table.heatmap td.cell .cell-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 34px;
+      height: 30px;
+      border-radius: 4px;
+      font-weight: 600;
+      cursor: default;
+    }
+    table.heatmap td.cell.weekend .cell-inner {
+      background: #f8fafc !important;
+      color: #cbd5e1;
+      font-weight: 500;
+    }
+    table.heatmap td.cell.today .cell-inner {
+      outline: 2px solid #2563eb;
+      outline-offset: -1px;
+    }
+    @keyframes blink-warn {
+      0%, 100% { background: rgba(255, 23, 68, 0.08); }
+      50% { background: rgba(255, 23, 68, 0.22); }
+    }
+    .blink-zero {
+      animation: blink-warn 2s ease-in-out infinite;
+      color: #dc2626 !important;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+    }
+    .monthly-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .monthly-table th {
+      background: var(--navy);
+      color: #fff;
+      padding: 8px 12px;
+      text-align: left;
+    }
+    .monthly-table th.num { text-align: right; }
+    .monthly-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .monthly-table td.num { text-align: right; font-weight: 600; }
+    .monthly-table tr:hover td { background: #f8fafc; }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.6;
+    }
+    .tooltip {
+      position: fixed;
+      display: none;
+      background: #0f172a;
+      color: #fff;
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      pointer-events: none;
+      z-index: 99;
+      max-width: 260px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="preview-banner">
+      <strong>预览版 · 虚构数据</strong> — 这是 V2 方案原型，未替换线上 dashboard。
+      时区统一为 <strong>Asia/Shanghai (CST)</strong>；关单日期口径；工作日 0 单显示淡红闪烁。
+    </div>
+
+    <div class="toolbar">
+      <div class="month-nav">
+        <button type="button" id="monthPrev" title="上一月">&#9664;</button>
+        <select id="monthSelect"></select>
+        <button type="button" id="monthNext" title="下一月">&#9654;</button>
+      </div>
+      <button type="button" class="btn" id="exportBtn">Export Excel</button>
+    </div>
+
+    <div class="header">
+      <h1 id="monthTitle">August 2026</h1>
+      <div class="meta">
+        <span id="updatedTime">Updated: 2026/8/17 10:15 CST</span>
+        <span style="opacity:.7"> · 每日 9:00 / 11:00 / 13:00 / 15:00 / 17:00 更新</span>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card"><div class="label">Team Total (Month)</div><div class="value" id="statTotal">—</div><div class="sub">关单总和</div></div>
+      <div class="card"><div class="label">Active Today</div><div class="value" id="statToday">—</div><div class="sub" id="statTodaySub">今日已关单人数</div></div>
+      <div class="card"><div class="label">Missing Today</div><div class="value" id="statMissing" style="color:#dc2626">—</div><div class="sub">今日 0 单（工作日）</div></div>
+      <div class="card"><div class="label">Compliance Rate</div><div class="value" id="statRate">—</div><div class="sub">本月工作日达标率</div></div>
+    </div>
+
+    <div class="alert" id="complianceAlert"></div>
+
+    <section class="section">
+      <h2>Daily Heatmap</h2>
+      <p class="hint">主视图：每人每天关单总数（Incident + SC Task）。颜色越深数量越多；工作日 0 = 淡红闪烁。</p>
+      <div class="heatmap-wrap">
+        <table class="heatmap" id="heatmapTable"></table>
+      </div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section class="section">
+      <h2>Monthly Ranking</h2>
+      <p class="hint">保留月度汇总（单一 Total，不再区分 Inc / Task 主列）。</p>
+      <table class="monthly-table" id="monthlyTable">
+        <thead><tr><th>Employee</th><th class="num">Month Total</th><th class="num">Workdays w/ 0</th><th class="num">Avg / Workday</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <p class="footer">V2 Preview · Mock data only · Timezone: Asia/Shanghai</p>
+  </div>
+  <div class="tooltip" id="tooltip"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script>
+    const TZ = 'Asia/Shanghai';
+    const EMPLOYEES = [
+      'Freddie Qiang', 'Thomas Tao', 'Howie Tan', 'Aaron Jiang', 'Alex Xu',
+      'Roy Wei', 'Luby Lu', 'He Feng', 'Rory Ju', 'Vance Chen',
+      'Andy Lan', 'Xinyu Zhang', 'Allen Guo', 'Dom Chang', 'Lee Li',
+      'Yang Ding', 'Junfeng Deng', 'Ping Wang', 'Yibo Wang', 'Hooxi Zhu',
+    ];
+
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const WEEKDAY_CN = ['日','一','二','三','四','五','六'];
+
+    function cstNow() {
+      return new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
+    }
+
+    function formatUpdated(d) {
+      const p = cstParts(d);
+      return `Updated: ${p.y}/${p.m}/${p.d} ${String(p.h).padStart(2,'0')}:${String(p.min).padStart(2,'0')} CST`;
+    }
+
+    function cstParts(date) {
+      const parts = Object.fromEntries(
+        new Intl.DateTimeFormat('en-CA', {
+          timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+          weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+        }).formatToParts(date).filter(x => x.type !== 'literal').map(x => [x.type, x.value])
+      );
+      return {
+        y: +parts.year, m: +parts.month, d: +parts.day,
+        wd: parts.weekday, h: +parts.hour, min: +parts.minute,
+      };
+    }
+
+    function daysInMonth(y, m) {
+      return new Date(y, m, 0).getDate();
+    }
+
+    function dateKey(y, m, d) {
+      return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+
+    function isWeekend(y, m, d) {
+      const wd = new Date(y, m - 1, d).getDay();
+      return wd === 0 || wd === 6;
+    }
+
+    function weekdayLabel(y, m, d) {
+      return WEEKDAY_CN[new Date(y, m - 1, d).getDay()];
+    }
+
+    // Seeded mock generator for reproducible demo data
+    function mockCount(emp, y, m, d) {
+      if (isWeekend(y, m, d)) return 0;
+      let h = 0;
+      const seed = `${emp}|${y}-${m}-${d}`.split('').reduce((s, c) => s + c.charCodeAt(0), 0);
+      const r = (seed * 9301 + 49297) % 233280 / 233280;
+      if (r < 0.06) return 0;
+      if (r < 0.35) return 1;
+      if (r < 0.7) return 2 + Math.floor(r * 5);
+      return 4 + Math.floor(r * 8);
+    }
+
+    function buildMonthData(y, m) {
+      const dim = daysInMonth(y, m);
+      const days = [];
+      const matrix = {};
+      let teamTotal = 0;
+      let workdays = 0;
+      let compliantCells = 0;
+      let totalWorkdayCells = 0;
+
+      for (let d = 1; d <= dim; d++) {
+        const weekend = isWeekend(y, m, d);
+        if (!weekend) workdays++;
+        days.push({
+          key: dateKey(y, m, d),
+          day: d,
+          weekend,
+          label: `${m}/${d}`,
+          wd: weekdayLabel(y, m, d),
+        });
+      }
+
+      EMPLOYEES.forEach((emp) => {
+        matrix[emp] = {};
+        days.forEach(({ key, day, weekend }) => {
+          const v = weekend ? 0 : mockCount(emp, y, m, day);
+          matrix[emp][key] = v;
+          teamTotal += v;
+          if (!weekend) {
+            totalWorkdayCells++;
+            if (v >= 1) compliantCells++;
+          }
+        });
+      });
+
+      const monthly = EMPLOYEES.map((emp) => {
+        let total = 0;
+        let zeros = 0;
+        days.forEach(({ key, weekend }) => {
+          const v = matrix[emp][key];
+          total += v;
+          if (!weekend && v === 0) zeros++;
+        });
+        return {
+          employee: emp,
+          total,
+          zeros,
+          avg: workdays ? (total / workdays).toFixed(1) : '0',
+        };
+      }).sort((a, b) => b.total - a.total);
+
+      return {
+        label: `${MONTH_NAMES[m - 1]} ${y}`,
+        year: y,
+        month: m,
+        days,
+        matrix,
+        monthly,
+        teamTotal,
+        workdays,
+        complianceRate: totalWorkdayCells ? Math.round((compliantCells / totalWorkdayCells) * 100) : 100,
+      };
+    }
+
+    const DASHBOARD_DAILY = {
+      '2026-08': buildMonthData(2026, 8),
+      '2026-07': buildMonthData(2026, 7),
+      '2026-06': buildMonthData(2026, 6),
+    };
+
+    let activeMonthKey = '2026-08';
+    const todayKey = (() => {
+      const p = cstParts(cstNow());
+      return dateKey(p.y, p.m, p.d);
+    })();
+
+    function monthKeys() {
+      return Object.keys(DASHBOARD_DAILY).sort().reverse();
+    }
+
+    function heatColor(v, max) {
+      if (v === 0) return null;
+      const t = Math.min(v / Math.max(max, 1), 1);
+      const r = Math.round(219 - t * 140);
+      const g = Math.round(234 - t * 60);
+      const b = Math.round(254 - t * 10);
+      const text = t > 0.55 ? '#fff' : '#1e3a5f';
+      return { bg: `rgb(${r},${g},${b})`, text };
+    }
+
+    function renderMonth(key) {
+      const data = DASHBOARD_DAILY[key];
+      if (!data) return;
+      activeMonthKey = key;
+
+      document.getElementById('monthTitle').textContent = data.label;
+      document.getElementById('updatedTime').textContent = formatUpdated(cstNow());
+      document.getElementById('statTotal').textContent = data.teamTotal;
+      document.getElementById('statRate').textContent = data.complianceRate + '%';
+
+      const today = data.days.find(d => d.key === todayKey);
+      let todayActive = 0;
+      let todayMissing = [];
+      if (today && !today.weekend && key === `${cstParts(cstNow()).y}-${String(cstParts(cstNow()).m).padStart(2,'0')}`) {
+        EMPLOYEES.forEach((emp) => {
+          const v = data.matrix[emp][todayKey] || 0;
+          if (v >= 1) todayActive++;
+          else todayMissing.push(emp.split(' ')[0]);
+        });
+      } else if (today && today.weekend) {
+        todayActive = '—';
+        todayMissing = [];
+      } else {
+        todayActive = '—';
+        todayMissing = [];
+      }
+
+      document.getElementById('statToday').textContent = todayActive;
+      document.getElementById('statMissing').textContent = todayMissing.length || (todayActive === '—' ? '—' : 0);
+      document.getElementById('statTodaySub').textContent = today?.weekend ? '今日周末' : '今日已关单人数';
+
+      const alert = document.getElementById('complianceAlert');
+      if (todayMissing.length) {
+        alert.style.display = 'block';
+        alert.textContent = `⚠ 今日（工作日）尚未关单 ≥1：${todayMissing.join('、')}（截至 ${formatUpdated(cstNow()).replace('Updated: ', '')}）`;
+      } else {
+        alert.style.display = 'none';
+      }
+
+      let max = 1;
+      EMPLOYEES.forEach((emp) => {
+        data.days.forEach(({ key: dk }) => {
+          max = Math.max(max, data.matrix[emp][dk] || 0);
+        });
+      });
+
+      const thead = ['<tr><th class="emp-col">Employee</th>'];
+      data.days.forEach((d) => {
+        const cls = d.weekend ? ' style="opacity:.65"' : '';
+        thead.push(`<th${cls} title="${d.key}">${d.day}<br><span style="font-weight:400;font-size:10px">${d.wd}</span></th>`);
+      });
+      thead.push('<th>Σ</th></tr>');
+      document.getElementById('heatmapTable').innerHTML = '<thead>' + thead.join('') + '</thead><tbody id="heatmapBody"></tbody>';
+
+      const tbody = document.getElementById('heatmapBody');
+      tbody.innerHTML = '';
+      EMPLOYEES.forEach((emp) => {
+        let rowTotal = 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="emp-col">${emp}</td>`;
+        data.days.forEach((d) => {
+          const v = data.matrix[emp][d.key] || 0;
+          rowTotal += v;
+          const td = document.createElement('td');
+          td.className = 'cell' + (d.weekend ? ' weekend' : '') + (d.key === todayKey ? ' today' : '');
+          const inner = document.createElement('div');
+          inner.className = 'cell-inner';
+          inner.textContent = d.weekend ? '·' : v;
+          if (!d.weekend && v === 0) inner.classList.add('blink-zero');
+          else if (v > 0) {
+            const c = heatColor(v, max);
+            inner.style.background = c.bg;
+            inner.style.color = c.text;
+          }
+          inner.dataset.tip = `${emp}\n${d.key} (周${d.wd})\n关单: ${v}`;
+          td.appendChild(inner);
+          tr.appendChild(td);
+        });
+        const sum = document.createElement('td');
+        sum.style.textAlign = 'center';
+        sum.style.fontWeight = '700';
+        sum.textContent = rowTotal;
+        tr.appendChild(sum);
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('legend').innerHTML = [
+        '<span><i style="background:#fef2f2;border:1px solid #fecaca"></i> 0（工作日，闪烁）</span>',
+        '<span><i style="background:rgb(219,234,254)"></i> 1–2</span>',
+        '<span><i style="background:rgb(120,170,244);color:#fff"></i> 较高</span>',
+        '<span><i style="background:#f8fafc;border:1px solid #e2e8f0"></i> 周末</span>',
+        `<span>本月最高单日: ${max}</span>`,
+      ].join('');
+
+      const mbody = document.querySelector('#monthlyTable tbody');
+      mbody.innerHTML = data.monthly.map((r) =>
+        `<tr><td>${r.employee}</td><td class="num">${r.total}</td><td class="num" style="color:${r.zeros ? '#dc2626' : 'inherit'}">${r.zeros}</td><td class="num">${r.avg}</td></tr>`
+      ).join('');
+    }
+
+    function initToolbar() {
+      const select = document.getElementById('monthSelect');
+      monthKeys().forEach((k) => {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = DASHBOARD_DAILY[k].label;
+        select.appendChild(opt);
+      });
+      select.value = activeMonthKey;
+      select.onchange = () => renderMonth(select.value);
+      document.getElementById('monthPrev').onclick = () => shiftMonth(1);
+      document.getElementById('monthNext').onclick = () => shiftMonth(-1);
+      document.getElementById('exportBtn').onclick = exportExcel;
+    }
+
+    function shiftMonth(delta) {
+      const keys = monthKeys();
+      const idx = keys.indexOf(activeMonthKey);
+      const next = idx + delta;
+      if (next < 0 || next >= keys.length) return;
+      activeMonthKey = keys[next];
+      document.getElementById('monthSelect').value = activeMonthKey;
+      renderMonth(activeMonthKey);
+    }
+
+    function exportExcel() {
+      if (typeof XLSX === 'undefined') {
+        alert('Excel 库未加载');
+        return;
+      }
+      const data = DASHBOARD_DAILY[activeMonthKey];
+      const wb = XLSX.utils.book_new();
+
+      const monthlyRows = data.monthly.map((r) => ({
+        Employee: r.employee,
+        'Month Total': r.total,
+        'Workdays with 0': r.zeros,
+        'Avg per Workday': r.avg,
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(monthlyRows), 'Monthly');
+
+      const dailyWide = data.monthly.map((r) => {
+        const row = { Employee: r.employee };
+        data.days.forEach((d) => {
+          row[`${d.key} (${d.wd})`] = d.weekend ? '' : (data.matrix[r.employee][d.key] || 0);
+        });
+        row.Total = r.total;
+        return row;
+      });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dailyWide), 'Daily Matrix');
+
+      const dailyLong = [];
+      data.monthly.forEach((r) => {
+        data.days.forEach((d) => {
+          if (d.weekend) return;
+          dailyLong.push({
+            Date: d.key,
+            Weekday: d.wd,
+            Employee: r.employee,
+            Total: data.matrix[r.employee][d.key] || 0,
+            Compliant: (data.matrix[r.employee][d.key] || 0) >= 1 ? 'Y' : 'N',
+          });
+        });
+      });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dailyLong), 'Daily Detail');
+
+      XLSX.writeFile(wb, `sn-dashboard-v2-preview-${activeMonthKey}.xlsx`);
+    }
+
+    const tip = document.getElementById('tooltip');
+    document.addEventListener('mouseover', (e) => {
+      const t = e.target.closest('.cell-inner');
+      if (!t || !t.dataset.tip) { tip.style.display = 'none'; return; }
+      tip.textContent = t.dataset.tip;
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 12) + 'px';
+      tip.style.top = (e.clientY + 12) + 'px';
+    });
+    document.addEventListener('mouseout', (e) => {
+      if (e.target.closest('.cell-inner')) tip.style.display = 'none';
+    });
+
+    initToolbar();
+    renderMonth(activeMonthKey);
+  </script>
+</body>
+</html>
