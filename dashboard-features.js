@@ -30,6 +30,7 @@ function snapshotInlineMonth() {
   INLINE_MONTH_DATA = {
     monthly: JSON.parse(JSON.stringify(DATA)),
     weekly: JSON.parse(JSON.stringify(WEEKLY_DATA)),
+    daily: typeof DAILY_DATA !== 'undefined' ? JSON.parse(JSON.stringify(DAILY_DATA)) : null,
   };
 }
 
@@ -48,6 +49,7 @@ function monthPayload(key) {
     return {
       monthly: INLINE_MONTH_DATA.monthly,
       weekly: INLINE_MONTH_DATA.weekly,
+      daily: INLINE_MONTH_DATA.daily,
       label: prev.label || formatMonthLabel(key),
     };
   }
@@ -56,8 +58,15 @@ function monthPayload(key) {
   return {
     monthly: p.monthly || [],
     weekly: p.weekly || { weeks: [], data: [] },
+    daily: p.daily || null,
     label: p.label || formatMonthLabel(key),
   };
+}
+
+function clearDailyCache(monthKey) {
+  if (typeof DAILY_DATA_CACHE === 'undefined') return;
+  if (monthKey) delete DAILY_DATA_CACHE[monthKey];
+  else Object.keys(DAILY_DATA_CACHE).forEach((k) => delete DAILY_DATA_CACHE[k]);
 }
 
 function applyMonth(key, renderNow) {
@@ -66,14 +75,18 @@ function applyMonth(key, renderNow) {
 
   DATA = payload.monthly;
   WEEKLY_DATA = payload.weekly;
+  if (payload.daily && key === CURRENT_MONTH_KEY && typeof DAILY_DATA !== 'undefined') {
+    DAILY_DATA = payload.daily;
+  }
 
   const monthTitle = document.getElementById('monthTitle');
   if (monthTitle) monthTitle.textContent = payload.label;
 
   if (!renderNow) return true;
 
+  clearDailyCache(key);
   render(DATA);
-  renderWeeklyTable(WEEKLY_DATA);
+  if (typeof renderDailyHeatmap === 'function') renderDailyHeatmap(key);
   return true;
 }
 
@@ -161,18 +174,30 @@ function exportExcel() {
     const row = { Employee: emp.employee };
     (emp.weekly || []).forEach((cell, i) => {
       const c = cell.inc !== undefined ? cell : { inc: 0, task: 0 };
-      row[`W${i + 1} INC`] = c.inc;
-      row[`W${i + 1} Task`] = c.task;
       row[`W${i + 1} Total`] = c.inc + c.task;
     });
     const tot = emp.total || { inc: 0, task: 0 };
-    row['Total INC'] = tot.inc;
-    row['Total Task'] = tot.task;
     row['Grand Total'] = tot.inc + tot.task;
     return row;
   });
   if (weeklyRows.length) {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(weeklyRows), 'Weekly');
+  }
+
+  const daily = typeof getDailyData === 'function' ? getDailyData(activeMonthKey) : null;
+  if (daily) {
+    const dailyWide = daily.employees.map((emp) => {
+      const row = { Employee: emp };
+      let total = 0;
+      daily.days.forEach((d) => {
+        const v = daily.matrix[emp]?.[d.key] || 0;
+        row[`${d.key} (${d.wd})`] = d.weekend ? '' : v;
+        if (!d.weekend) total += v;
+      });
+      row.Total = total;
+      return row;
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dailyWide), 'Daily Matrix');
   }
 
   if (tickets.length) {
@@ -192,12 +217,10 @@ function exportExcel() {
 async function loadHistoryAndBoot() {
   snapshotInlineMonth();
 
-  // Render inline HTML data immediately so the page does not stay at zeros
-  // while dashboard_history.json is loading.
   if (typeof render === 'function' && INLINE_MONTH_DATA?.monthly?.length) {
     render(INLINE_MONTH_DATA.monthly);
-    if (typeof renderWeeklyTable === 'function' && INLINE_MONTH_DATA.weekly) {
-      renderWeeklyTable(INLINE_MONTH_DATA.weekly);
+    if (typeof renderDailyHeatmap === 'function') {
+      renderDailyHeatmap(activeMonthKey || CURRENT_MONTH_KEY);
     }
   }
 
@@ -213,7 +236,6 @@ async function loadHistoryAndBoot() {
 
   reconcileHistoryFromTickets();
 
-  // Inline HTML is always fresher for the current month (updated each automation run).
   if (CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
     const prev = DASHBOARD_HISTORY[CURRENT_MONTH_KEY] || {};
     DASHBOARD_HISTORY[CURRENT_MONTH_KEY] = {
@@ -221,6 +243,7 @@ async function loadHistoryAndBoot() {
       label: prev.label || formatMonthLabel(CURRENT_MONTH_KEY),
       monthly: INLINE_MONTH_DATA.monthly,
       weekly: INLINE_MONTH_DATA.weekly,
+      daily: INLINE_MONTH_DATA.daily || prev.daily,
     };
   }
 

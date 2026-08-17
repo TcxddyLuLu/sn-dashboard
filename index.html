@@ -296,6 +296,128 @@
   }
   .btn-export:hover { background: #0d9488; }
 
+  .preview-banner {
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .daily-alert {
+    display: none;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+  .heatmap-wrap { overflow: auto; max-height: 62vh; }
+  table.heatmap {
+    border-collapse: separate;
+    border-spacing: 2px;
+    font-size: 12px;
+    min-width: 100%;
+  }
+  table.heatmap th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #1e3a5f;
+    color: #fff;
+    padding: 6px 4px;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    min-width: 34px;
+  }
+  table.heatmap th.emp-col {
+    left: 0;
+    z-index: 3;
+    text-align: left;
+    min-width: 130px;
+    padding-left: 10px;
+  }
+  table.heatmap td.emp-col {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #fff;
+    font-weight: 500;
+    text-align: left;
+    padding: 6px 10px;
+    white-space: nowrap;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  table.heatmap td.cell { text-align: center; padding: 0; border-bottom: 1px solid #f8fafc; }
+  table.heatmap td.cell .cell-inner {
+    display: flex; align-items: center; justify-content: center;
+    min-width: 34px; height: 30px; border-radius: 4px; font-weight: 600;
+  }
+  table.heatmap td.cell.weekend .cell-inner {
+    background: #f8fafc !important; color: #cbd5e1; font-weight: 500;
+  }
+  table.heatmap td.cell.today .cell-inner {
+    outline: 2px solid #2563eb; outline-offset: -1px;
+  }
+  table.heatmap td.cell .cell-inner.blink-zero {
+    animation: blink-warn 2s ease-in-out infinite;
+    color: #ff1744 !important;
+  }
+  table.heatmap th.week-col {
+    background: #475569;
+    color: #fff;
+    min-width: 52px;
+    text-align: center;
+    vertical-align: middle;
+    border-left: 2px solid #94a3b8;
+    z-index: 2;
+  }
+  table.heatmap th.week-col span {
+    color: rgba(255, 255, 255, 0.88);
+  }
+  table.heatmap th.week-col.current-week {
+    background: #2563eb;
+    box-shadow: inset 0 -3px 0 #60a5fa;
+  }
+  table.heatmap td.week-col {
+    background: #f8fafc;
+    min-width: 44px;
+    text-align: center;
+    vertical-align: middle;
+    border-left: 2px solid #e2e8f0;
+  }
+  table.heatmap td.week-col.current-week {
+    background: #eff6ff;
+  }
+  table.heatmap td.week-col .week-cell-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 30px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #334155;
+  }
+  table.heatmap td.week-col .week-cell-inner.blink-zero {
+    animation: blink-warn 2s ease-in-out infinite;
+    color: #ff1744 !important;
+  }
+  .heatmap-legend {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    margin-top: 12px; font-size: 12px; color: #94a3b8;
+  }
+  .heatmap-legend i {
+    display: inline-block; width: 18px; height: 18px; border-radius: 4px;
+    vertical-align: middle; margin-right: 4px;
+  }
+
   @media print {
     body { padding: 0; background: #fff; }
     .data-section { display: none; }
@@ -320,7 +442,7 @@
     <h1>Monthly Completed Tickets</h1>
     <div class="meta">
       <div class="month" id="monthTitle"></div>
-      <div class="updated" id="updatedTime">Updated: 2026/8/17 11:00</div>
+      <div class="updated" id="updatedTime">Updated: 2026/8/17 11:10</div>
       <div style="font-size:11px;opacity:.6;margin-top:2px;">每日 9:00 / 11:00 / 13:00 / 15:00 / 17:00 更新</div>
     </div>
   </div>
@@ -357,14 +479,16 @@
     </div>
   </div>
 
-  <div class="weekly-section" id="weeklySection" style="display:none">
+  <div class="weekly-section" id="dailySection">
     <div class="weekly-header">
-      <h3>Weekly Breakdown</h3>
-      <span>Week = Monday - Sunday</span>
+      <h3>Daily Heatmap</h3>
+      <span>关单日期 CST · 每人每天总数 · 工作日 0 单淡红闪烁</span>
     </div>
-    <div class="weekly-wrap">
-      <table id="weeklyTable"></table>
+    <div class="daily-alert" id="complianceAlert"></div>
+    <div class="heatmap-wrap">
+      <table class="heatmap" id="heatmapTable"></table>
     </div>
+    <div class="heatmap-legend" id="heatmapLegend"></div>
   </div>
 
   <div class="data-section">
@@ -390,10 +514,10 @@ let CURRENT_MONTH_KEY = "2026-08";
    ================================================================ */
 let DATA = [
   { employee: 'Howie Tan', incidents: 10, tasks: 75 },
+  { employee: 'Hao Zhu', incidents: 63, tasks: 5 },
   { employee: 'Junfeng Deng', incidents: 13, tasks: 54 },
-  { employee: 'Hao Zhu', incidents: 61, tasks: 5 },
+  { employee: 'Karen Ou Yang', incidents: 31, tasks: 33 },
   { employee: 'liang Xiang', incidents: 64, tasks: 0 },
-  { employee: 'Karen Ou Yang', incidents: 31, tasks: 31 },
   { employee: 'He Feng', incidents: 9, tasks: 50 },
   { employee: 'Ping Wang', incidents: 47, tasks: 10 },
   { employee: 'Kenneth Chung', incidents: 15, tasks: 38 },
@@ -670,7 +794,158 @@ function loadFromPaste() {
 /* ================================================================
    WEEKLY_DATA — weekly breakdown, injected by run_dashboard.py
    ================================================================ */
-let WEEKLY_DATA = {"weeks": ["7/27-8/2", "8/3-9", "8/10-16", "8/17-23", "8/24-30", "8/31-9/6"], "currentWeek": 3, "data": [{"employee": "Howie Tan", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 30}, {"inc": 5, "task": 44}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 75}}, {"employee": "Junfeng Deng", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 26}, {"inc": 7, "task": 28}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 13, "task": 54}}, {"employee": "Hao Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 29, "task": 1}, {"inc": 32, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 61, "task": 5}}, {"employee": "liang Xiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 43, "task": 0}, {"inc": 21, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 64, "task": 0}}, {"employee": "Karen Ou Yang", "weekly": [{"inc": 0, "task": 0}, {"inc": 13, "task": 14}, {"inc": 18, "task": 17}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 31, "task": 33}}, {"employee": "He Feng", "weekly": [{"inc": 0, "task": 0}, {"inc": 9, "task": 41}, {"inc": 0, "task": 0}, {"inc": 0, "task": 9}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 50}}, {"employee": "Ping Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 32, "task": 7}, {"inc": 15, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 47, "task": 10}}, {"employee": "Kenneth Chung", "weekly": [{"inc": 0, "task": 0}, {"inc": 10, "task": 35}, {"inc": 5, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 15, "task": 38}}, {"employee": "Yang Ding", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 13}, {"inc": 0, "task": 37}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 50}}, {"employee": "Hooxi Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 11, "task": 5}, {"inc": 14, "task": 20}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 25, "task": 26}}, {"employee": "Thomas Tao", "weekly": [{"inc": 0, "task": 0}, {"inc": 8, "task": 9}, {"inc": 23, "task": 6}, {"inc": 4, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 35, "task": 16}}, {"employee": "Freddie Qiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 17, "task": 7}, {"inc": 17, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 34, "task": 13}}, {"employee": "Rory Ju", "weekly": [{"inc": 0, "task": 0}, {"inc": 15, "task": 7}, {"inc": 9, "task": 10}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 24, "task": 17}}, {"employee": "Xinyu Zhang", "weekly": [{"inc": 3, "task": 0}, {"inc": 12, "task": 3}, {"inc": 14, "task": 8}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 29, "task": 11}}, {"employee": "Dom Chang", "weekly": [{"inc": 4, "task": 0}, {"inc": 5, "task": 4}, {"inc": 23, "task": 0}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 33, "task": 6}}, {"employee": "Charles Lee", "weekly": [{"inc": 0, "task": 0}, {"inc": 20, "task": 1}, {"inc": 9, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 29, "task": 4}}, {"employee": "Jacky Chan", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 3}, {"inc": 2, "task": 24}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 6, "task": 27}}, {"employee": "Harry Yip", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 10}, {"inc": 8, "task": 12}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 23}}, {"employee": "Vance Chen", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 13}, {"inc": 5, "task": 10}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 23}}, {"employee": "Alex Xu", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 6}, {"inc": 6, "task": 12}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 12, "task": 19}}, {"employee": "Andy Lan", "weekly": [{"inc": 0, "task": 0}, {"inc": 12, "task": 14}, {"inc": 0, "task": 0}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 12, "task": 15}}, {"employee": "Lee Li", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 18}, {"inc": 1, "task": 5}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 23}}, {"employee": "Roy Wei", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 5}, {"inc": 6, "task": 12}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 6, "task": 18}}, {"employee": "Allen Guo", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 9}, {"inc": 2, "task": 5}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 14}}, {"employee": "Bob Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 3, "task": 7}, {"inc": 2, "task": 2}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 10}}, {"employee": "Aaron Jiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 9}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 10}}, {"employee": "Yibo Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 0}, {"inc": 8, "task": 1}, {"inc": 2, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 11, "task": 2}}, {"employee": "Luby Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 0}, {"inc": 1, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 6, "task": 0}}, {"employee": "Zhi Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 6}}, {"employee": "Guichong You", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 4}}, {"employee": "Yin Ye", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 3}}, {"employee": "Yong Zhao", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 2}}, {"employee": "Freddie Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}]};
+let WEEKLY_DATA = {"weeks": ["7/27-8/2", "8/3-9", "8/10-16", "8/17-23", "8/24-30", "8/31-9/6"], "currentWeek": 3, "data": [{"employee": "Howie Tan", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 30}, {"inc": 5, "task": 44}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 75}}, {"employee": "Hao Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 29, "task": 1}, {"inc": 32, "task": 4}, {"inc": 2, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 63, "task": 5}}, {"employee": "Junfeng Deng", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 26}, {"inc": 7, "task": 28}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 13, "task": 54}}, {"employee": "Karen Ou Yang", "weekly": [{"inc": 0, "task": 0}, {"inc": 13, "task": 14}, {"inc": 18, "task": 17}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 31, "task": 33}}, {"employee": "liang Xiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 43, "task": 0}, {"inc": 21, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 64, "task": 0}}, {"employee": "He Feng", "weekly": [{"inc": 0, "task": 0}, {"inc": 9, "task": 41}, {"inc": 0, "task": 0}, {"inc": 0, "task": 9}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 50}}, {"employee": "Ping Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 32, "task": 7}, {"inc": 15, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 47, "task": 10}}, {"employee": "Kenneth Chung", "weekly": [{"inc": 0, "task": 0}, {"inc": 10, "task": 35}, {"inc": 5, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 15, "task": 38}}, {"employee": "Yang Ding", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 13}, {"inc": 0, "task": 37}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 50}}, {"employee": "Hooxi Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 11, "task": 5}, {"inc": 14, "task": 20}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 25, "task": 26}}, {"employee": "Thomas Tao", "weekly": [{"inc": 0, "task": 0}, {"inc": 8, "task": 9}, {"inc": 23, "task": 6}, {"inc": 4, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 35, "task": 16}}, {"employee": "Freddie Qiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 17, "task": 7}, {"inc": 17, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 34, "task": 13}}, {"employee": "Rory Ju", "weekly": [{"inc": 0, "task": 0}, {"inc": 15, "task": 7}, {"inc": 9, "task": 10}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 24, "task": 17}}, {"employee": "Xinyu Zhang", "weekly": [{"inc": 3, "task": 0}, {"inc": 12, "task": 3}, {"inc": 14, "task": 8}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 29, "task": 11}}, {"employee": "Dom Chang", "weekly": [{"inc": 4, "task": 0}, {"inc": 5, "task": 4}, {"inc": 23, "task": 0}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 33, "task": 6}}, {"employee": "Charles Lee", "weekly": [{"inc": 0, "task": 0}, {"inc": 20, "task": 1}, {"inc": 9, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 29, "task": 4}}, {"employee": "Jacky Chan", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 3}, {"inc": 2, "task": 24}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 6, "task": 27}}, {"employee": "Harry Yip", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 10}, {"inc": 8, "task": 12}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 23}}, {"employee": "Vance Chen", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 13}, {"inc": 5, "task": 10}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 23}}, {"employee": "Alex Xu", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 6}, {"inc": 6, "task": 12}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 12, "task": 19}}, {"employee": "Andy Lan", "weekly": [{"inc": 0, "task": 0}, {"inc": 12, "task": 14}, {"inc": 0, "task": 0}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 12, "task": 15}}, {"employee": "Lee Li", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 18}, {"inc": 1, "task": 5}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 23}}, {"employee": "Roy Wei", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 5}, {"inc": 6, "task": 12}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 6, "task": 18}}, {"employee": "Allen Guo", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 9}, {"inc": 2, "task": 5}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 14}}, {"employee": "Bob Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 3, "task": 7}, {"inc": 2, "task": 2}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 10}}, {"employee": "Aaron Jiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 9}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 10}}, {"employee": "Yibo Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 0}, {"inc": 8, "task": 1}, {"inc": 2, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 11, "task": 2}}, {"employee": "Luby Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 0}, {"inc": 1, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 6, "task": 0}}, {"employee": "Zhi Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 6}}, {"employee": "Guichong You", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 4}}, {"employee": "Yin Ye", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 3}}, {"employee": "Yong Zhao", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 2}}, {"employee": "Freddie Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}]};
+
+/* ================================================================
+   DAILY_DATA — daily heatmap, injected by run_dashboard.py
+   ================================================================ */
+let DAILY_DATA = {"year": 2026, "month": 8, "matrix": {"Dom Chang": {"2026-08-01": 2, "2026-08-02": 2, "2026-08-03": 7, "2026-08-08": 2, "2026-08-10": 8, "2026-08-11": 12, "2026-08-16": 3, "2026-08-17": 3}, "Xinyu Zhang": {"2026-08-02": 3, "2026-08-03": 9, "2026-08-04": 4, "2026-08-05": 2, "2026-08-10": 10, "2026-08-11": 7, "2026-08-12": 2, "2026-08-13": 3}, "Allen Guo": {"2026-08-03": 1, "2026-08-04": 2, "2026-08-05": 3, "2026-08-06": 3, "2026-08-10": 2, "2026-08-11": 1, "2026-08-13": 2, "2026-08-14": 2}, "Andy Lan": {"2026-08-03": 1, "2026-08-04": 5, "2026-08-05": 15, "2026-08-07": 5, "2026-08-17": 1}, "Bob Liu": {"2026-08-03": 4, "2026-08-07": 6, "2026-08-10": 1, "2026-08-11": 1, "2026-08-13": 2, "2026-08-17": 1}, "Charles Lee": {"2026-08-03": 1, "2026-08-06": 1, "2026-08-07": 19, "2026-08-12": 1, "2026-08-13": 2, "2026-08-14": 9}, "He Feng": {"2026-08-03": 11, "2026-08-04": 18, "2026-08-05": 9, "2026-08-06": 9, "2026-08-07": 3, "2026-08-17": 9}, "Howie Tan": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 1, "2026-08-07": 32, "2026-08-10": 1, "2026-08-11": 16, "2026-08-12": 12, "2026-08-13": 9, "2026-08-14": 11, "2026-08-17": 1}, "Harry Yip": {"2026-08-03": 1, "2026-08-05": 5, "2026-08-06": 1, "2026-08-07": 4, "2026-08-10": 4, "2026-08-11": 3, "2026-08-12": 6, "2026-08-13": 5, "2026-08-14": 2, "2026-08-17": 1}, "Hooxi Zhu": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 3, "2026-08-06": 1, "2026-08-07": 10, "2026-08-10": 5, "2026-08-11": 9, "2026-08-12": 8, "2026-08-13": 8, "2026-08-14": 4, "2026-08-17": 1}, "Hao Zhu": {"2026-08-03": 6, "2026-08-04": 4, "2026-08-05": 5, "2026-08-06": 7, "2026-08-07": 8, "2026-08-10": 8, "2026-08-11": 8, "2026-08-12": 9, "2026-08-13": 5, "2026-08-14": 6, "2026-08-17": 2}, "Kenneth Chung": {"2026-08-03": 1, "2026-08-04": 11, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 31, "2026-08-10": 2, "2026-08-11": 5, "2026-08-13": 1}, "Lee Li": {"2026-08-03": 6, "2026-08-04": 2, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 8, "2026-08-12": 5, "2026-08-13": 1}, "Luby Lu": {"2026-08-03": 2, "2026-08-04": 3, "2026-08-12": 1}, "liang Xiang": {"2026-08-03": 14, "2026-08-04": 11, "2026-08-05": 18, "2026-08-11": 4, "2026-08-12": 8, "2026-08-13": 9}, "Thomas Tao": {"2026-08-03": 3, "2026-08-04": 6, "2026-08-06": 1, "2026-08-07": 7, "2026-08-10": 9, "2026-08-11": 5, "2026-08-12": 5, "2026-08-13": 5, "2026-08-14": 5, "2026-08-17": 5}, "Vance Chen": {"2026-08-03": 4, "2026-08-04": 3, "2026-08-05": 4, "2026-08-06": 4, "2026-08-07": 2, "2026-08-10": 3, "2026-08-11": 4, "2026-08-12": 3, "2026-08-13": 5}, "Yang Ding": {"2026-08-03": 4, "2026-08-04": 2, "2026-08-05": 4, "2026-08-07": 5, "2026-08-11": 13, "2026-08-12": 16, "2026-08-14": 8}, "Roy Wei": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 1, "2026-08-10": 7, "2026-08-11": 6, "2026-08-12": 1, "2026-08-13": 3, "2026-08-14": 1, "2026-08-17": 1}, "Yin Ye": {"2026-08-03": 1, "2026-08-05": 2, "2026-08-17": 1}, "Zhi Lu": {"2026-08-03": 2, "2026-08-05": 2, "2026-08-17": 2}, "Aaron Jiang": {"2026-08-04": 1, "2026-08-05": 6, "2026-08-07": 4, "2026-08-12": 2}, "Jacky Chan": {"2026-08-04": 4, "2026-08-05": 2, "2026-08-07": 1, "2026-08-10": 3, "2026-08-11": 3, "2026-08-12": 3, "2026-08-13": 4, "2026-08-14": 13}, "Freddie Qiang": {"2026-08-04": 7, "2026-08-05": 5, "2026-08-06": 7, "2026-08-07": 5, "2026-08-12": 11, "2026-08-13": 7, "2026-08-14": 3, "2026-08-15": 2}, "Rory Ju": {"2026-08-04": 7, "2026-08-05": 12, "2026-08-06": 1, "2026-08-07": 2, "2026-08-11": 8, "2026-08-12": 6, "2026-08-13": 5}, "Alex Xu": {"2026-08-05": 12, "2026-08-11": 9, "2026-08-12": 6, "2026-08-13": 3, "2026-08-17": 1}, "Junfeng Deng": {"2026-08-05": 21, "2026-08-06": 1, "2026-08-07": 10, "2026-08-10": 11, "2026-08-11": 1, "2026-08-12": 6, "2026-08-13": 1, "2026-08-14": 16}, "Yibo Wang": {"2026-08-05": 1, "2026-08-11": 2, "2026-08-12": 1, "2026-08-13": 4, "2026-08-14": 2, "2026-08-17": 3}, "Ping Wang": {"2026-08-06": 8, "2026-08-07": 30, "2026-08-09": 1, "2026-08-14": 15, "2026-08-15": 2, "2026-08-16": 1}, "Karen Ou Yang": {"2026-08-07": 27, "2026-08-10": 6, "2026-08-11": 1, "2026-08-12": 8, "2026-08-13": 9, "2026-08-14": 11, "2026-08-17": 2}, "Guichong You": {"2026-08-10": 2, "2026-08-12": 2}, "Yong Zhao": {"2026-08-12": 2}, "Freddie Liu": {}}, "maxVal": 32};
+
+/* ================================================================
+   DAILY HEATMAP (CST)
+   ================================================================ */
+const DAILY_DATA_CACHE = {};
+const HEATMAP_TZ = 'Asia/Shanghai';
+const HEATMAP_WD = ['日', '一', '二', '三', '四', '五', '六'];
+
+function parseMonthKey(key) {
+  const [y, m] = key.split('-').map(Number);
+  return { y, m };
+}
+
+function daysInMonth(y, m) {
+  return new Date(y, m, 0).getDate();
+}
+
+function dailyDateKey(y, m, d) {
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function isHeatmapWeekend(y, m, d) {
+  const wd = new Date(y, m - 1, d).getDay();
+  return wd === 0 || wd === 6;
+}
+
+function heatmapWeekdayLabel(y, m, d) {
+  return HEATMAP_WD[new Date(y, m - 1, d).getDay()];
+}
+
+function cstTodayParts() {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: HEATMAP_TZ,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date())
+      .filter((x) => x.type !== 'literal')
+      .map((x) => [x.type, x.value])
+  );
+  return { y: +parts.year, m: +parts.month, d: +parts.day };
+}
+
+function getEmployeesForDaily(monthKey) {
+  if (monthKey === activeMonthKey && DATA?.length) {
+    return DATA.map((r) => r.employee);
+  }
+  const p = DASHBOARD_HISTORY?.[monthKey];
+  if (p?.monthly?.length) return p.monthly.map((r) => r.employee);
+  return (DATA || []).map((r) => r.employee);
+}
+
+function dailyFromTickets(monthKey) {
+  const tickets = DASHBOARD_TICKETS[monthKey] || DASHBOARD_HISTORY?.[monthKey]?.tickets || [];
+  const matrix = {};
+  tickets.forEach((t) => {
+    if (!t.closed) return;
+    if (!matrix[t.employee]) matrix[t.employee] = {};
+    matrix[t.employee][t.closed] = (matrix[t.employee][t.closed] || 0) + 1;
+  });
+  return matrix;
+}
+
+function getRawDailyMatrix(monthKey) {
+  if (monthKey === CURRENT_MONTH_KEY && DAILY_DATA?.matrix && Object.keys(DAILY_DATA.matrix).length) {
+    return DAILY_DATA.matrix;
+  }
+  const hist = DASHBOARD_HISTORY?.[monthKey]?.daily;
+  if (hist?.matrix && Object.keys(hist.matrix).length) {
+    return hist.matrix;
+  }
+  return dailyFromTickets(monthKey);
+}
+
+function buildDailyView(monthKey, matrix) {
+  const { y, m } = parseMonthKey(monthKey);
+  const employees = getEmployeesForDaily(monthKey);
+  const today = cstTodayParts();
+  const isCurrentMonth = y === today.y && m === today.m;
+  const days = [];
+  let maxVal = 1;
+
+  for (let d = 1; d <= daysInMonth(y, m); d++) {
+    const weekend = isHeatmapWeekend(y, m, d);
+    days.push({
+      key: dailyDateKey(y, m, d),
+      day: d,
+      weekend,
+      wd: heatmapWeekdayLabel(y, m, d),
+      future: isCurrentMonth && d > today.d,
+    });
+  }
+
+  employees.forEach((emp) => {
+    days.forEach(({ key }) => {
+      const v = matrix[emp]?.[key] || 0;
+      if (v > maxVal) maxVal = v;
+    });
+  });
+
+  const sorted = [...employees].sort((a, b) => {
+    const sumA = days.reduce((s, d) => s + (matrix[a]?.[d.key] || 0), 0);
+    const sumB = days.reduce((s, d) => s + (matrix[b]?.[d.key] || 0), 0);
+    return sumB - sumA || a.localeCompare(b);
+  });
+
+  return { year: y, month: m, days, matrix, maxVal, isCurrentMonth, employees: sorted };
+}
+
+function getDailyData(monthKey) {
+  if (!monthKey) return null;
+  if (DAILY_DATA_CACHE[monthKey]) return DAILY_DATA_CACHE[monthKey];
+  const matrix = getRawDailyMatrix(monthKey);
+  const employees = getEmployeesForDaily(monthKey);
+  if (!employees.length) return null;
+  const data = buildDailyView(monthKey, matrix);
+  DAILY_DATA_CACHE[monthKey] = data;
+  return data;
+}
+
+const HEATMAP_BLUE_MAX = 15;
+const HEATMAP_BLUE_SCALE = (() => {
+  const start = [219, 234, 254];
+  const end = [30, 58, 95];
+  const scale = [];
+  for (let i = 0; i < HEATMAP_BLUE_MAX; i++) {
+    const t = i / (HEATMAP_BLUE_MAX - 1);
+    const r = Math.round(start[0] + t * (end[0] - start[0]));
+    const g = Math.round(start[1] + t * (end[1] - start[1]));
+    const b = Math.round(start[2] + t * (end[2] - start[2]));
+    scale.push({
+      bg: `rgb(${r},${g},${b})`,
+      text: i >= 8 ? '#fff' : '#1e3a5f',
+      level: i + 1,
+    });
+  }
+  return scale;
+})();
+
+function dailyHeatColor(v) {
+  if (v <= 0) return null;
+  const level = Math.min(Math.max(Math.round(v), 1), HEATMAP_BLUE_MAX);
+  return HEATMAP_BLUE_SCALE[level - 1];
+}
 
 function normWeekCell(v) {
   if (v && typeof v === 'object') {
@@ -680,119 +955,146 @@ function normWeekCell(v) {
   return { inc: 0, task: n };
 }
 
-function weekCellTotal(cell) {
-  const c = normWeekCell(cell);
-  return c.inc + c.task;
+function getWeeklyRow(empName) {
+  return (WEEKLY_DATA?.data || []).find((d) => d.employee === empName);
 }
 
-function empTotal(emp) {
-  if (emp.total && typeof emp.total === 'object') {
-    return (emp.total.inc || 0) + (emp.total.task || 0);
-  }
-  return +emp.total || 0;
-}
-
-function fmtIncTask(inc, task, zeroRed) {
-  const incCls = (inc === 0 && zeroRed) ? 'wk-inc zero' : 'wk-inc';
-  const taskCls = (task === 0 && zeroRed) ? 'wk-task zero' : 'wk-task';
-  return '<span class="' + incCls + '">' + inc + '</span>' +
-    '<span class="wk-plus"> + </span>' +
-    '<span class="' + taskCls + '">' + task + '</span>';
-}
-
-function renderWeeklyTable(wd) {
-  if (!wd || !wd.weeks || wd.weeks.length === 0) return;
-
-  const section = document.getElementById('weeklySection');
-  const table = document.getElementById('weeklyTable');
-  section.style.display = '';
-
-  let maxVal = 0;
-  wd.data.forEach(d => d.weekly.forEach(v => {
-    const t = weekCellTotal(v);
-    if (t > maxVal) maxVal = t;
-  }));
-
-  const sorted = [...wd.data].sort((a, b) => empTotal(b) - empTotal(a) || a.employee.localeCompare(b.employee));
-
-  let html = '<thead><tr><th>Employee</th>';
-  wd.weeks.forEach((w, i) => {
-    const cls = (i === wd.currentWeek) ? ' class="current-week"' : '';
-    html += `<th${cls}>W${i + 1}<br><span style="font-weight:400;font-size:11px;opacity:.8">${w}</span></th>`;
+function weekColumnsForMonth(y, m) {
+  const weeks = WEEKLY_DATA?.weeks || [];
+  const cols = [];
+  weeks.forEach((label, wi) => {
+    const endPart = label.split('-')[1];
+    let endM;
+    let endD;
+    if (endPart.includes('/')) {
+      [endM, endD] = endPart.split('/').map(Number);
+    } else {
+      endM = Number(label.split('/')[0]);
+      endD = Number(endPart);
+    }
+    if (endM === m) {
+      cols.push({
+        afterDay: endD,
+        weekIdx: wi,
+        label,
+        header: `W${wi + 1}`,
+        isCurrent: wi === WEEKLY_DATA?.currentWeek,
+      });
+    }
   });
-  html += '<th>Total</th></tr></thead>';
+  return cols.sort((a, b) => a.afterDay - b.afterDay);
+}
 
-  html += '<tbody>';
-  sorted.forEach((emp) => {
-    const isZeroTotal = empTotal(emp) === 0;
-    const isExempt = emp.employee === 'Luby Lu';
-    const rowCls = (isZeroTotal && !isExempt) ? ' class="warn-zero"' : '';
-    html += `<tr${rowCls}>`;
-    html += `<td>${emp.employee}</td>`;
-    emp.weekly.forEach((v, ci) => {
-      const c = normWeekCell(v);
-      const total = c.inc + c.task;
-      let style = '';
-      let cls = ' class="wk-cell';
-      if (total > 0) {
-        const intensity = Math.min(total / Math.max(maxVal, 1), 1);
-        const alpha = (0.12 + intensity * 0.38).toFixed(2);
-        style = ` style="background:rgba(34,197,94,${alpha})"`;
-      } else if (ci <= wd.currentWeek && !isExempt) {
-        if (ci === wd.currentWeek && !isZeroTotal) {
-          cls += ' blink-zero';
-        }
+function renderWeekColumnHeader(col) {
+  const cls = ['week-col'];
+  if (col.isCurrent) cls.push('current-week');
+  return `<th class="${cls.join(' ')}" title="${col.label}">${col.header}<br><span style="font-weight:400;font-size:10px">${col.label}</span></th>`;
+}
+
+function renderWeekColumnCell(emp, col) {
+  const row = getWeeklyRow(emp);
+  const cell = row ? normWeekCell(row.weekly[col.weekIdx]) : { inc: 0, task: 0 };
+  const total = cell.inc + cell.task;
+  const zeroRed = total === 0 && col.weekIdx <= (WEEKLY_DATA?.currentWeek ?? 99);
+  const cls = ['week-col'];
+  if (col.isCurrent) cls.push('current-week');
+  let innerCls = 'week-cell-inner';
+  if (total === 0 && zeroRed) innerCls += ' blink-zero';
+  return `<td class="${cls.join(' ')}"><div class="${innerCls}" title="Inc ${cell.inc} + Task ${cell.task}">${total}</div></td>`;
+}
+
+function renderDailyHeatmap(monthKey) {
+  const key = monthKey || (typeof activeMonthKey !== 'undefined' ? activeMonthKey : CURRENT_MONTH_KEY);
+  const data = getDailyData(key);
+  if (!data) return;
+
+  const table = document.getElementById('heatmapTable');
+  const legend = document.getElementById('heatmapLegend');
+  const alert = document.getElementById('complianceAlert');
+  const today = cstTodayParts();
+  const todayKey = dailyDateKey(today.y, today.m, today.d);
+
+  let todayMissing = [];
+  if (data.isCurrentMonth) {
+    const todayCol = data.days.find((d) => d.key === todayKey);
+    if (todayCol && !todayCol.weekend && !todayCol.future) {
+      data.employees.forEach((emp) => {
+        if ((data.matrix[emp][todayKey] || 0) < 1) todayMissing.push(emp);
+      });
+    }
+  }
+
+  if (todayMissing.length) {
+    alert.style.display = 'block';
+    alert.textContent = `今日记得补单人员：${todayMissing.join('、')}`;
+  } else {
+    alert.style.display = 'none';
+  }
+
+  const weekCols = weekColumnsForMonth(data.year, data.month);
+  let weekColPtr = 0;
+
+  let html = '<thead><tr><th class="emp-col">Employee</th>';
+  data.days.forEach((d) => {
+    const style = d.weekend ? ' style="opacity:.65"' : '';
+    html += `<th${style} title="${d.key}">${d.day}<br><span style="font-weight:400;font-size:10px">${d.wd}</span></th>`;
+    if (weekColPtr < weekCols.length && d.day === weekCols[weekColPtr].afterDay) {
+      html += renderWeekColumnHeader(weekCols[weekColPtr]);
+      weekColPtr++;
+    }
+  });
+  html += '<th>Σ</th></tr></thead><tbody>';
+
+  data.employees.forEach((emp) => {
+    let rowTotal = 0;
+    weekColPtr = 0;
+    html += `<tr><td class="emp-col">${emp}</td>`;
+    data.days.forEach((d) => {
+      const v = data.matrix[emp][d.key] || 0;
+      rowTotal += v;
+      const cls = ['cell'];
+      if (d.weekend) cls.push('weekend');
+      if (d.key === todayKey && data.isCurrentMonth) cls.push('today');
+
+      let innerCls = 'cell-inner';
+      let innerStyle = '';
+      let text = d.weekend ? '·' : (d.future ? '' : String(v));
+
+      if (!d.weekend && !d.future && v === 0) innerCls += ' blink-zero';
+      else if (v > 0) {
+        const c = dailyHeatColor(v);
+        innerStyle = ` style="background:${c.bg};color:${c.text}"`;
+      } else if (d.future) {
+        innerStyle = ' style="background:#f8fafc;color:#e2e8f0"';
       }
-      cls += '"';
-      const zeroRed = total === 0 && ci <= wd.currentWeek && !isExempt;
-      html += `<td${style}${cls}>${fmtIncTask(c.inc, c.task, zeroRed)}</td>`;
+
+      html += `<td class="${cls.join(' ')}"><div class="${innerCls}"${innerStyle} title="${emp} · ${d.key} · ${v}">${text}</div></td>`;
+
+      if (weekColPtr < weekCols.length && d.day === weekCols[weekColPtr].afterDay) {
+        html += renderWeekColumnCell(emp, weekCols[weekColPtr]);
+        weekColPtr++;
+      }
     });
-    const tot = normWeekCell(emp.total);
-    const totalCls = (isZeroTotal && !isExempt) ? ' class="wk-cell zero"' : ' class="wk-cell"';
-    html += `<td${totalCls}>${fmtIncTask(tot.inc, tot.task, isZeroTotal && !isExempt)}</td>`;
-    html += '</tr>';
+    html += `<td style="text-align:center;font-weight:700">${rowTotal}</td></tr>`;
   });
   html += '</tbody>';
 
-  const weekTotals = wd.weeks.map((_, i) => {
-    let inc = 0, task = 0;
-    sorted.forEach(d => {
-      const c = normWeekCell(d.weekly[i]);
-      inc += c.inc;
-      task += c.task;
-    });
-    return { inc, task };
-  });
-  const grandInc = weekTotals.reduce((s, v) => s + v.inc, 0);
-  const grandTask = weekTotals.reduce((s, v) => s + v.task, 0);
-
-  html += '<tfoot><tr><td>TOTAL</td>';
-  weekTotals.forEach(v => {
-    html += `<td class="wk-cell">${fmtIncTask(v.inc, v.task, false)}</td>`;
-  });
-  html += `<td class="wk-cell">${fmtIncTask(grandInc, grandTask, false)}</td></tr>`;
-
-  html += '<tr class="weekly-mvp-row"><td>\u{1F3C6} Weekly MVP</td>';
-  wd.weeks.forEach((_, wi) => {
-    if (wi > wd.currentWeek) {
-      html += '<td>-</td>';
-      return;
-    }
-    let best = '', bestVal = 0, bestCell = { inc: 0, task: 0 };
-    sorted.forEach(d => {
-      const c = normWeekCell(d.weekly[wi]);
-      const t = c.inc + c.task;
-      if (t > bestVal) { bestVal = t; best = d.employee; bestCell = c; }
-    });
-    if (bestVal === 0) {
-      html += '<td>-</td>';
-    } else {
-      html += `<td class="mvp-cell">${best}<br><span class="mvp-val">${fmtIncTask(bestCell.inc, bestCell.task, false)}</span></td>`;
-    }
-  });
-  html += '<td></td></tr></tfoot>';
-
   table.innerHTML = html;
+  const legendScale = [1, 5, 10, 15].map((n) => {
+    const c = dailyHeatColor(n);
+    return `<span><i style="background:${c.bg};border:1px solid #e2e8f0"></i> ${n}</span>`;
+  }).join('');
+  legend.innerHTML = [
+    '<span><i style="background:#fef2f2;border:1px solid #fecaca"></i> 0（工作日，闪烁）</span>',
+    `<span>1→15 蓝由浅至深：</span>${legendScale}<span>15+ 同 15</span>`,
+    '<span><i style="background:#f8fafc;border:1px solid #e2e8f0"></i> 周末 / 未来</span>',
+    '<span><i style="background:#475569"></i> 周汇总列（Inc+Task 总数）</span>',
+    `<span>本月最高单日: ${data.maxVal}</span>`,
+  ].join('');
+}
+
+function renderWeeklyTable() {
+  renderDailyHeatmap(typeof activeMonthKey !== 'undefined' ? activeMonthKey : CURRENT_MONTH_KEY);
 }
 
 /* ---------- initial render ---------- */
@@ -874,7 +1176,7 @@ function bootDashboard() {
     const mt = document.getElementById('monthTitle');
     if (mt && payload && payload.label) mt.textContent = payload.label;
     render(DATA);
-    renderWeeklyTable(WEEKLY_DATA);
+    renderDailyHeatmap(activeMonthKey);
     showStatus('');
   } catch (err) {
     console.error(err);
@@ -890,7 +1192,7 @@ function retryChart() {
 }
 </script>
 <script src="xlsx.full.min.js"></script>
-<script src="chart.min.js" defer onload="retryChart()" onerror="showStatus('Chart library could not load, but summary and weekly data are still shown.')"></script>
+<script src="chart.min.js" defer onload="retryChart()" onerror="showStatus('Chart library could not load, but summary and heatmap data are still shown.')"></script>
 <script src="dashboard-features.js" defer></script>
 </body>
 </html>
