@@ -349,7 +349,9 @@
     min-width: 34px; height: 30px; border-radius: 4px; font-weight: 600;
   }
   table.heatmap td.cell.weekend .cell-inner {
-    background: #f8fafc !important; color: #cbd5e1; font-weight: 500;
+    background: transparent !important;
+    color: #cbd5e1;
+    font-weight: 500;
   }
   table.heatmap td.cell.today .cell-inner {
     outline: 2px solid #2563eb; outline-offset: -1px;
@@ -1035,13 +1037,15 @@ function renderDailyHeatmap(monthKey) {
   const weekCols = weekColumnsForMonth(data.year, data.month);
   let weekColPtr = 0;
 
-  let monthMax = 0;
-  data.employees.forEach((emp) => {
-    data.days.forEach((d) => {
-      if (d.weekend || d.future) return;
+  const dayMax = {};
+  data.days.forEach((d) => {
+    if (d.future) return;
+    let max = 0;
+    data.employees.forEach((emp) => {
       const v = data.matrix[emp][d.key] || 0;
-      if (v > monthMax) monthMax = v;
+      if (v > max) max = v;
     });
+    dayMax[d.key] = max;
   });
 
   let html = '<thead><tr><th class="emp-col">Employee</th>';
@@ -1068,15 +1072,30 @@ function renderDailyHeatmap(monthKey) {
 
       let innerCls = 'cell-inner';
       let innerStyle = '';
-      let text = d.weekend ? '·' : (d.future ? '' : String(v));
+      let text;
+      const maxForDay = dayMax[d.key] || 0;
+      const isDailyMax = v > 0 && maxForDay > 0 && v === maxForDay;
 
-      if (!d.weekend && !d.future && v === 0) innerCls += ' blink-zero';
-      else if (v > 0 && monthMax > 0 && v === monthMax) innerCls += ' blink-gold';
-      else if (v > 0) {
+      if (d.weekend) {
+        text = v > 0 ? String(v) : '·';
+        if (isDailyMax) innerCls += ' blink-gold';
+        else if (v > 0) {
+          const c = dailyHeatColor(v);
+          innerStyle = ` style="background:${c.bg} !important;color:${c.text} !important"`;
+        }
+      } else if (d.future) {
+        text = '';
+        innerStyle = ' style="background:#f8fafc;color:#e2e8f0"';
+      } else if (v === 0) {
+        text = '0';
+        innerCls += ' blink-zero';
+      } else if (isDailyMax) {
+        text = String(v);
+        innerCls += ' blink-gold';
+      } else {
+        text = String(v);
         const c = dailyHeatColor(v);
         innerStyle = ` style="background:${c.bg} !important;color:${c.text} !important"`;
-      } else if (d.future) {
-        innerStyle = ' style="background:#f8fafc;color:#e2e8f0"';
       }
 
       html += `<td class="${cls.join(' ')}"><div class="${innerCls}"${innerStyle} title="${emp} · ${d.key} · ${v}">${text}</div></td>`;
@@ -1098,8 +1117,8 @@ function renderDailyHeatmap(monthKey) {
   legend.innerHTML = [
     '<span><i style="background:#fef2f2;border:1px solid #fecaca"></i> 0（工作日，闪烁）</span>',
     `<span>1→15 蓝由浅至深：</span>${legendScale}<span>15+ 同 15</span>`,
-    '<span><i style="background:#f8fafc;border:1px solid #e2e8f0"></i> 周末 / 未来</span>',
-    '<span><i style="background:#fde68a;border:1px solid #f59e0b"></i> 本月最高单日（浅金闪烁）</span>',
+    '<span><i style="background:#f8fafc;border:1px solid #e2e8f0"></i> 周末无数据 · / 未来空白</span>',
+    '<span><i style="background:#fde68a;border:1px solid #f59e0b"></i> 当天最高单量（浅金闪烁）</span>',
     '<span><i style="background:#475569"></i> 周汇总列（Inc+Task 总数）</span>',
   ].join('');
 }
