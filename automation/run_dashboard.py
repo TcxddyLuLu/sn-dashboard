@@ -903,8 +903,6 @@ def main():
 
     seal_previous_month_if_needed()
 
-    validate_ticket_sql(now.year, now.month)
-
     try:
         monthly, weekly = query_summary()
     except Exception as e:
