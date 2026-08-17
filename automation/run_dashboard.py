@@ -527,13 +527,14 @@ def fetch_tickets_for_month(year: int, month: int):
     from databricks import sql as dbsql
 
     ensure_databricks_http_path(SCRIPT_DIR / ".env")
+    sql = validate_ticket_sql(year, month)
     conn = dbsql.connect(
         server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
         http_path=os.environ["DATABRICKS_HTTP_PATH"],
         access_token=os.environ["DATABRICKS_TOKEN"],
     )
     cursor = conn.cursor()
-    cursor.execute(build_ticket_details_sql(year, month))
+    cursor.execute(sql)
     rows = cursor.fetchall()
     cols = [d[0] for d in cursor.description]
     cursor.close()
@@ -837,6 +838,21 @@ def push_to_github_ci() -> bool:
         cwd=repo_dir, check=True,
     )
 
+    for attempt in range(1, 4):
+        pull = subprocess.run(
+            ["git", "pull", "--rebase"],
+            cwd=repo_dir, capture_output=True, text=True,
+        )
+        if pull.returncode == 0:
+            break
+        log.warning("CI git pull attempt %s/3 failed: %s", attempt, pull.stderr.strip())
+        if attempt < 3:
+            import time
+            time.sleep(5)
+    else:
+        log.error("CI git pull failed after retries")
+        return False
+
     files = ["index.html", "dashboard_history.json", "dashboard_tickets.json"]
     subprocess.run(["git", "add", *files], cwd=repo_dir, check=True)
 
@@ -851,9 +867,22 @@ def push_to_github_ci() -> bool:
         ["git", "commit", "-m", f"Update dashboard {now_str} CST"],
         cwd=repo_dir, check=True,
     )
-    subprocess.run(["git", "push"], cwd=repo_dir, check=True)
-    log.info("GitHub Pages updated successfully")
-    return True
+
+    push = subprocess.run(["git", "push"], cwd=repo_dir, capture_output=True, text=True)
+    if push.returncode == 0:
+        log.info("GitHub Pages updated successfully")
+        return True
+
+    if "rejected" in (push.stderr or "").lower():
+        log.warning("CI push rejected, retrying after pull --rebase")
+        if subprocess.run(["git", "pull", "--rebase"], cwd=repo_dir).returncode == 0:
+            push = subprocess.run(["git", "push"], cwd=repo_dir, capture_output=True, text=True)
+            if push.returncode == 0:
+                log.info("GitHub Pages updated successfully (after retry)")
+                return True
+
+    log.error("CI git push failed: %s", push.stderr)
+    return False
 
 
 def main():
@@ -873,6 +902,8 @@ def main():
     log.info(f"=== Dashboard automation started at {now_str} (ci={CI_MODE}) ===")
 
     seal_previous_month_if_needed()
+
+    validate_ticket_sql(now.year, now.month)
 
     try:
         monthly, weekly = query_summary()
