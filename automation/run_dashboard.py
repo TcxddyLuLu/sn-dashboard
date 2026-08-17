@@ -98,6 +98,7 @@ QUERY_TIMEOUT_TICKETS_LOCAL = 1200
 QUERY_TIMEOUT_TICKETS_CI = 1500
 QUERY_TIMEOUT_TEAM_LOCAL = 900
 QUERY_TIMEOUT_TEAM_CI = 900
+QUERY_TIMEOUT_TEAM_PRIMARY = 300
 
 CANONICAL_EMPLOYEE_ID = {employee_id.upper(): employee_id for employee_id in EMPLOYEE_IDS}
 
@@ -436,18 +437,18 @@ def load_cached_ticket_details(month_key=None):
     return tickets if isinstance(tickets, list) else []
 
 
-def query_team_tickets():
+def query_team_tickets(*, max_attempts: int = 2, timeout: int | None = None):
     """Fetch team ticket details once; monthly/weekly/daily are derived in Python."""
     ensure_databricks_http_path(SCRIPT_DIR / ".env")
 
-    for attempt in range(1, 3):
-        log.info("Running team tickets query (attempt %s/2)...", attempt)
+    for attempt in range(1, max_attempts + 1):
+        log.info("Running team tickets query (attempt %s/%s)...", attempt, max_attempts)
         try:
-            timeout = team_query_timeout_seconds()
-            log.info("Team tickets query hard timeout: %ss", timeout)
+            query_timeout = timeout if timeout is not None else team_query_timeout_seconds()
+            log.info("Team tickets query hard timeout: %ss", query_timeout)
             rows = run_with_hard_timeout(
                 "databricks_query_worker:run_team_tickets_query",
-                timeout,
+                query_timeout,
                 "Databricks team tickets query",
             )
             rows = normalize_ticket_rows(rows)
@@ -455,12 +456,88 @@ def query_team_tickets():
             return rows
         except Exception as e:
             log.warning("Team tickets query attempt %s failed: %s", attempt, e)
-            if attempt < 2:
+            if attempt < max_attempts:
                 log.info("Retrying in 10 seconds...")
                 import time
                 time.sleep(10)
             else:
                 raise
+
+
+def try_query_team_tickets(timeout: int | None = None) -> list[dict] | None:
+    """Best-effort team query; returns None instead of raising."""
+    try:
+        return query_team_tickets(max_attempts=1, timeout=timeout)
+    except Exception as e:
+        log.warning("Team tickets query unavailable: %s", e)
+        return None
+
+
+def rows_from_summary(monthly, weekly, daily):
+    monthly_by_id = {
+        canonical_employee_id(row["employee_id"]): row for row in monthly
+    }
+    rows = []
+    for employee_id in EMPLOYEE_IDS:
+        summary = monthly_by_id.get(employee_id, {})
+        incident_count = int(summary.get("incident_count") or 0)
+        task_count = int(summary.get("task_count") or 0)
+        rows.append({
+            "employee_id": employee_id,
+            "employee_name": NAME_OVERRIDES.get(
+                employee_id, summary.get("employee_name", employee_id)
+            ),
+            "incident_count": incident_count,
+            "task_count": task_count,
+            "total_count": incident_count + task_count,
+        })
+    rows.sort(key=lambda r: (-r["total_count"], r["employee_id"]))
+    rows = apply_name_overrides(rows)
+
+    weekly_rows = []
+    for row in weekly:
+        employee_id = canonical_employee_id(row["employee_id"])
+        if employee_id not in EMPLOYEE_IDS:
+            continue
+        weekly_rows.append({**row, "employee_id": employee_id})
+
+    daily_rows = []
+    for row in daily:
+        employee_id = canonical_employee_id(row["employee_id"])
+        if employee_id not in EMPLOYEE_IDS:
+            continue
+        daily_rows.append({**row, "employee_id": employee_id})
+
+    weekly_info = process_weekly_data(weekly_rows, rows)
+    daily_info = process_daily_data(daily_rows, rows)
+    return rows, weekly_info, daily_info
+
+
+def fetch_dashboard_data():
+    """Return rows, weekly_info, daily_info, ticket_rows, used_summary_fallback."""
+    if os.environ.get("FORCE_SUMMARY") == "1":
+        log.info("FORCE_SUMMARY=1: using summary queries only")
+        monthly, weekly, daily = query_summary()
+        rows, weekly_info, daily_info = rows_from_summary(monthly, weekly, daily)
+        return rows, weekly_info, daily_info, None, True
+
+    primary_timeout = int(
+        os.environ.get("TEAM_QUERY_TIMEOUT", QUERY_TIMEOUT_TEAM_PRIMARY)
+    )
+    ticket_rows = try_query_team_tickets(timeout=primary_timeout)
+    if ticket_rows is not None:
+        record_ticket_query_success()
+        rows = apply_name_overrides(build_monthly_rows(ticket_rows))
+        rows.sort(key=lambda r: (-(r["incident_count"] + r["task_count"]), r["employee_id"]))
+        weekly_info = process_weekly_data(aggregate_weekly_rows(ticket_rows), rows)
+        daily_info = process_daily_data(aggregate_daily_rows(ticket_rows), rows)
+        return rows, weekly_info, daily_info, ticket_rows, False
+
+    record_ticket_query_failure("team tickets query failed; using summary fallback")
+    log.warning("Falling back to summary queries so charts can still update")
+    monthly, weekly, daily = query_summary()
+    rows, weekly_info, daily_info = rows_from_summary(monthly, weekly, daily)
+    return rows, weekly_info, daily_info, None, True
 
 
 def query_summary():
@@ -1147,8 +1224,7 @@ def main():
     seal_previous_month_if_needed()
 
     try:
-        ticket_rows = query_team_tickets()
-        record_ticket_query_success()
+        rows, weekly_info, daily_info, ticket_rows, used_summary_fallback = fetch_dashboard_data()
     except Exception as e:
         log.error(f"Databricks query failed: {e}")
         record_ticket_query_failure(str(e))
@@ -1156,10 +1232,11 @@ def main():
         notify_failure_safe("SN Dashboard", e)
         sys.exit(1)
 
-    rows = apply_name_overrides(build_monthly_rows(ticket_rows))
-    rows.sort(key=lambda r: (-(r["incident_count"] + r["task_count"]), r["employee_id"]))
-    weekly_info = process_weekly_data(aggregate_weekly_rows(ticket_rows), rows)
-    daily_info = process_daily_data(aggregate_daily_rows(ticket_rows), rows)
+    if used_summary_fallback:
+        log.warning(
+            "Dashboard published from summary fallback; Excel ticket details were not refreshed"
+        )
+
     html_path = publish_dashboard(rows, weekly_info, daily_info)
 
     days_left = (TOKEN_EXPIRY - today_display()).days
@@ -1173,11 +1250,17 @@ def main():
     push_dashboard(html_path, required=True)
     log.info("Phase 1 complete: chart/summary data published")
 
-    if should_refresh_ticket_details():
+    if should_refresh_ticket_details() and ticket_rows is not None:
         ticket_details = process_ticket_details(ticket_rows, rows)
         update_dashboard_tickets(ticket_details)
         push_dashboard(html_path, required=False)
         log.info(f"Phase 2 complete: {len(ticket_details)} ticket details published")
+    elif should_refresh_ticket_details() and used_summary_fallback:
+        cached = load_cached_ticket_details()
+        log.info(
+            "Excel ticket file unchanged (%s cached tickets; team query unavailable for refresh)",
+            len(cached),
+        )
     else:
         cached = load_cached_ticket_details()
         log.info(
