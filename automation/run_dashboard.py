@@ -838,21 +838,6 @@ def push_to_github_ci() -> bool:
         cwd=repo_dir, check=True,
     )
 
-    for attempt in range(1, 4):
-        pull = subprocess.run(
-            ["git", "pull", "--rebase"],
-            cwd=repo_dir, capture_output=True, text=True,
-        )
-        if pull.returncode == 0:
-            break
-        log.warning("CI git pull attempt %s/3 failed: %s", attempt, pull.stderr.strip())
-        if attempt < 3:
-            import time
-            time.sleep(5)
-    else:
-        log.error("CI git pull failed after retries")
-        return False
-
     files = ["index.html", "dashboard_history.json", "dashboard_tickets.json"]
     subprocess.run(["git", "add", *files], cwd=repo_dir, check=True)
 
@@ -867,6 +852,21 @@ def push_to_github_ci() -> bool:
         ["git", "commit", "-m", f"Update dashboard {now_str} CST"],
         cwd=repo_dir, check=True,
     )
+
+    for attempt in range(1, 4):
+        pull = subprocess.run(
+            ["git", "pull", "--rebase"],
+            cwd=repo_dir, capture_output=True, text=True,
+        )
+        if pull.returncode == 0:
+            break
+        log.warning("CI git pull attempt %s/3 failed: %s", attempt, pull.stderr.strip())
+        if attempt < 3:
+            import time
+            time.sleep(5)
+    else:
+        log.error("CI git pull failed after retries")
+        return False
 
     push = subprocess.run(["git", "push"], cwd=repo_dir, capture_output=True, text=True)
     if push.returncode == 0:
