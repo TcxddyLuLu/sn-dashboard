@@ -912,14 +912,29 @@ function getDailyData(monthKey) {
   return data;
 }
 
-function dailyHeatColor(v, max) {
-  if (v === 0) return null;
-  const t = Math.min(v / Math.max(max, 1), 1);
-  const r = Math.round(219 - t * 140);
-  const g = Math.round(234 - t * 60);
-  const b = Math.round(254 - t * 10);
-  const text = t > 0.55 ? '#fff' : '#1e3a5f';
-  return { bg: `rgb(${r},${g},${b})`, text };
+const HEATMAP_BLUE_MAX = 15;
+const HEATMAP_BLUE_SCALE = (() => {
+  const start = [219, 234, 254];
+  const end = [30, 58, 95];
+  const scale = [];
+  for (let i = 0; i < HEATMAP_BLUE_MAX; i++) {
+    const t = i / (HEATMAP_BLUE_MAX - 1);
+    const r = Math.round(start[0] + t * (end[0] - start[0]));
+    const g = Math.round(start[1] + t * (end[1] - start[1]));
+    const b = Math.round(start[2] + t * (end[2] - start[2]));
+    scale.push({
+      bg: `rgb(${r},${g},${b})`,
+      text: i >= 8 ? '#fff' : '#1e3a5f',
+      level: i + 1,
+    });
+  }
+  return scale;
+})();
+
+function dailyHeatColor(v) {
+  if (v <= 0) return null;
+  const level = Math.min(Math.max(Math.round(v), 1), HEATMAP_BLUE_MAX);
+  return HEATMAP_BLUE_SCALE[level - 1];
 }
 
 function normWeekCell(v) {
@@ -1037,7 +1052,7 @@ function renderDailyHeatmap(monthKey) {
 
       if (!d.weekend && !d.future && v === 0) innerCls += ' blink-zero';
       else if (v > 0) {
-        const c = dailyHeatColor(v, data.maxVal);
+        const c = dailyHeatColor(v);
         innerStyle = ` style="background:${c.bg};color:${c.text}"`;
       } else if (d.future) {
         innerStyle = ' style="background:#f8fafc;color:#e2e8f0"';
@@ -1055,10 +1070,13 @@ function renderDailyHeatmap(monthKey) {
   html += '</tbody>';
 
   table.innerHTML = html;
+  const legendScale = [1, 5, 10, 15].map((n) => {
+    const c = dailyHeatColor(n);
+    return `<span><i style="background:${c.bg};border:1px solid #e2e8f0"></i> ${n}</span>`;
+  }).join('');
   legend.innerHTML = [
     '<span><i style="background:#fef2f2;border:1px solid #fecaca"></i> 0（工作日，闪烁）</span>',
-    '<span><i style="background:rgb(219,234,254)"></i> 1–2</span>',
-    '<span><i style="background:rgb(120,170,244)"></i> 较高</span>',
+    `<span>1→15 蓝由浅至深：</span>${legendScale}<span>15+ 同 15</span>`,
     '<span><i style="background:#f8fafc;border:1px solid #e2e8f0"></i> 周末 / 未来</span>',
     '<span><i style="background:#475569"></i> 周汇总列（Inc+Task 总数）</span>',
     `<span>本月最高单日: ${data.maxVal}</span>`,
