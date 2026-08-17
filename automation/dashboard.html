@@ -296,16 +296,6 @@
   }
   .btn-export:hover { background: #0d9488; }
 
-  .daily-alert {
-    display: none;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    color: #991b1b;
-    border-radius: 8px;
-    padding: 10px 14px;
-    margin-bottom: 12px;
-    font-size: 13px;
-  }
   .heatmap-wrap { overflow: auto; max-height: 62vh; }
   table.heatmap {
     border-collapse: separate;
@@ -487,7 +477,6 @@
       <h3>Daily Heatmap</h3>
       <span>关单日期 CST · 每人每天总数 · 工作日 0 单淡红闪烁</span>
     </div>
-    <div class="daily-alert" id="complianceAlert"></div>
     <div class="heatmap-wrap">
       <table class="heatmap" id="heatmapTable"></table>
     </div>
@@ -1013,26 +1002,8 @@ function renderDailyHeatmap(monthKey) {
 
   const table = document.getElementById('heatmapTable');
   const legend = document.getElementById('heatmapLegend');
-  const alert = document.getElementById('complianceAlert');
   const today = cstTodayParts();
   const todayKey = dailyDateKey(today.y, today.m, today.d);
-
-  let todayMissing = [];
-  if (data.isCurrentMonth) {
-    const todayCol = data.days.find((d) => d.key === todayKey);
-    if (todayCol && !todayCol.weekend && !todayCol.future) {
-      data.employees.forEach((emp) => {
-        if ((data.matrix[emp][todayKey] || 0) < 1) todayMissing.push(emp);
-      });
-    }
-  }
-
-  if (todayMissing.length) {
-    alert.style.display = 'block';
-    alert.textContent = `今日记得补单人员：${todayMissing.join('、')}`;
-  } else {
-    alert.style.display = 'none';
-  }
 
   const weekCols = weekColumnsForMonth(data.year, data.month);
   let weekColPtr = 0;
