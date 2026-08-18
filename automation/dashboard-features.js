@@ -93,7 +93,6 @@ function initToolbar() {
   select.onchange = () => switchMonth(select.value);
   document.getElementById('monthPrev')?.addEventListener('click', () => shiftMonth(1));
   document.getElementById('monthNext')?.addEventListener('click', () => shiftMonth(-1));
-  initRefreshButton();
 }
 
 const LOCAL_REFRESH_BASE = 'http://127.0.0.1:8090';
@@ -166,19 +165,12 @@ async function pollRefreshStatus() {
 }
 
 async function startManualRefresh() {
-  if (!isLocalDashboardServer()) {
-    const opened = window.open(LOCAL_REFRESH_BASE, '_blank');
-    if (!opened) {
-      setRefreshStatus('请打开 ' + LOCAL_REFRESH_BASE);
-    }
-    return;
-  }
-
   const password = askRefreshPassword();
   if (password === null) return;
 
   setRefreshBusy(true);
-  setRefreshStatus('正在启动…');
+  setRefreshStatus(isLocalDashboardServer() ? '正在启动…' : '正在连接本机 Mac…');
+
   try {
     const resp = await postRefresh(password);
     const data = await resp.json().catch(() => ({}));
@@ -200,16 +192,36 @@ async function startManualRefresh() {
     refreshPollTimer = setInterval(pollRefreshStatus, 3000);
     pollRefreshStatus();
   } catch (_) {
-    setRefreshStatus('连接本地服务失败');
     setRefreshBusy(false);
+    if (isLocalDashboardServer()) {
+      setRefreshStatus('连接本地服务失败');
+    } else {
+      setRefreshStatus('');
+      window.alert(
+        '无法连接本机更新服务。\n\n请确认：\n1. Mac 已开机且未睡眠\n2. 本机服务在运行\n\n然后在浏览器打开：\nhttp://127.0.0.1:8090/\n点右下角按钮并输入密码。'
+      );
+    }
   }
 }
 
 function initRefreshButton() {
   const btn = document.getElementById('refreshBtn');
-  if (!btn) return;
-  btn.addEventListener('click', startManualRefresh);
+  if (!btn || btn.dataset.bound === '1') return;
+  btn.dataset.bound = '1';
+  btn.addEventListener('click', () => { startManualRefresh(); });
+}
 
+function bootRefreshUi() {
+  initRefreshButton();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootRefreshUi);
+} else {
+  bootRefreshUi();
+}
+
+function initRefreshButtonExtras() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('refresh') === '1' && isLocalDashboardServer()) {
     params.delete('refresh');
@@ -273,6 +285,7 @@ async function loadHistoryAndBoot() {
   applyMonth(activeMonthKey, false);
 
   initToolbar();
+  initRefreshButtonExtras();
   if (typeof bootDashboard === 'function') bootDashboard();
 }
 

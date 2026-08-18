@@ -1240,11 +1240,11 @@ function retryChart() {
   showStatus('');
 }
 </script>
-<script src="chart.min.js" defer onload="retryChart()" onerror="showStatus('Chart library could not load, but summary and heatmap data are still shown.')"></script>
-<script src="dashboard-features.js" defer></script>
 <div class="refresh-dock" id="refreshDock">
   <span class="refresh-status" id="refreshStatus" hidden></span>
   <button type="button" class="btn-refresh-fab" id="refreshBtn" title="手动更新（需密码）" aria-label="手动更新">⟳</button>
 </div>
+<script src="chart.min.js" defer onload="retryChart()" onerror="showStatus('Chart library could not load, but summary and heatmap data are still shown.')"></script>
+<script src="dashboard-features.js" defer></script>
 </body>
 </html>
