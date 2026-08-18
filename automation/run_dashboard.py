@@ -74,6 +74,12 @@ NAME_OVERRIDES = {
     "HZh8": "Hooxi Zhu",
 }
 
+# ServiceNow assigned_to values for employees missing/wrong in sys_user (matches dashboard_query.sql).
+MANUAL_ASSIGNED_TO_NAMES = {
+    "HTan3": "Howie Tan",
+    "AJian3": "Aaron Jiang",
+}
+
 EMPLOYEE_IDS = [
     'BLiu60','AGuo22','AJian3','JDen4','HTan3','HFeng1',
     'LCh158','TTao5','L31','CLe144','RJu1','AXu72',
@@ -181,12 +187,11 @@ def sql_literal(value: str) -> str:
 
 
 def build_member_ticket_sql(template: str, employee_id: str, employee_name: str, year: int, month: int) -> str:
-    start_utc, end_utc = month_utc_bounds(year, month)
     return (
         template.replace(_EMPLOYEE_ID_PH, sql_literal(employee_id))
         .replace(_EMPLOYEE_NAME_PH, sql_literal(employee_name))
-        .replace(_MONTH_START_UTC_PH, start_utc)
-        .replace(_MONTH_END_UTC_PH, end_utc)
+        .replace("__TS_YEAR__", str(year))
+        .replace("__TS_MONTH__", str(month))
     )
 
 
@@ -206,9 +211,12 @@ def _load_employee_names_for_tickets() -> list[tuple[str, str]]:
 
     names: list[tuple[str, str]] = []
     for employee_id in EMPLOYEE_IDS:
-        employee_name = NAME_OVERRIDES.get(
-            employee_id, by_id.get(employee_id, employee_id)
-        )
+        if employee_id in MANUAL_ASSIGNED_TO_NAMES:
+            employee_name = MANUAL_ASSIGNED_TO_NAMES[employee_id]
+        else:
+            # Prefer sys_user.name — it matches incident/task assigned_to in ServiceNow.
+            # NAME_OVERRIDES are display-only and must not be used for SQL lookup.
+            employee_name = by_id.get(employee_id) or employee_id
         names.append((employee_id, employee_name))
     return names
 

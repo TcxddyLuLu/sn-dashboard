@@ -10,5 +10,5 @@ FROM published_domain.rese_prd_servicenow.incident i
 WHERE i.assigned_to = '__EMPLOYEE_NAME__'
   AND i.state IN ('Resolved', 'Closed')
   AND i.resolved_at IS NOT NULL
-  AND i.resolved_at >= TIMESTAMP '__MONTH_START_UTC__'
-  AND i.resolved_at < TIMESTAMP '__MONTH_END_UTC__'
+  AND YEAR(from_utc_timestamp(i.resolved_at, 'Asia/Shanghai')) = __TS_YEAR__
+  AND MONTH(from_utc_timestamp(i.resolved_at, 'Asia/Shanghai')) = __TS_MONTH__

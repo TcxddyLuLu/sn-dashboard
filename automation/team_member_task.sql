@@ -10,5 +10,5 @@ FROM published_domain.rese_prd_servicenow.sc_task t
 WHERE t.assigned_to = '__EMPLOYEE_NAME__'
   AND t.state IN ('Resolved', 'Closed', 'Closed Complete', 'Closed Incomplete')
   AND t.closed_at IS NOT NULL
-  AND t.closed_at >= TIMESTAMP '__MONTH_START_UTC__'
-  AND t.closed_at < TIMESTAMP '__MONTH_END_UTC__'
+  AND YEAR(from_utc_timestamp(t.closed_at, 'Asia/Shanghai')) = __TS_YEAR__
+  AND MONTH(from_utc_timestamp(t.closed_at, 'Asia/Shanghai')) = __TS_MONTH__
