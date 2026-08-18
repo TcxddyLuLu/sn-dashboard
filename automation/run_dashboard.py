@@ -90,6 +90,10 @@ DAILY_SQL = (SCRIPT_DIR / "daily_query.sql").read_text()
 TICKET_DETAILS_SQL = (SCRIPT_DIR / "ticket_details_query.sql").read_text()
 TEAM_INCIDENTS_SQL = (SCRIPT_DIR / "team_incidents_query.sql").read_text()
 TEAM_TASKS_SQL = (SCRIPT_DIR / "team_tasks_query.sql").read_text()
+TEAM_MEMBER_INCIDENT_SQL = (SCRIPT_DIR / "team_member_incident.sql").read_text()
+TEAM_MEMBER_TASK_SQL = (SCRIPT_DIR / "team_member_task.sql").read_text()
+_EMPLOYEE_ID_PH = "__EMPLOYEE_ID__"
+_EMPLOYEE_NAME_PH = "__EMPLOYEE_NAME__"
 _TS_YEAR = "YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _TS_MONTH = "MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _MONTH_START_PH = "__MONTH_START__"
@@ -170,6 +174,74 @@ def build_team_tickets_sql(year: int, month: int) -> tuple[str, str]:
         build_team_ticket_sql(TEAM_INCIDENTS_SQL, year, month),
         build_team_ticket_sql(TEAM_TASKS_SQL, year, month),
     )
+
+
+def sql_literal(value: str) -> str:
+    return (value or "").replace("'", "''")
+
+
+def build_member_ticket_sql(template: str, employee_id: str, employee_name: str, year: int, month: int) -> str:
+    start_utc, end_utc = month_utc_bounds(year, month)
+    return (
+        template.replace(_EMPLOYEE_ID_PH, sql_literal(employee_id))
+        .replace(_EMPLOYEE_NAME_PH, sql_literal(employee_name))
+        .replace(_MONTH_START_UTC_PH, start_utc)
+        .replace(_MONTH_END_UTC_PH, end_utc)
+    )
+
+
+def _load_employee_names_for_tickets() -> list[tuple[str, str]]:
+    ids = ", ".join(f"'{employee_id}'" for employee_id in EMPLOYEE_IDS)
+    lookup_sql = (
+        "SELECT u.user_name AS employee_id, u.name AS employee_name "
+        "FROM published_domain.rese_prd_servicenow.sys_user u "
+        f"WHERE u.user_name IN ({ids})"
+    )
+    try:
+        rows = _execute_team_ticket_sql(lookup_sql)
+        by_id = {row["employee_id"]: row["employee_name"] for row in rows}
+    except Exception as exc:
+        log.warning("sys_user name lookup failed, using overrides only: %s", exc)
+        by_id = {}
+
+    names: list[tuple[str, str]] = []
+    for employee_id in EMPLOYEE_IDS:
+        employee_name = NAME_OVERRIDES.get(
+            employee_id, by_id.get(employee_id, employee_id)
+        )
+        names.append((employee_id, employee_name))
+    return names
+
+
+def _run_team_tickets_by_member(year: int, month: int) -> list[dict]:
+    """Fetch tickets with one small query per employee (avoids full-table scan)."""
+    members = _load_employee_names_for_tickets()
+    jobs: list[str] = []
+    for employee_id, employee_name in members:
+        jobs.append(
+            build_member_ticket_sql(
+                TEAM_MEMBER_INCIDENT_SQL, employee_id, employee_name, year, month
+            )
+        )
+        jobs.append(
+            build_member_ticket_sql(
+                TEAM_MEMBER_TASK_SQL, employee_id, employee_name, year, month
+            )
+        )
+
+    ticket_rows: list[dict] = []
+    workers = min(8, max(1, len(jobs)))
+    log.info(
+        "Running %s per-employee ticket queries (%s members, %s workers)...",
+        len(jobs),
+        len(members),
+        workers,
+    )
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for chunk in pool.map(_execute_team_ticket_sql, jobs):
+            ticket_rows.extend(chunk)
+    log.info("Per-employee ticket queries returned %s rows", len(ticket_rows))
+    return ticket_rows
 
 
 def normalize_ticket_rows(rows: list[dict]) -> list[dict]:
@@ -356,30 +428,12 @@ def _execute_team_ticket_sql(sql: str) -> list[dict]:
 
 def _run_team_tickets_once():
     now = now_display()
-    incidents_sql, tasks_sql = build_team_tickets_sql(now.year, now.month)
-    ticket_rows: list[dict] = []
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = [
-            pool.submit(_execute_team_ticket_sql, incidents_sql),
-            pool.submit(_execute_team_ticket_sql, tasks_sql),
-        ]
-        for future in futures:
-            ticket_rows.extend(future.result())
-    return ticket_rows
+    return _run_team_tickets_by_member(now.year, now.month)
 
 
 def _fetch_team_tickets_for_month(year: int, month: int) -> list[dict]:
     ensure_databricks_http_path(SCRIPT_DIR / ".env")
-    incidents_sql, tasks_sql = build_team_tickets_sql(year, month)
-    ticket_rows: list[dict] = []
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = [
-            pool.submit(_execute_team_ticket_sql, incidents_sql),
-            pool.submit(_execute_team_ticket_sql, tasks_sql),
-        ]
-        for future in futures:
-            ticket_rows.extend(future.result())
-    return normalize_ticket_rows(ticket_rows)
+    return normalize_ticket_rows(_run_team_tickets_by_member(year, month))
 
 
 def _run_summary_queries_once():
