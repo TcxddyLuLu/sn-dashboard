@@ -609,14 +609,11 @@ def query_team_tickets(*, max_attempts: int = 2, timeout: int | None = None):
     for attempt in range(1, max_attempts + 1):
         log.info("Running team tickets query (attempt %s/%s)...", attempt, max_attempts)
         try:
-            query_timeout = timeout if timeout is not None else team_query_timeout_seconds()
-            log.info("Team tickets query hard timeout: %ss", query_timeout)
-            rows = run_with_hard_timeout(
-                "databricks_query_worker:run_team_tickets_query",
-                query_timeout,
-                "Databricks team tickets query",
-            )
-            rows = normalize_ticket_rows(rows)
+            # Per-employee queries run in-process (~1–2 min). Subprocess + Queue deadlocks
+            # when returning 1000+ rows (parent joins before reading the queue).
+            if timeout is not None:
+                log.info("Team tickets query (in-process, timeout param ignored)")
+            rows = normalize_ticket_rows(_run_team_tickets_once())
             log.info("Got %s team ticket rows", len(rows))
             return rows
         except Exception as e:
