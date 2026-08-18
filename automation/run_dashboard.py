@@ -546,6 +546,15 @@ def afternoon_excel_satisfied(now: datetime, last: datetime | None) -> bool:
     return last.hour >= TICKET_AFTERNOON_HOUR
 
 
+def excel_window_is_fresh(now: datetime | None = None) -> bool:
+    """True when today's morning or afternoon Excel target is already met."""
+    now = now or now_display()
+    last = last_excel_update_at()
+    if now.hour < TICKET_AFTERNOON_HOUR:
+        return morning_excel_satisfied(now, last)
+    return afternoon_excel_satisfied(now, last)
+
+
 def should_attempt_excel_refresh(now: datetime | None = None) -> bool:
     """Try Excel refresh at 9/17 targets, then catch up on later hourly runs if still pending."""
     if os.environ.get("FORCE_TICKETS") == "1":
@@ -757,8 +766,15 @@ def spawn_excel_catchup_retries() -> None:
         )
 
 
-def run_excel_catchup() -> int:
+def run_excel_catchup(*, skip_if_fresh: bool = False) -> int:
     log.info("=== Excel catch-up started (ci=%s) ===", CI_MODE)
+    if skip_if_fresh and CI_MODE and excel_window_is_fresh():
+        last = last_excel_update_at()
+        log.info(
+            "Excel already fresh for current window (updated %s); skipping GHA — Mac likely handled it",
+            last.strftime("%Y/%m/%d %H:%M") if last else "unknown",
+        )
+        return 0
     if not should_attempt_excel_refresh():
         log.info("Excel refresh already satisfied for the current window")
         return 0
@@ -1655,22 +1671,30 @@ def main():
     )
     parser.add_argument(
         "--skip-if-fresh",
+        nargs="?",
+        const=-1,
         type=int,
         metavar="MINUTES",
-        help="CI only: exit successfully if index.html was updated within N minutes",
+        help="CI skip if fresh (excel-only: morning/afternoon window; charts: index.html age in minutes)",
     )
     args = parser.parse_args()
     CI_MODE = args.ci or os.environ.get("CI", "").lower() == "true"
 
     if args.excel_only:
-        sys.exit(run_excel_catchup())
+        skip_excel = CI_MODE and args.skip_if_fresh is not None
+        sys.exit(run_excel_catchup(skip_if_fresh=skip_excel))
 
     now = now_display()
     now_str = now.strftime("%Y-%m-%d %H:%M")
 
     log.info(f"=== Dashboard automation started at {now_str} (ci={CI_MODE}) ===")
 
-    if CI_MODE and args.skip_if_fresh and dashboard_is_fresh(args.skip_if_fresh):
+    if (
+        CI_MODE
+        and args.skip_if_fresh is not None
+        and args.skip_if_fresh >= 0
+        and dashboard_is_fresh(args.skip_if_fresh)
+    ):
         updated = parse_dashboard_updated_at()
         log.info(
             "Dashboard already fresh (updated %s); skipping GHA run — Mac likely handled it",
