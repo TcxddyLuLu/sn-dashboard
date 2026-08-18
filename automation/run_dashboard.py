@@ -57,7 +57,9 @@ TOKEN_WARN_DAYS = 14
 TICKET_FAIL_ALERT_THRESHOLD = 3
 TICKET_HEALTH_FILE = SCRIPT_DIR / "ticket_query_health.json"
 TICKET_META_EXCEL_UPDATED = "_excel_updated_at"
-TICKET_REFRESH_HOURS_CST = (9, 17)
+TICKET_MORNING_START_HOUR = 9
+TICKET_AFTERNOON_HOUR = 17
+DASHBOARD_LAST_HOUR = 17
 SQL_PLACEHOLDER_RE = re.compile(r"__MONTH_[A-Z_]+__|\{_MONTH_[A-Z_]+\}")
 
 NAME_OVERRIDES = {
@@ -408,14 +410,59 @@ def _run_queries_once():
     return monthly, weekly, tickets
 
 
-def should_refresh_ticket_details(now: datetime | None = None) -> bool:
-    """Excel ticket details refresh at 9:00 and 17:00 CST, after dashboard publish."""
+def parse_excel_updated_at(raw: str | None) -> datetime | None:
+    if not raw:
+        return None
+    m = re.match(r"(\d{4})/(\d{1,2})/(\d{1,2})\s+(\d{1,2}):(\d{2})", str(raw).strip())
+    if not m:
+        return None
+    year, month, day, hour, minute = (int(part) for part in m.groups())
+    return datetime(year, month, day, hour, minute, tzinfo=DISPLAY_TZ)
+
+
+def last_excel_update_at() -> datetime | None:
+    return parse_excel_updated_at(load_ticket_store().get(TICKET_META_EXCEL_UPDATED))
+
+
+def morning_excel_satisfied(now: datetime, last: datetime | None) -> bool:
+    if last is None or last.date() != now.date():
+        return False
+    return TICKET_MORNING_START_HOUR <= last.hour < TICKET_AFTERNOON_HOUR
+
+
+def afternoon_excel_satisfied(now: datetime, last: datetime | None) -> bool:
+    if last is None or last.date() != now.date():
+        return False
+    return last.hour >= TICKET_AFTERNOON_HOUR
+
+
+def should_attempt_excel_refresh(now: datetime | None = None) -> bool:
+    """Try Excel refresh at 9/17 targets, then catch up on later hourly runs if still pending."""
     if os.environ.get("FORCE_TICKETS") == "1":
         return True
     if os.environ.get("SKIP_TICKETS") == "1":
         return False
+
     now = now or now_display()
-    return now.hour in TICKET_REFRESH_HOURS_CST
+    if now.hour < TICKET_MORNING_START_HOUR or now.hour > DASHBOARD_LAST_HOUR:
+        return False
+
+    last = last_excel_update_at()
+    if now.hour < TICKET_AFTERNOON_HOUR:
+        if morning_excel_satisfied(now, last):
+            return False
+        log.info("Morning Excel refresh still pending; attempting catch-up")
+        return True
+
+    if afternoon_excel_satisfied(now, last):
+        return False
+    log.info("Afternoon Excel refresh still pending; attempting catch-up")
+    return True
+
+
+def should_refresh_ticket_details(now: datetime | None = None) -> bool:
+    """Backward-compatible alias for Excel refresh scheduling."""
+    return should_attempt_excel_refresh(now)
 
 
 def load_ticket_store(tickets_path: Path | None = None) -> dict:
@@ -1245,14 +1292,16 @@ def main():
     push_dashboard(html_path, required=True)
     log.info("Phase 1 complete: chart/summary data published")
 
-    if should_refresh_ticket_details():
+    if should_attempt_excel_refresh():
         if refresh_excel_ticket_details(rows):
             push_dashboard(html_path, required=False)
     else:
         cached = load_cached_ticket_details()
+        last = last_excel_update_at()
         log.info(
-            "Excel ticket file unchanged (%s cached tickets; refresh at 9:00 and 17:00 after dashboard)",
+            "Excel ticket file unchanged (%s cached tickets; last excel update: %s)",
             len(cached),
+            last.strftime("%Y/%m/%d %H:%M") if last else "never",
         )
 
     log.info("=== Dashboard automation completed ===")
