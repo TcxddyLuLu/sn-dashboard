@@ -98,7 +98,6 @@ QUERY_TIMEOUT_TICKETS_LOCAL = 1200
 QUERY_TIMEOUT_TICKETS_CI = 1500
 QUERY_TIMEOUT_TEAM_LOCAL = 900
 QUERY_TIMEOUT_TEAM_CI = 900
-QUERY_TIMEOUT_TEAM_PRIMARY = 300
 
 CANONICAL_EMPLOYEE_ID = {employee_id.upper(): employee_id for employee_id in EMPLOYEE_IDS}
 
@@ -410,7 +409,7 @@ def _run_queries_once():
 
 
 def should_refresh_ticket_details(now: datetime | None = None) -> bool:
-    """Excel ticket details refresh at 9:00 and 17:00 CST only."""
+    """Excel ticket details refresh at 9:00 and 17:00 CST, after dashboard publish."""
     if os.environ.get("FORCE_TICKETS") == "1":
         return True
     if os.environ.get("SKIP_TICKETS") == "1":
@@ -464,15 +463,6 @@ def query_team_tickets(*, max_attempts: int = 2, timeout: int | None = None):
                 raise
 
 
-def try_query_team_tickets(timeout: int | None = None) -> list[dict] | None:
-    """Best-effort team query; returns None instead of raising."""
-    try:
-        return query_team_tickets(max_attempts=1, timeout=timeout)
-    except Exception as e:
-        log.warning("Team tickets query unavailable: %s", e)
-        return None
-
-
 def rows_from_summary(monthly, weekly, daily):
     monthly_by_id = {
         canonical_employee_id(row["employee_id"]): row for row in monthly
@@ -513,31 +503,41 @@ def rows_from_summary(monthly, weekly, daily):
     return rows, weekly_info, daily_info
 
 
-def fetch_dashboard_data():
-    """Return rows, weekly_info, daily_info, ticket_rows, used_summary_fallback."""
-    if os.environ.get("FORCE_SUMMARY") == "1":
-        log.info("FORCE_SUMMARY=1: using summary queries only")
-        monthly, weekly, daily = query_summary()
-        rows, weekly_info, daily_info = rows_from_summary(monthly, weekly, daily)
-        return rows, weekly_info, daily_info, None, True
-
-    primary_timeout = int(
-        os.environ.get("TEAM_QUERY_TIMEOUT", QUERY_TIMEOUT_TEAM_PRIMARY)
-    )
-    ticket_rows = try_query_team_tickets(timeout=primary_timeout)
-    if ticket_rows is not None:
-        record_ticket_query_success()
-        rows = apply_name_overrides(build_monthly_rows(ticket_rows))
-        rows.sort(key=lambda r: (-(r["incident_count"] + r["task_count"]), r["employee_id"]))
-        weekly_info = process_weekly_data(aggregate_weekly_rows(ticket_rows), rows)
-        daily_info = process_daily_data(aggregate_daily_rows(ticket_rows), rows)
-        return rows, weekly_info, daily_info, ticket_rows, False
-
-    record_ticket_query_failure("team tickets query failed; using summary fallback")
-    log.warning("Falling back to summary queries so charts can still update")
+def fetch_dashboard_from_summary():
+    """Fetch chart/summary data via fast summary SQL (Phase 1)."""
+    log.info("Fetching dashboard data via summary queries (Phase 1)")
     monthly, weekly, daily = query_summary()
-    rows, weekly_info, daily_info = rows_from_summary(monthly, weekly, daily)
-    return rows, weekly_info, daily_info, None, True
+    return rows_from_summary(monthly, weekly, daily)
+
+
+def refresh_excel_ticket_details(rows) -> bool:
+    """Run slow team ticket query after dashboard is published (Phase 2)."""
+    log.info(
+        "Phase 2: refreshing Excel ticket details after dashboard publish..."
+    )
+    try:
+        ticket_rows = query_team_tickets()
+        record_ticket_query_success()
+    except Exception as e:
+        record_ticket_query_failure(str(e))
+        maybe_alert_ticket_failure_streak(
+            load_ticket_health()["consecutive_failures"], str(e)
+        )
+        cached = load_cached_ticket_details()
+        log.warning(
+            "Excel ticket refresh failed: %s (%s cached tickets kept)",
+            e,
+            len(cached),
+        )
+        return False
+
+    ticket_details = process_ticket_details(ticket_rows, rows)
+    update_dashboard_tickets(ticket_details)
+    log.info(
+        "Phase 2 complete: %s ticket details ready for Excel export",
+        len(ticket_details),
+    )
+    return True
 
 
 def query_summary():
@@ -1224,18 +1224,13 @@ def main():
     seal_previous_month_if_needed()
 
     try:
-        rows, weekly_info, daily_info, ticket_rows, used_summary_fallback = fetch_dashboard_data()
+        rows, weekly_info, daily_info = fetch_dashboard_from_summary()
     except Exception as e:
         log.error(f"Databricks query failed: {e}")
         record_ticket_query_failure(str(e))
         maybe_alert_ticket_failure_streak(load_ticket_health()["consecutive_failures"], str(e))
         notify_failure_safe("SN Dashboard", e)
         sys.exit(1)
-
-    if used_summary_fallback:
-        log.warning(
-            "Dashboard published from summary fallback; Excel ticket details were not refreshed"
-        )
 
     html_path = publish_dashboard(rows, weekly_info, daily_info)
 
@@ -1250,21 +1245,13 @@ def main():
     push_dashboard(html_path, required=True)
     log.info("Phase 1 complete: chart/summary data published")
 
-    if should_refresh_ticket_details() and ticket_rows is not None:
-        ticket_details = process_ticket_details(ticket_rows, rows)
-        update_dashboard_tickets(ticket_details)
-        push_dashboard(html_path, required=False)
-        log.info(f"Phase 2 complete: {len(ticket_details)} ticket details published")
-    elif should_refresh_ticket_details() and used_summary_fallback:
-        cached = load_cached_ticket_details()
-        log.info(
-            "Excel ticket file unchanged (%s cached tickets; team query unavailable for refresh)",
-            len(cached),
-        )
+    if should_refresh_ticket_details():
+        if refresh_excel_ticket_details(rows):
+            push_dashboard(html_path, required=False)
     else:
         cached = load_cached_ticket_details()
         log.info(
-            "Excel ticket file unchanged (%s cached tickets; refresh at 9:00 and 17:00 CST)",
+            "Excel ticket file unchanged (%s cached tickets; refresh at 9:00 and 17:00 after dashboard)",
             len(cached),
         )
 
