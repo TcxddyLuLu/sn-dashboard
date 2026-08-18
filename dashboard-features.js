@@ -93,6 +93,112 @@ function initToolbar() {
   select.onchange = () => switchMonth(select.value);
   document.getElementById('monthPrev')?.addEventListener('click', () => shiftMonth(1));
   document.getElementById('monthNext')?.addEventListener('click', () => shiftMonth(-1));
+  initRefreshButton();
+}
+
+const LOCAL_REFRESH_BASE = 'http://127.0.0.1:8090';
+let refreshPollTimer = null;
+
+function isLocalDashboardServer() {
+  const host = window.location.hostname;
+  const port = window.location.port;
+  return port === '8090' || host === '127.0.0.1' || host === 'localhost';
+}
+
+function refreshApiUrl(path) {
+  return isLocalDashboardServer()
+    ? path
+    : `${LOCAL_REFRESH_BASE}${path}`;
+}
+
+function setRefreshStatus(text) {
+  const el = document.getElementById('refreshStatus');
+  if (el) el.textContent = text || '';
+}
+
+function setRefreshBusy(busy) {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) {
+    btn.disabled = busy;
+    btn.textContent = busy ? '更新中…' : '立即更新';
+  }
+}
+
+async function pollRefreshStatus() {
+  try {
+    const resp = await fetch(refreshApiUrl('/api/refresh?' + Date.now()));
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.running) {
+      const sec = data.elapsed_sec || 0;
+      setRefreshStatus(`正在查数并推送… ${sec}s（预计 2–3 分钟）`);
+      return;
+    }
+    clearInterval(refreshPollTimer);
+    refreshPollTimer = null;
+    setRefreshBusy(false);
+    if (data.exit_code === 0) {
+      setRefreshStatus('已推送，等待 GitHub Pages…');
+      setTimeout(() => window.location.reload(), 90000);
+      setTimeout(() => setRefreshStatus('约 1 分钟后自动刷新页面'), 1000);
+    } else {
+      setRefreshStatus('更新失败，请查看本机 dashboard.log');
+    }
+  } catch (_) {
+    /* keep polling */
+  }
+}
+
+async function startManualRefresh() {
+  if (!isLocalDashboardServer()) {
+    const opened = window.open(`${LOCAL_REFRESH_BASE}/?refresh=1`, '_blank');
+    if (!opened) {
+      setRefreshStatus('请打开 ' + LOCAL_REFRESH_BASE);
+      window.location.href = `${LOCAL_REFRESH_BASE}/?refresh=1`;
+    } else {
+      setRefreshStatus('已在本地页面启动更新');
+    }
+    return;
+  }
+
+  setRefreshBusy(true);
+  setRefreshStatus('正在启动…');
+  try {
+    const resp = await fetch('/api/refresh', { method: 'POST' });
+    const data = await resp.json().catch(() => ({}));
+    if (resp.status === 409) {
+      setRefreshStatus('已有更新任务在跑');
+    } else if (!resp.ok || !data.ok) {
+      setRefreshStatus(data.error || '无法启动更新');
+      setRefreshBusy(false);
+      return;
+    } else {
+      setRefreshStatus('任务已启动…');
+    }
+    if (refreshPollTimer) clearInterval(refreshPollTimer);
+    refreshPollTimer = setInterval(pollRefreshStatus, 3000);
+    pollRefreshStatus();
+  } catch (err) {
+    setRefreshStatus('连接本地服务失败，请确认 dashboard-server 在运行');
+    setRefreshBusy(false);
+  }
+}
+
+function initRefreshButton() {
+  const btn = document.getElementById('refreshBtn');
+  if (!btn) return;
+  btn.addEventListener('click', startManualRefresh);
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('refresh') === '1' && isLocalDashboardServer()) {
+    params.delete('refresh');
+    const qs = params.toString();
+    const next = window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash;
+    window.history.replaceState({}, '', next);
+    startManualRefresh();
+  } else if (!isLocalDashboardServer()) {
+    setRefreshStatus('Mac 在线时点此 → 本地更新');
+  }
 }
 
 function shiftMonth(delta) {

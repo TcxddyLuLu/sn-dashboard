@@ -295,18 +295,21 @@
     border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
   }
   .btn-export:hover { background: #0d9488; }
-  .export-block {
+  .btn-refresh {
+    border: none; background: #2563eb; color: #fff;
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn-refresh:hover:not(:disabled) { background: #1d4ed8; }
+  .btn-refresh:disabled { opacity: 0.65; cursor: wait; }
+  .refresh-status {
+    font-size: 11px; color: #64748b; max-width: 220px; line-height: 1.35;
+  }
+  .toolbar-actions {
     margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 12px;
-  }
-  .export-meta {
-    font-size: 11px;
-    opacity: 0.65;
-    line-height: 1.35;
-    text-align: right;
-    color: #475569;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
   .heatmap-wrap { overflow: auto; max-height: 62vh; }
@@ -441,7 +444,11 @@
       <select id="monthSelect"></select>
       <button type="button" id="monthNext" title="Next month">&#9654;</button>
     </div>
-    <a class="btn-export" href="tickets.html" style="text-decoration:none;display:inline-block;line-height:32px;">Excel 明细 →</a>
+    <div class="toolbar-actions">
+      <button type="button" class="btn-refresh" id="refreshBtn" title="在本机运行一次 Dashboard 更新（约 2–3 分钟）">立即更新</button>
+      <span class="refresh-status" id="refreshStatus"></span>
+      <a class="btn-export" href="tickets.html" style="text-decoration:none;display:inline-block;line-height:32px;">Excel 明细 →</a>
+    </div>
   </div>
 
   <div class="header">
