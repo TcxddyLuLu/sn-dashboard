@@ -8,8 +8,9 @@ Daily Dashboard Automation
 """
 
 import os, sys, json, re, subprocess, logging, shutil, argparse, fcntl
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 
@@ -87,7 +88,8 @@ DASHBOARD_SQL = (SCRIPT_DIR / "dashboard_query.sql").read_text()
 WEEKLY_SQL = (SCRIPT_DIR / "weekly_query.sql").read_text()
 DAILY_SQL = (SCRIPT_DIR / "daily_query.sql").read_text()
 TICKET_DETAILS_SQL = (SCRIPT_DIR / "ticket_details_query.sql").read_text()
-TEAM_TICKETS_SQL = (SCRIPT_DIR / "team_tickets_query.sql").read_text()
+TEAM_INCIDENTS_SQL = (SCRIPT_DIR / "team_incidents_query.sql").read_text()
+TEAM_TASKS_SQL = (SCRIPT_DIR / "team_tasks_query.sql").read_text()
 _TS_YEAR = "YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _TS_MONTH = "MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))"
 _MONTH_START_PH = "__MONTH_START__"
@@ -95,6 +97,9 @@ _MONTH_END_PH = "__MONTH_END__"
 _MONTH_START_DATE_PH = "__MONTH_START_DATE__"
 _MONTH_END_DATE_PH = "__MONTH_END_DATE__"
 _UPPER_EMPLOYEE_IDS_PH = "__UPPER_EMPLOYEE_IDS__"
+_EMPLOYEE_ID_LIST_PH = "__EMPLOYEE_ID_LIST__"
+_MONTH_START_UTC_PH = "__MONTH_START_UTC__"
+_MONTH_END_UTC_PH = "__MONTH_END_UTC__"
 
 QUERY_TIMEOUT_SUMMARY_LOCAL = 300
 QUERY_TIMEOUT_SUMMARY_CI = 180
@@ -137,13 +142,33 @@ def month_date_range(year: int, month: int) -> tuple[str, str]:
     return start, end
 
 
-def build_team_tickets_sql(year: int, month: int) -> str:
-    month_start, month_end = month_date_range(year, month)
-    upper_ids = ", ".join(f"'{employee_id.upper()}'" for employee_id in EMPLOYEE_IDS)
+def month_utc_bounds(year: int, month: int) -> tuple[str, str]:
+    """Inclusive month start and exclusive month end as UTC timestamp literals."""
+    start_cst = datetime(year, month, 1, tzinfo=DISPLAY_TZ)
+    if month == 12:
+        end_cst = datetime(year + 1, 1, 1, tzinfo=DISPLAY_TZ)
+    else:
+        end_cst = datetime(year, month + 1, 1, tzinfo=DISPLAY_TZ)
+    start_utc = start_cst.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    end_utc = end_cst.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    return start_utc, end_utc
+
+
+def build_team_ticket_sql(template: str, year: int, month: int) -> str:
+    employee_ids = ", ".join(f"'{employee_id}'" for employee_id in EMPLOYEE_IDS)
+    start_utc, end_utc = month_utc_bounds(year, month)
     return (
-        TEAM_TICKETS_SQL.replace(_UPPER_EMPLOYEE_IDS_PH, upper_ids)
-        .replace(_MONTH_START_DATE_PH, f"'{month_start}'")
-        .replace(_MONTH_END_DATE_PH, f"'{month_end}'")
+        template.replace(_EMPLOYEE_ID_LIST_PH, employee_ids)
+        .replace(_MONTH_START_UTC_PH, start_utc)
+        .replace(_MONTH_END_UTC_PH, end_utc)
+    )
+
+
+def build_team_tickets_sql(year: int, month: int) -> tuple[str, str]:
+    """Return incident and task SQL for parallel team ticket fetch."""
+    return (
+        build_team_ticket_sql(TEAM_INCIDENTS_SQL, year, month),
+        build_team_ticket_sql(TEAM_TASKS_SQL, year, month),
     )
 
 
@@ -312,30 +337,9 @@ def build_dashboard_sql(year: int, month: int) -> str:
     return DASHBOARD_SQL.replace(_TS_YEAR, str(year)).replace(_TS_MONTH, str(month))
 
 
-def _run_team_tickets_once():
+def _execute_team_ticket_sql(sql: str) -> list[dict]:
     from databricks import sql as dbsql
 
-    now = now_display()
-    sql = build_team_tickets_sql(now.year, now.month)
-    conn = dbsql.connect(
-        server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
-        http_path=os.environ["DATABRICKS_HTTP_PATH"],
-        access_token=os.environ["DATABRICKS_TOKEN"],
-    )
-    cursor = conn.cursor()
-    cursor.execute(sql)
-    ticket_rows = cursor.fetchall()
-    ticket_cols = [d[0] for d in cursor.description]
-    cursor.close()
-    conn.close()
-    return [dict(zip(ticket_cols, r)) for r in ticket_rows]
-
-
-def _fetch_team_tickets_for_month(year: int, month: int) -> list[dict]:
-    from databricks import sql as dbsql
-
-    ensure_databricks_http_path(SCRIPT_DIR / ".env")
-    sql = build_team_tickets_sql(year, month)
     conn = dbsql.connect(
         server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
         http_path=os.environ["DATABRICKS_HTTP_PATH"],
@@ -347,7 +351,35 @@ def _fetch_team_tickets_for_month(year: int, month: int) -> list[dict]:
     cols = [d[0] for d in cursor.description]
     cursor.close()
     conn.close()
-    return normalize_ticket_rows([dict(zip(cols, r)) for r in rows])
+    return [dict(zip(cols, r)) for r in rows]
+
+
+def _run_team_tickets_once():
+    now = now_display()
+    incidents_sql, tasks_sql = build_team_tickets_sql(now.year, now.month)
+    ticket_rows: list[dict] = []
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [
+            pool.submit(_execute_team_ticket_sql, incidents_sql),
+            pool.submit(_execute_team_ticket_sql, tasks_sql),
+        ]
+        for future in futures:
+            ticket_rows.extend(future.result())
+    return ticket_rows
+
+
+def _fetch_team_tickets_for_month(year: int, month: int) -> list[dict]:
+    ensure_databricks_http_path(SCRIPT_DIR / ".env")
+    incidents_sql, tasks_sql = build_team_tickets_sql(year, month)
+    ticket_rows: list[dict] = []
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [
+            pool.submit(_execute_team_ticket_sql, incidents_sql),
+            pool.submit(_execute_team_ticket_sql, tasks_sql),
+        ]
+        for future in futures:
+            ticket_rows.extend(future.result())
+    return normalize_ticket_rows(ticket_rows)
 
 
 def _run_summary_queries_once():
