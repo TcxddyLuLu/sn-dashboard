@@ -7,7 +7,7 @@ Daily Dashboard Automation
 - Pushes to GitHub Pages
 """
 
-import os, sys, json, re, subprocess, logging, shutil, argparse
+import os, sys, json, re, subprocess, logging, shutil, argparse, fcntl
 from pathlib import Path
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
@@ -60,6 +60,8 @@ TICKET_META_EXCEL_UPDATED = "_excel_updated_at"
 TICKET_MORNING_START_HOUR = 9
 TICKET_AFTERNOON_HOUR = 17
 DASHBOARD_LAST_HOUR = 17
+EXCEL_CATCHUP_DELAYS_MIN = (15, 30)
+EXCEL_LOCK_FILE = SCRIPT_DIR / ".excel_refresh.lock"
 SQL_PLACEHOLDER_RE = re.compile(r"__MONTH_[A-Z_]+__|\{_MONTH_[A-Z_]+\}")
 
 NAME_OVERRIDES = {
@@ -585,6 +587,88 @@ def refresh_excel_ticket_details(rows) -> bool:
         len(ticket_details),
     )
     return True
+
+
+_excel_lock_handle = None
+
+
+def try_acquire_excel_lock() -> bool:
+    global _excel_lock_handle
+    try:
+        EXCEL_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+        handle = open(EXCEL_LOCK_FILE, "w")
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        handle.seek(0)
+        handle.truncate()
+        handle.write(str(os.getpid()))
+        handle.flush()
+        _excel_lock_handle = handle
+        return True
+    except OSError:
+        return False
+
+
+def release_excel_lock() -> None:
+    global _excel_lock_handle
+    if _excel_lock_handle is None:
+        return
+    try:
+        fcntl.flock(_excel_lock_handle.fileno(), fcntl.LOCK_UN)
+        _excel_lock_handle.close()
+    finally:
+        _excel_lock_handle = None
+
+
+def dashboard_html_path() -> Path:
+    if CI_MODE:
+        return output_dir() / "index.html"
+    return SCRIPT_DIR / "dashboard.html"
+
+
+def spawn_excel_catchup_retries() -> None:
+    """Schedule Excel-only retries after short delays (no need to wait for next hour)."""
+    if CI_MODE or os.environ.get("EXCEL_CATCHUP_CHILD") == "1":
+        return
+    if not should_attempt_excel_refresh():
+        return
+
+    python = sys.executable
+    script = Path(__file__).resolve()
+    delay_text = ", ".join(f"{delay}m" for delay in EXCEL_CATCHUP_DELAYS_MIN)
+    log.info("Scheduling Excel catch-up retries at +%s", delay_text)
+    for delay_min in EXCEL_CATCHUP_DELAYS_MIN:
+        cmd = (
+            f"sleep {delay_min * 60} && "
+            f"EXCEL_CATCHUP_CHILD=1 {python} {script} --excel-only"
+        )
+        subprocess.Popen(
+            ["/bin/bash", "-c", cmd],
+            start_new_session=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
+def run_excel_catchup() -> int:
+    log.info("=== Excel catch-up started (ci=%s) ===", CI_MODE)
+    if not should_attempt_excel_refresh():
+        log.info("Excel refresh already satisfied for the current window")
+        return 0
+    if not try_acquire_excel_lock():
+        log.info("Another Excel refresh is already running; skipping catch-up")
+        return 0
+
+    try:
+        rows, _, _ = fetch_dashboard_from_summary()
+        html_path = dashboard_html_path()
+        if refresh_excel_ticket_details(rows):
+            push_dashboard(html_path, required=False)
+            log.info("Excel catch-up completed successfully")
+            return 0
+        log.warning("Excel catch-up failed; cached ticket details kept")
+        return 1
+    finally:
+        release_excel_lock()
 
 
 def query_summary():
@@ -1260,8 +1344,16 @@ def main():
         action="store_true",
         help="CI mode: commit updated dashboard to GITHUB_WORKSPACE",
     )
+    parser.add_argument(
+        "--excel-only",
+        action="store_true",
+        help="Excel catch-up only: skip dashboard publish, retry ticket details",
+    )
     args = parser.parse_args()
     CI_MODE = args.ci or os.environ.get("CI", "").lower() == "true"
+
+    if args.excel_only:
+        sys.exit(run_excel_catchup())
 
     now = now_display()
     now_str = now.strftime("%Y-%m-%d %H:%M")
@@ -1293,8 +1385,17 @@ def main():
     log.info("Phase 1 complete: chart/summary data published")
 
     if should_attempt_excel_refresh():
-        if refresh_excel_ticket_details(rows):
-            push_dashboard(html_path, required=False)
+        if not try_acquire_excel_lock():
+            log.info("Excel refresh already running elsewhere; skipping this attempt")
+        else:
+            try:
+                excel_ok = refresh_excel_ticket_details(rows)
+            finally:
+                release_excel_lock()
+            if excel_ok:
+                push_dashboard(html_path, required=False)
+            else:
+                spawn_excel_catchup_retries()
     else:
         cached = load_cached_ticket_details()
         last = last_excel_update_at()
