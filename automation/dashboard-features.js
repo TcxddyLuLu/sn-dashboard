@@ -113,15 +113,31 @@ function refreshApiUrl(path) {
 
 function setRefreshStatus(text) {
   const el = document.getElementById('refreshStatus');
-  if (el) el.textContent = text || '';
+  if (!el) return;
+  if (text) {
+    el.hidden = false;
+    el.textContent = text;
+  } else {
+    el.hidden = true;
+    el.textContent = '';
+  }
 }
 
 function setRefreshBusy(busy) {
   const btn = document.getElementById('refreshBtn');
-  if (btn) {
-    btn.disabled = busy;
-    btn.textContent = busy ? '更新中…' : '立即更新';
-  }
+  if (btn) btn.disabled = busy;
+}
+
+function askRefreshPassword() {
+  return window.prompt('请输入密码以手动更新 Dashboard：');
+}
+
+async function postRefresh(password) {
+  return fetch(refreshApiUrl('/api/refresh'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
 }
 
 async function pollRefreshStatus() {
@@ -151,21 +167,26 @@ async function pollRefreshStatus() {
 
 async function startManualRefresh() {
   if (!isLocalDashboardServer()) {
-    const opened = window.open(`${LOCAL_REFRESH_BASE}/?refresh=1`, '_blank');
+    const opened = window.open(LOCAL_REFRESH_BASE, '_blank');
     if (!opened) {
       setRefreshStatus('请打开 ' + LOCAL_REFRESH_BASE);
-      window.location.href = `${LOCAL_REFRESH_BASE}/?refresh=1`;
-    } else {
-      setRefreshStatus('已在本地页面启动更新');
     }
     return;
   }
 
+  const password = askRefreshPassword();
+  if (password === null) return;
+
   setRefreshBusy(true);
   setRefreshStatus('正在启动…');
   try {
-    const resp = await fetch('/api/refresh', { method: 'POST' });
+    const resp = await postRefresh(password);
     const data = await resp.json().catch(() => ({}));
+    if (resp.status === 401) {
+      setRefreshStatus('密码错误');
+      setRefreshBusy(false);
+      return;
+    }
     if (resp.status === 409) {
       setRefreshStatus('已有更新任务在跑');
     } else if (!resp.ok || !data.ok) {
@@ -178,8 +199,8 @@ async function startManualRefresh() {
     if (refreshPollTimer) clearInterval(refreshPollTimer);
     refreshPollTimer = setInterval(pollRefreshStatus, 3000);
     pollRefreshStatus();
-  } catch (err) {
-    setRefreshStatus('连接本地服务失败，请确认 dashboard-server 在运行');
+  } catch (_) {
+    setRefreshStatus('连接本地服务失败');
     setRefreshBusy(false);
   }
 }
@@ -196,8 +217,6 @@ function initRefreshButton() {
     const next = window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash;
     window.history.replaceState({}, '', next);
     startManualRefresh();
-  } else if (!isLocalDashboardServer()) {
-    setRefreshStatus('Mac 在线时点此 → 本地更新');
   }
 }
 
