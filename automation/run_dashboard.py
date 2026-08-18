@@ -508,6 +508,28 @@ def parse_excel_updated_at(raw: str | None) -> datetime | None:
     return datetime(year, month, day, hour, minute, tzinfo=DISPLAY_TZ)
 
 
+def parse_dashboard_updated_at(html_path: Path | None = None) -> datetime | None:
+    html_path = html_path or (output_dir() / "index.html")
+    if not html_path.exists():
+        return None
+    m = re.search(
+        r'Updated:\s*(\d{4})/(\d{1,2})/(\d{1,2})\s+(\d{1,2}):(\d{2})',
+        html_path.read_text(encoding="utf-8"),
+    )
+    if not m:
+        return None
+    year, month, day, hour, minute = (int(part) for part in m.groups())
+    return datetime(year, month, day, hour, minute, tzinfo=DISPLAY_TZ)
+
+
+def dashboard_is_fresh(max_age_minutes: int) -> bool:
+    updated = parse_dashboard_updated_at()
+    if updated is None:
+        return False
+    age_minutes = (now_display() - updated).total_seconds() / 60
+    return age_minutes < max_age_minutes
+
+
 def last_excel_update_at() -> datetime | None:
     return parse_excel_updated_at(load_ticket_store().get(TICKET_META_EXCEL_UPDATED))
 
@@ -1631,6 +1653,12 @@ def main():
         action="store_true",
         help="Excel catch-up only: skip dashboard publish, retry ticket details",
     )
+    parser.add_argument(
+        "--skip-if-fresh",
+        type=int,
+        metavar="MINUTES",
+        help="CI only: exit successfully if index.html was updated within N minutes",
+    )
     args = parser.parse_args()
     CI_MODE = args.ci or os.environ.get("CI", "").lower() == "true"
 
@@ -1641,6 +1669,14 @@ def main():
     now_str = now.strftime("%Y-%m-%d %H:%M")
 
     log.info(f"=== Dashboard automation started at {now_str} (ci={CI_MODE}) ===")
+
+    if CI_MODE and args.skip_if_fresh and dashboard_is_fresh(args.skip_if_fresh):
+        updated = parse_dashboard_updated_at()
+        log.info(
+            "Dashboard already fresh (updated %s); skipping GHA run — Mac likely handled it",
+            updated.strftime("%Y/%m/%d %H:%M") if updated else "recently",
+        )
+        sys.exit(0)
 
     seal_previous_month_if_needed()
 
