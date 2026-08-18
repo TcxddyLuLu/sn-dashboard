@@ -1,22 +1,22 @@
-name: Update Dashboard
+name: Update Tickets (Excel)
 
 on:
   schedule:
-    # 9:00–17:00 hourly, China Standard Time (UTC+8) — charts only
-    - cron: "0 1,2,3,4,5,6,7,8,9 * * *"
+    # :30 each hour 9:00–17:00 CST — Excel catch-up, separate from dashboard charts
+    - cron: "30 1,2,3,4,5,6,7,8,9 * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: sn-dashboard-charts
+  group: sn-dashboard-tickets
   cancel-in-progress: false
 
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,11 +30,11 @@ jobs:
         working-directory: automation
         run: pip install -r requirements-ci.txt
 
-      - name: Update dashboard charts from Databricks
+      - name: Refresh Excel ticket details from Databricks
         working-directory: automation
         env:
           CI: "true"
           DATABRICKS_SERVER_HOSTNAME: ${{ secrets.DATABRICKS_SERVER_HOSTNAME }}
           DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
-        run: python run_dashboard.py --ci
+        run: python run_dashboard.py --ci --excel-only

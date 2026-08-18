@@ -660,9 +660,8 @@ def run_excel_catchup() -> int:
 
     try:
         rows, _, _ = fetch_dashboard_from_summary()
-        html_path = dashboard_html_path()
         if refresh_excel_ticket_details(rows):
-            push_dashboard(html_path, required=False)
+            push_tickets(required=False)
             log.info("Excel catch-up completed successfully")
             return 0
         log.warning("Excel catch-up failed; cached ticket details kept")
@@ -732,6 +731,23 @@ def fetch_tickets_optional():
 def publish_dashboard(rows, weekly_info, daily_info=None):
     update_dashboard_history(rows, weekly_info, daily_info)
     return update_html(rows, weekly_info, daily_info)
+
+
+def push_tickets(html_path=None, *, required: bool) -> bool:
+    if CI_MODE:
+        ok = push_tickets_to_github_ci()
+    else:
+        ok = push_tickets_to_github()
+
+    if ok:
+        return True
+    if required:
+        log.error("GitHub Pages tickets push failed; Excel page may be stale")
+        if CI_MODE:
+            sys.exit(1)
+    else:
+        log.warning("Optional GitHub Pages tickets push failed")
+    return False
 
 
 def push_dashboard(html_path, *, required: bool) -> bool:
@@ -1126,6 +1142,22 @@ GITHUB_REPO_DIR = str(Path.home() / ".sn-dashboard-repo")
 GITHUB_REPO_URL = "https://github.com/TcxddyLuLu/sn-dashboard.git"
 GITHUB_USER = "TcxddyLuLu"
 
+DASHBOARD_STATIC_FILES = [
+    "chart.min.js",
+    "dashboard-features.js",
+    "dashboard_history.json",
+    "tickets.html",
+    "tickets-features.js",
+]
+
+TICKETS_STATIC_FILES = [
+    "tickets.html",
+    "tickets-features.js",
+    "dashboard_tickets.json",
+    "dashboard_history.json",
+    "xlsx.full.min.js",
+]
+
 
 def _ensure_gh_user():
     """Ensure the dedicated .gh config always uses the personal account."""
@@ -1215,20 +1247,13 @@ def push_to_github(html_path) -> bool:
 
     shutil.copy2(str(html_path), str(repo_dir / "index.html"))
 
-    static_files = [
-        "chart.min.js",
-        "dashboard-features.js",
-        "dashboard_history.json",
-        "dashboard_tickets.json",
-        "xlsx.full.min.js",
-    ]
-    for fname in static_files:
+    for fname in DASHBOARD_STATIC_FILES:
         src = SCRIPT_DIR / fname
         if src.exists():
             shutil.copy2(str(src), str(repo_dir / fname))
 
     subprocess.run(
-        ["git", "-C", str(repo_dir), "add", "index.html", *static_files],
+        ["git", "-C", str(repo_dir), "add", "index.html", *DASHBOARD_STATIC_FILES],
         capture_output=True,
     )
 
@@ -1280,6 +1305,11 @@ def push_to_github(html_path) -> bool:
 
 def push_to_github_ci() -> bool:
     repo_dir = output_dir()
+    for fname in DASHBOARD_STATIC_FILES:
+        src = SCRIPT_DIR / fname
+        if src.exists() and src.parent != repo_dir:
+            shutil.copy2(str(src), str(repo_dir / fname))
+
     subprocess.run(
         ["git", "config", "user.name", "github-actions[bot]"],
         cwd=repo_dir, check=True,
@@ -1289,7 +1319,7 @@ def push_to_github_ci() -> bool:
         cwd=repo_dir, check=True,
     )
 
-    files = ["index.html", "dashboard_history.json", "dashboard_tickets.json"]
+    files = ["index.html", "dashboard_history.json", *DASHBOARD_STATIC_FILES]
     subprocess.run(["git", "add", *files], cwd=repo_dir, check=True)
 
     if subprocess.run(
@@ -1333,6 +1363,172 @@ def push_to_github_ci() -> bool:
                 return True
 
     log.error("CI git push failed: %s", push.stderr)
+    return False
+
+
+def push_tickets_to_github() -> bool:
+    _ensure_gh_user()
+
+    gh_config = str(SCRIPT_DIR / ".gh")
+    env = {**os.environ, "GH_CONFIG_DIR": gh_config}
+
+    repo_dir = Path(GITHUB_REPO_DIR)
+    if not (repo_dir / ".git").exists():
+        log.info("Cloning GitHub repo...")
+        result = subprocess.run(
+            ["git", "clone", GITHUB_REPO_URL, str(repo_dir)],
+            env=env, capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            log.warning(f"Git clone failed: {result.stderr}")
+            notify_push_failure("SN Dashboard Tickets", "git clone", result.stderr)
+            return False
+
+    _ensure_git_config(repo_dir)
+
+    pull_result = None
+    for attempt in range(1, 4):
+        pull_result = subprocess.run(
+            ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
+            env=env, capture_output=True, text=True,
+        )
+        if pull_result.returncode == 0:
+            break
+        log.warning(f"Git pull attempt {attempt}/3 failed: {pull_result.stderr.strip()}")
+        if attempt < 3:
+            import time
+            time.sleep(5)
+    if pull_result is None or pull_result.returncode != 0:
+        log.warning(f"Git pull failed: {pull_result.stderr if pull_result else 'unknown'}")
+        notify_push_failure("SN Dashboard Tickets", "git pull", pull_result.stderr if pull_result else "")
+        return False
+
+    for fname in TICKETS_STATIC_FILES:
+        src = SCRIPT_DIR / fname
+        if src.exists():
+            shutil.copy2(str(src), str(repo_dir / fname))
+        elif fname == "dashboard_history.json":
+            hist = output_dir() / "dashboard_history.json"
+            if hist.exists():
+                shutil.copy2(str(hist), str(repo_dir / fname))
+
+    subprocess.run(
+        ["git", "-C", str(repo_dir), "add", *TICKETS_STATIC_FILES],
+        capture_output=True,
+    )
+
+    diff_result = subprocess.run(
+        ["git", "-C", str(repo_dir), "diff", "--cached", "--quiet"],
+        capture_output=True,
+    )
+    if diff_result.returncode == 0:
+        log.info("GitHub Pages tickets: no changes to push")
+        return True
+
+    now_str = now_display().strftime("%Y-%m-%d %H:%M")
+    commit_result = subprocess.run(
+        ["git", "-C", str(repo_dir), "commit", "-m", f"Update Excel tickets {now_str} CST"],
+        capture_output=True, text=True, env=env,
+    )
+    if commit_result.returncode != 0:
+        log.warning(f"Git commit failed: {commit_result.stderr}")
+        notify_push_failure("SN Dashboard Tickets", "git commit", commit_result.stderr)
+        return False
+
+    push_result = subprocess.run(
+        ["git", "-C", str(repo_dir), "push"],
+        capture_output=True, text=True, env=env,
+    )
+    if push_result.returncode == 0:
+        log.info("GitHub Pages tickets updated successfully")
+        return True
+
+    if "rejected" in (push_result.stderr or "").lower():
+        log.warning("Tickets push rejected, retrying after pull --rebase --autostash")
+        retry_pull = subprocess.run(
+            ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
+            env=env, capture_output=True, text=True,
+        )
+        if retry_pull.returncode == 0:
+            push_result = subprocess.run(
+                ["git", "-C", str(repo_dir), "push"],
+                capture_output=True, text=True, env=env,
+            )
+            if push_result.returncode == 0:
+                log.info("GitHub Pages tickets updated successfully (after retry)")
+                return True
+
+    log.warning(f"GitHub tickets push failed: {push_result.stderr}")
+    notify_push_failure("SN Dashboard Tickets", "git push", push_result.stderr)
+    return False
+
+
+def push_tickets_to_github_ci() -> bool:
+    repo_dir = output_dir()
+    for fname in TICKETS_STATIC_FILES:
+        src = SCRIPT_DIR / fname
+        if src.exists() and src.parent != repo_dir:
+            shutil.copy2(str(src), str(repo_dir / fname))
+        elif fname == "dashboard_history.json":
+            hist = repo_dir / "dashboard_history.json"
+            if not hist.exists():
+                alt = SCRIPT_DIR / fname
+                if alt.exists():
+                    shutil.copy2(str(alt), str(hist))
+
+    subprocess.run(
+        ["git", "config", "user.name", "github-actions[bot]"],
+        cwd=repo_dir, check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"],
+        cwd=repo_dir, check=True,
+    )
+
+    files = list(TICKETS_STATIC_FILES)
+    subprocess.run(["git", "add", *files], cwd=repo_dir, check=True)
+
+    if subprocess.run(
+        ["git", "diff", "--cached", "--quiet"], cwd=repo_dir
+    ).returncode == 0:
+        log.info("GitHub Pages tickets: no changes to push")
+        return True
+
+    now_str = now_display().strftime("%Y-%m-%d %H:%M")
+    subprocess.run(
+        ["git", "commit", "-m", f"Update Excel tickets {now_str} CST"],
+        cwd=repo_dir, check=True,
+    )
+
+    for attempt in range(1, 4):
+        pull = subprocess.run(
+            ["git", "pull", "--rebase"],
+            cwd=repo_dir, capture_output=True, text=True,
+        )
+        if pull.returncode == 0:
+            break
+        log.warning("CI tickets git pull attempt %s/3 failed: %s", attempt, pull.stderr.strip())
+        if attempt < 3:
+            import time
+            time.sleep(5)
+    else:
+        log.error("CI tickets git pull failed after retries")
+        return False
+
+    push = subprocess.run(["git", "push"], cwd=repo_dir, capture_output=True, text=True)
+    if push.returncode == 0:
+        log.info("GitHub Pages tickets updated successfully")
+        return True
+
+    if "rejected" in (push.stderr or "").lower():
+        log.warning("CI tickets push rejected, retrying after pull --rebase")
+        if subprocess.run(["git", "pull", "--rebase"], cwd=repo_dir).returncode == 0:
+            push = subprocess.run(["git", "push"], cwd=repo_dir, capture_output=True, text=True)
+            if push.returncode == 0:
+                log.info("GitHub Pages tickets updated successfully (after retry)")
+                return True
+
+    log.error("CI tickets git push failed: %s", push.stderr)
     return False
 
 
@@ -1382,28 +1578,7 @@ def main():
         )
 
     push_dashboard(html_path, required=True)
-    log.info("Phase 1 complete: chart/summary data published")
-
-    if should_attempt_excel_refresh():
-        if not try_acquire_excel_lock():
-            log.info("Excel refresh already running elsewhere; skipping this attempt")
-        else:
-            try:
-                excel_ok = refresh_excel_ticket_details(rows)
-            finally:
-                release_excel_lock()
-            if excel_ok:
-                push_dashboard(html_path, required=False)
-            else:
-                spawn_excel_catchup_retries()
-    else:
-        cached = load_cached_ticket_details()
-        last = last_excel_update_at()
-        log.info(
-            "Excel ticket file unchanged (%s cached tickets; last excel update: %s)",
-            len(cached),
-            last.strftime("%Y/%m/%d %H:%M") if last else "never",
-        )
+    log.info("Dashboard charts published (Excel updates separately on tickets.html)")
 
     log.info("=== Dashboard automation completed ===")
 
