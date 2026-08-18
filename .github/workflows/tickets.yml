@@ -2,8 +2,9 @@ name: Update Tickets (Excel)
 
 on:
   schedule:
-    # :30 each hour 9:00–17:00 CST — Excel catch-up, separate from dashboard charts
-    - cron: "30 1,2,3,4,5,6,7,8,9 * * *"
+    # :15 and :45 each hour 9:00–17:00 CST — Excel retries (offset from chart updates)
+    - cron: "15 1,2,3,4,5,6,7,8,9 * * *"
+    - cron: "45 1,2,3,4,5,6,7,8,9 * * *"
   workflow_dispatch:
 
 permissions:
@@ -34,6 +35,7 @@ jobs:
         working-directory: automation
         env:
           CI: "true"
+          FORCE_TICKETS: "1"
           DATABRICKS_SERVER_HOSTNAME: ${{ secrets.DATABRICKS_SERVER_HOSTNAME }}
           DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}

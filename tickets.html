@@ -59,7 +59,8 @@
   <div class="card">
     <h1>Excel 工单明细</h1>
     <div class="meta">
-      <div>目标：每日上午、下午各更新一次（9:00 / 17:00 起，失败后自动补跑）</div>
+      <div>目标：每日上午、下午各更新一次（9:00 / 17:00 起，失败后每 30 分钟自动重试）</div>
+      <div style="opacity:.85;margin-top:4px;">自动任务可能有 15～40 分钟延迟；查询较慢时单次最多约 30 分钟</div>
       <div id="ticketsUpdatedTime">最近更新：—</div>
     </div>
     <div class="toolbar">
