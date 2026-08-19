@@ -446,6 +446,71 @@
     animation: blink-warn 2s ease-in-out infinite;
     color: #ff1744 !important;
   }
+  @keyframes week-mvp-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes week-mvp-particles {
+    0%, 100% { opacity: 0.55; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-1px); }
+  }
+  table.heatmap td.week-col .week-cell-inner.week-mvp {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    color: #78350f !important;
+    font-weight: 800;
+    background: linear-gradient(
+      125deg,
+      #fff7d6 0%,
+      #fde68a 22%,
+      #fbbf24 45%,
+      #fde68a 68%,
+      #fff7d6 100%
+    );
+    background-size: 220% 220%;
+    animation: week-mvp-shimmer 2.8s ease-in-out infinite;
+    border: 2px solid #a855f7;
+    box-shadow:
+      0 0 0 1px #fbbf24,
+      0 0 14px rgba(251, 191, 36, 0.55),
+      inset 0 0 18px rgba(255, 215, 0, 0.35);
+  }
+  table.heatmap td.week-col .week-cell-inner.week-mvp::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    z-index: -1;
+    background-image:
+      radial-gradient(circle at 18% 28%, rgba(255, 255, 255, 0.95) 1.2px, transparent 1.2px),
+      radial-gradient(circle at 62% 18%, rgba(255, 215, 0, 0.9) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 82% 72%, rgba(255, 255, 255, 0.85) 1px, transparent 1px),
+      radial-gradient(circle at 35% 78%, rgba(251, 191, 36, 0.95) 1.3px, transparent 1.3px),
+      radial-gradient(circle at 55% 48%, rgba(255, 255, 255, 0.75) 1px, transparent 1px),
+      radial-gradient(circle at 92% 42%, rgba(253, 224, 71, 0.9) 1.2px, transparent 1.2px);
+    animation: week-mvp-particles 2.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  table.heatmap td.week-col .week-cell-inner.week-mvp::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 35%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 65%
+    );
+    animation: week-mvp-shimmer 3.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    table.heatmap td.week-col .week-cell-inner.week-mvp,
+    table.heatmap td.week-col .week-cell-inner.week-mvp::before,
+    table.heatmap td.week-col .week-cell-inner.week-mvp::after {
+      animation: none;
+    }
+  }
   .heatmap-legend {
     display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
     margin-top: 12px; font-size: 12px; color: #94a3b8;
@@ -481,7 +546,7 @@
     <h1>Monthly Completed Tickets</h1>
     <div class="meta">
       <div class="month" id="monthTitle"></div>
-      <div class="updated" id="updatedTime">Updated: 2026/8/19 10:00</div>
+      <div class="updated" id="updatedTime">Updated: 2026/8/19 10:15</div>
       <div style="font-size:11px;opacity:.6;margin-top:2px;">每日 9:00～17:00 每小时更新</div>
     </div>
   </div>
@@ -1031,16 +1096,33 @@ function renderWeekColumnHeader(col) {
   return `<th class="${cls.join(' ')}" title="${col.label}">${col.header}<br><span style="font-weight:400;font-size:10px">${col.label}</span></th>`;
 }
 
-function renderWeekColumnCell(emp, col) {
+function renderWeekColumnCell(emp, col, weekMax) {
   const row = getWeeklyRow(emp);
   const cell = row ? normWeekCell(row.weekly[col.weekIdx]) : { inc: 0, task: 0 };
   const total = cell.inc + cell.task;
   const zeroRed = total === 0 && col.weekIdx <= (WEEKLY_DATA?.currentWeek ?? 99);
+  const maxForWeek = weekMax[col.weekIdx] || 0;
+  const isWeekMax = total > 0 && maxForWeek > 0 && total === maxForWeek;
   const cls = ['week-col'];
   if (col.isCurrent) cls.push('current-week');
   let innerCls = 'week-cell-inner';
-  if (total === 0 && zeroRed) innerCls += ' blink-zero';
+  if (isWeekMax) innerCls += ' week-mvp';
+  else if (total === 0 && zeroRed) innerCls += ' blink-zero';
   return `<td class="${cls.join(' ')}"><div class="${innerCls}" title="Inc ${cell.inc} + Task ${cell.task}">${total}</div></td>`;
+}
+
+function computeWeekMax(weekCols) {
+  const weekMax = {};
+  weekCols.forEach((col) => {
+    let max = 0;
+    (WEEKLY_DATA?.data || []).forEach((row) => {
+      const cell = normWeekCell(row.weekly[col.weekIdx]);
+      const total = cell.inc + cell.task;
+      if (total > max) max = total;
+    });
+    weekMax[col.weekIdx] = max;
+  });
+  return weekMax;
 }
 
 function renderDailyHeatmap(monthKey) {
@@ -1054,6 +1136,7 @@ function renderDailyHeatmap(monthKey) {
   const todayKey = dailyDateKey(today.y, today.m, today.d);
 
   const weekCols = weekColumnsForMonth(data.year, data.month);
+  const weekMax = computeWeekMax(weekCols);
   let weekColPtr = 0;
 
   const dayMax = {};
@@ -1120,7 +1203,7 @@ function renderDailyHeatmap(monthKey) {
       html += `<td class="${cls.join(' ')}"><div class="${innerCls}"${innerStyle} title="${emp} · ${d.key} · ${v}">${text}</div></td>`;
 
       if (weekColPtr < weekCols.length && d.day === weekCols[weekColPtr].afterDay) {
-        html += renderWeekColumnCell(emp, weekCols[weekColPtr]);
+        html += renderWeekColumnCell(emp, weekCols[weekColPtr], weekMax);
         weekColPtr++;
       }
     });
@@ -1138,6 +1221,7 @@ function renderDailyHeatmap(monthKey) {
     `<span>1→15 蓝由浅至深：</span>${legendScale}<span>15+ 同 15</span>`,
     '<span><i style="background:#f8fafc;border:1px solid #e2e8f0"></i> 周末无数据 · / 未来空白</span>',
     '<span><i style="background:#fde68a;border:1px solid #f59e0b"></i> 当天最高单量（浅金闪烁）</span>',
+    '<span><i style="background:linear-gradient(135deg,#fde68a,#fbbf24);border:2px solid #a855f7;box-shadow:0 0 6px rgba(251,191,36,.5)"></i> 当周最高单量（紫金框 + 金粒）</span>',
     '<span><i style="background:#475569"></i> 周汇总列（Inc+Task 总数）</span>',
   ].join('');
 }
