@@ -1,2 +1,6 @@
 .vercel
 .env*
+automation/dashboard.log
+automation/ticket_query_health.json
+automation/__pycache__/
+**/__pycache__/

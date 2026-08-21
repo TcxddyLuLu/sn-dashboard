@@ -43,13 +43,14 @@ def output_dir() -> Path:
 
 load_dotenv(SCRIPT_DIR / ".env")
 
+_log_handlers: list[logging.Handler] = [logging.StreamHandler()]
+if os.environ.get("CI", "").lower() != "true":
+    _log_handlers.append(logging.FileHandler(SCRIPT_DIR / "dashboard.log"))
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(SCRIPT_DIR / "dashboard.log"),
-    ],
+    handlers=_log_handlers,
 )
 log = logging.getLogger(__name__)
 
@@ -1347,6 +1348,20 @@ GITHUB_REPO_DIR = str(Path.home() / ".sn-dashboard-repo")
 GITHUB_REPO_URL = "https://github.com/TcxddyLuLu/sn-dashboard.git"
 GITHUB_USER = "TcxddyLuLu"
 
+# Tracked in git historically but mutated during CI runs; never commit these.
+CI_RUNTIME_GIT_PATHS = (
+    "automation/dashboard.log",
+    "automation/ticket_query_health.json",
+)
+
+REPO_GITIGNORE = """.vercel
+.env*
+automation/dashboard.log
+automation/ticket_query_health.json
+automation/__pycache__/
+**/__pycache__/
+"""
+
 DASHBOARD_STATIC_FILES = [
     "chart.min.js",
     "dashboard-features.js",
@@ -1380,6 +1395,23 @@ TICKETS_STATIC_FILES = [
 ]
 
 
+def ensure_repo_gitignore(repo_dir: Path) -> None:
+    path = repo_dir / ".gitignore"
+    if not path.exists() or path.read_text(encoding="utf-8") != REPO_GITIGNORE:
+        path.write_text(REPO_GITIGNORE, encoding="utf-8")
+
+
+def untrack_ci_runtime_files(repo_dir: Path) -> None:
+    subprocess.run(
+        [
+            "git", "-C", str(repo_dir), "rm", "-r", "--cached", "--ignore-unmatch",
+            *CI_RUNTIME_GIT_PATHS,
+            "automation/__pycache__",
+        ],
+        capture_output=True,
+    )
+
+
 def sync_automation_to_repo(repo_dir: Path) -> None:
     """Keep GHA automation/ in sync with the Mac source scripts."""
     dest = repo_dir / "automation"
@@ -1393,6 +1425,35 @@ def sync_automation_to_repo(repo_dir: Path) -> None:
         copied += 1
     if copied:
         log.info("Synced %s file(s) to repo automation/", copied)
+
+
+def _clean_ci_git_noise(repo_dir: Path) -> None:
+    """Discard CI-local edits to tracked runtime files before pull/rebase."""
+    if CI_RUNTIME_GIT_PATHS:
+        subprocess.run(
+            ["git", "-C", str(repo_dir), "restore", "--", *CI_RUNTIME_GIT_PATHS],
+            capture_output=True,
+        )
+    subprocess.run(
+        ["git", "-C", str(repo_dir), "clean", "-fd", "--", "automation/__pycache__"],
+        capture_output=True,
+    )
+
+
+def _ci_git_pull_with_autostash(repo_dir: Path, *, attempts: int = 3) -> bool:
+    _clean_ci_git_noise(repo_dir)
+    for attempt in range(1, attempts + 1):
+        pull = subprocess.run(
+            ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
+            capture_output=True,
+            text=True,
+        )
+        if pull.returncode == 0:
+            return True
+        log.warning("CI git pull attempt %s/%s failed: %s", attempt, attempts, pull.stderr.strip())
+        if attempt < attempts:
+            time.sleep(5)
+    return False
 
 
 def _ensure_gh_user():
@@ -1489,9 +1550,11 @@ def push_to_github(html_path) -> bool:
             shutil.copy2(str(src), str(repo_dir / fname))
 
     sync_automation_to_repo(repo_dir)
+    ensure_repo_gitignore(repo_dir)
+    untrack_ci_runtime_files(repo_dir)
 
     subprocess.run(
-        ["git", "-C", str(repo_dir), "add", "index.html", *DASHBOARD_STATIC_FILES, "automation"],
+        ["git", "-C", str(repo_dir), "add", "index.html", *DASHBOARD_STATIC_FILES, "automation", ".gitignore"],
         capture_output=True,
     )
 
@@ -1573,15 +1636,9 @@ def push_to_github_ci() -> bool:
     )
 
     for attempt in range(1, 4):
-        pull = subprocess.run(
-            ["git", "pull", "--rebase"],
-            cwd=repo_dir, capture_output=True, text=True,
-        )
-        if pull.returncode == 0:
+        if _ci_git_pull_with_autostash(repo_dir):
             break
-        log.warning("CI git pull attempt %s/3 failed: %s", attempt, pull.stderr.strip())
         if attempt < 3:
-            import time
             time.sleep(5)
     else:
         log.error("CI git pull failed after retries")
@@ -1593,8 +1650,8 @@ def push_to_github_ci() -> bool:
         return True
 
     if "rejected" in (push.stderr or "").lower():
-        log.warning("CI push rejected, retrying after pull --rebase")
-        if subprocess.run(["git", "pull", "--rebase"], cwd=repo_dir).returncode == 0:
+        log.warning("CI push rejected, retrying after pull --rebase --autostash")
+        if _ci_git_pull_with_autostash(repo_dir):
             push = subprocess.run(["git", "push"], cwd=repo_dir, capture_output=True, text=True)
             if push.returncode == 0:
                 log.info("GitHub Pages updated successfully (after retry)")
@@ -1739,15 +1796,9 @@ def push_tickets_to_github_ci() -> bool:
     )
 
     for attempt in range(1, 4):
-        pull = subprocess.run(
-            ["git", "pull", "--rebase"],
-            cwd=repo_dir, capture_output=True, text=True,
-        )
-        if pull.returncode == 0:
+        if _ci_git_pull_with_autostash(repo_dir):
             break
-        log.warning("CI tickets git pull attempt %s/3 failed: %s", attempt, pull.stderr.strip())
         if attempt < 3:
-            import time
             time.sleep(5)
     else:
         log.error("CI tickets git pull failed after retries")
@@ -1759,8 +1810,8 @@ def push_tickets_to_github_ci() -> bool:
         return True
 
     if "rejected" in (push.stderr or "").lower():
-        log.warning("CI tickets push rejected, retrying after pull --rebase")
-        if subprocess.run(["git", "pull", "--rebase"], cwd=repo_dir).returncode == 0:
+        log.warning("CI tickets push rejected, retrying after pull --rebase --autostash")
+        if _ci_git_pull_with_autostash(repo_dir):
             push = subprocess.run(["git", "push"], cwd=repo_dir, capture_output=True, text=True)
             if push.returncode == 0:
                 log.info("GitHub Pages tickets updated successfully (after retry)")

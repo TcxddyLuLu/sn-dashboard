@@ -1,4 +1,0 @@
-2026-08-17 17:06:31,091 [INFO] === Dashboard automation started at 2026-08-17 17:06 (ci=False) ===
-2026-08-17 17:06:31,091 [ERROR] Databricks query failed: Missing required env var: DATABRICKS_SERVER_HOSTNAME
-2026-08-17 17:06:31,091 [INFO] Sending alert email to luby.lu@nike.com...
-2026-08-17 17:06:31,330 [INFO] Alert email sent via Outlook

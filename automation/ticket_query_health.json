@@ -1,5 +1,0 @@
-{
-  "consecutive_failures": 1,
-  "last_failure": "2026-08-17 17:06",
-  "last_error": "Missing required env var: DATABRICKS_SERVER_HOSTNAME"
-}
