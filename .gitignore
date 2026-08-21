@@ -3,4 +3,7 @@
 automation/dashboard.log
 automation/ticket_query_health.json
 automation/__pycache__/
+automation/.dashboard_refresh.lock
+automation/.excel_refresh.lock
+automation/.databricks_query.lock
 **/__pycache__/

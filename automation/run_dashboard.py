@@ -65,6 +65,7 @@ DASHBOARD_LAST_HOUR = 17
 EXCEL_CATCHUP_DELAYS_MIN = (15, 30)
 EXCEL_LOCK_FILE = SCRIPT_DIR / ".excel_refresh.lock"
 DASHBOARD_LOCK_FILE = SCRIPT_DIR / ".dashboard_refresh.lock"
+DATABRICKS_QUERY_LOCK_FILE = SCRIPT_DIR / ".databricks_query.lock"
 QUERY_TIMEOUT_SUMMARY_LOCAL = 600
 SQL_PLACEHOLDER_RE = re.compile(r"__MONTH_[A-Z_]+__|\{_MONTH_[A-Z_]+\}")
 
@@ -616,24 +617,29 @@ def query_team_tickets(*, max_attempts: int = 2, timeout: int | None = None):
     """Fetch team ticket details once; monthly/weekly/daily are derived in Python."""
     ensure_databricks_http_path(SCRIPT_DIR / ".env")
 
-    for attempt in range(1, max_attempts + 1):
-        log.info("Running team tickets query (attempt %s/%s)...", attempt, max_attempts)
-        try:
-            # Per-employee queries run in-process (~1–2 min). Subprocess + Queue deadlocks
-            # when returning 1000+ rows (parent joins before reading the queue).
-            if timeout is not None:
-                log.info("Team tickets query (in-process, timeout param ignored)")
-            rows = normalize_ticket_rows(_run_team_tickets_once())
-            log.info("Got %s team ticket rows", len(rows))
-            return rows
-        except Exception as e:
-            log.warning("Team tickets query attempt %s failed: %s", attempt, e)
-            if attempt < max_attempts:
-                log.info("Retrying in 10 seconds...")
-                import time
-                time.sleep(10)
-            else:
-                raise
+    if not try_acquire_databricks_lock():
+        raise RuntimeError("Another Databricks query is already running")
+
+    try:
+        for attempt in range(1, max_attempts + 1):
+            log.info("Running team tickets query (attempt %s/%s)...", attempt, max_attempts)
+            try:
+                # Per-employee queries run in-process (~1–2 min). Subprocess + Queue deadlocks
+                # when returning 1000+ rows (parent joins before reading the queue).
+                if timeout is not None:
+                    log.info("Team tickets query (in-process, timeout param ignored)")
+                rows = normalize_ticket_rows(_run_team_tickets_once())
+                log.info("Got %s team ticket rows", len(rows))
+                return rows
+            except Exception as e:
+                log.warning("Team tickets query attempt %s failed: %s", attempt, e)
+                if attempt < max_attempts:
+                    log.info("Retrying in 10 seconds...")
+                    time.sleep(10)
+                else:
+                    raise
+    finally:
+        release_databricks_lock()
 
 
 def rows_from_summary(monthly, weekly, daily):
@@ -680,6 +686,7 @@ def load_cached_dashboard_rows() -> list[dict]:
     """Read last published monthly rows (Excel catch-up must not re-query Databricks)."""
     key = now_display().strftime("%Y-%m")
     candidates = [
+        output_dir() / "dashboard_history.json",
         Path(GITHUB_REPO_DIR) / "dashboard_history.json",
         SCRIPT_DIR / "dashboard_history.json",
     ]
@@ -735,6 +742,17 @@ def refresh_excel_ticket_details(rows) -> bool:
 
 _excel_lock_handle = None
 _dashboard_lock_handle = None
+_databricks_lock_handle = None
+
+
+def wait_for_dashboard_idle(timeout_sec: int = 900) -> bool:
+    """Wait for an in-flight Mac/GHA dashboard refresh to release its lock."""
+    deadline = time.time() + timeout_sec
+    while time.time() < deadline:
+        if not dashboard_lock_is_held():
+            return True
+        time.sleep(10)
+    return not dashboard_lock_is_held()
 
 
 def dashboard_lock_is_held() -> bool:
@@ -810,6 +828,33 @@ def release_excel_lock() -> None:
         _excel_lock_handle = None
 
 
+def try_acquire_databricks_lock() -> bool:
+    global _databricks_lock_handle
+    try:
+        DATABRICKS_QUERY_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+        handle = open(DATABRICKS_QUERY_LOCK_FILE, "w")
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        handle.seek(0)
+        handle.truncate()
+        handle.write(str(os.getpid()))
+        handle.flush()
+        _databricks_lock_handle = handle
+        return True
+    except OSError:
+        return False
+
+
+def release_databricks_lock() -> None:
+    global _databricks_lock_handle
+    if _databricks_lock_handle is None:
+        return
+    try:
+        fcntl.flock(_databricks_lock_handle.fileno(), fcntl.LOCK_UN)
+        _databricks_lock_handle.close()
+    finally:
+        _databricks_lock_handle = None
+
+
 def dashboard_html_path() -> Path:
     if CI_MODE:
         return output_dir() / "index.html"
@@ -857,8 +902,10 @@ def run_excel_catchup(*, skip_if_fresh: bool = False) -> int:
         return 0
 
     if dashboard_lock_is_held():
-        log.info("Dashboard refresh in progress; skipping Excel catch-up")
-        return 0
+        log.info("Dashboard refresh in progress; waiting up to 15 min for it to finish...")
+        if not wait_for_dashboard_idle(900):
+            log.info("Dashboard still running after wait; skipping Excel catch-up")
+            return 0
 
     rows = load_cached_dashboard_rows()
     if not rows:
@@ -880,28 +927,33 @@ def query_summary():
     """Fetch monthly + weekly aggregates. Required for every run."""
     ensure_databricks_http_path(SCRIPT_DIR / ".env")
 
-    for attempt in range(1, 3):
-        log.info(f"Running summary queries (attempt {attempt}/2)...")
-        try:
-            timeout = summary_timeout_seconds()
-            log.info(f"Summary query hard timeout: {timeout}s")
-            monthly, weekly, daily = run_with_hard_timeout(
-                "databricks_query_worker:run_summary_queries",
-                timeout,
-                "Databricks summary queries",
-            )
-            log.info(
-                f"Got {len(monthly)} monthly rows, {len(weekly)} weekly rows, {len(daily)} daily rows"
-            )
-            return monthly, weekly, daily
-        except Exception as e:
-            log.warning(f"Summary query attempt {attempt} failed: {e}")
-            if attempt < 2:
-                log.info("Retrying in 10 seconds...")
-                import time
-                time.sleep(10)
-            else:
-                raise
+    if not try_acquire_databricks_lock():
+        raise RuntimeError("Another Databricks query is already running")
+
+    try:
+        for attempt in range(1, 3):
+            log.info(f"Running summary queries (attempt {attempt}/2)...")
+            try:
+                timeout = summary_timeout_seconds()
+                log.info(f"Summary query hard timeout: {timeout}s")
+                monthly, weekly, daily = run_with_hard_timeout(
+                    "databricks_query_worker:run_summary_queries",
+                    timeout,
+                    "Databricks summary queries",
+                )
+                log.info(
+                    f"Got {len(monthly)} monthly rows, {len(weekly)} weekly rows, {len(daily)} daily rows"
+                )
+                return monthly, weekly, daily
+            except Exception as e:
+                log.warning(f"Summary query attempt {attempt} failed: {e}")
+                if attempt < 2:
+                    log.info("Retrying in 10 seconds...")
+                    time.sleep(10)
+                else:
+                    raise
+    finally:
+        release_databricks_lock()
 
 
 def fetch_tickets_optional():
@@ -1359,6 +1411,9 @@ REPO_GITIGNORE = """.vercel
 automation/dashboard.log
 automation/ticket_query_health.json
 automation/__pycache__/
+automation/.dashboard_refresh.lock
+automation/.excel_refresh.lock
+automation/.databricks_query.lock
 **/__pycache__/
 """
 
@@ -1620,6 +1675,8 @@ def push_to_github_ci() -> bool:
         cwd=repo_dir, check=True,
     )
 
+    _clean_ci_git_noise(repo_dir)
+
     files = ["index.html", "dashboard_history.json", *DASHBOARD_STATIC_FILES]
     subprocess.run(["git", "add", *files], cwd=repo_dir, check=True)
 
@@ -1779,6 +1836,8 @@ def push_tickets_to_github_ci() -> bool:
         ["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"],
         cwd=repo_dir, check=True,
     )
+
+    _clean_ci_git_noise(repo_dir)
 
     files = list(TICKETS_STATIC_FILES)
     subprocess.run(["git", "add", *files], cwd=repo_dir, check=True)
