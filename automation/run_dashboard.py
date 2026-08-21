@@ -7,7 +7,7 @@ Daily Dashboard Automation
 - Pushes to GitHub Pages
 """
 
-import os, sys, json, re, subprocess, logging, shutil, argparse, fcntl
+import os, sys, json, re, subprocess, logging, shutil, argparse, fcntl, time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from datetime import datetime, date, timedelta, timezone
@@ -63,6 +63,8 @@ TICKET_AFTERNOON_HOUR = 17
 DASHBOARD_LAST_HOUR = 17
 EXCEL_CATCHUP_DELAYS_MIN = (15, 30)
 EXCEL_LOCK_FILE = SCRIPT_DIR / ".excel_refresh.lock"
+DASHBOARD_LOCK_FILE = SCRIPT_DIR / ".dashboard_refresh.lock"
+QUERY_TIMEOUT_SUMMARY_LOCAL = 600
 SQL_PLACEHOLDER_RE = re.compile(r"__MONTH_[A-Z_]+__|\{_MONTH_[A-Z_]+\}")
 
 NAME_OVERRIDES = {
@@ -111,8 +113,7 @@ _EMPLOYEE_ID_LIST_PH = "__EMPLOYEE_ID_LIST__"
 _MONTH_START_UTC_PH = "__MONTH_START_UTC__"
 _MONTH_END_UTC_PH = "__MONTH_END_UTC__"
 
-QUERY_TIMEOUT_SUMMARY_LOCAL = 300
-QUERY_TIMEOUT_SUMMARY_CI = 180
+QUERY_TIMEOUT_SUMMARY_CI = 300
 QUERY_TIMEOUT_TICKETS_LOCAL = 1200
 QUERY_TIMEOUT_TICKETS_CI = 1500
 QUERY_TIMEOUT_TEAM_LOCAL = 900
@@ -674,6 +675,26 @@ def rows_from_summary(monthly, weekly, daily):
     return rows, weekly_info, daily_info
 
 
+def load_cached_dashboard_rows() -> list[dict]:
+    """Read last published monthly rows (Excel catch-up must not re-query Databricks)."""
+    key = now_display().strftime("%Y-%m")
+    candidates = [
+        Path(GITHUB_REPO_DIR) / "dashboard_history.json",
+        SCRIPT_DIR / "dashboard_history.json",
+    ]
+    for history_path in candidates:
+        if not history_path.exists():
+            continue
+        try:
+            history = json.loads(history_path.read_text(encoding="utf-8"))
+            monthly = history.get(key, {}).get("monthly")
+            if monthly:
+                return monthly
+        except (OSError, json.JSONDecodeError) as exc:
+            log.warning("Could not read cached dashboard rows from %s: %s", history_path, exc)
+    return []
+
+
 def fetch_dashboard_from_summary():
     """Fetch chart/summary data via fast summary SQL (Phase 1)."""
     log.info("Fetching dashboard data via summary queries (Phase 1)")
@@ -712,6 +733,53 @@ def refresh_excel_ticket_details(rows) -> bool:
 
 
 _excel_lock_handle = None
+_dashboard_lock_handle = None
+
+
+def dashboard_lock_is_held() -> bool:
+    """True when another process holds the dashboard refresh flock."""
+    if not DASHBOARD_LOCK_FILE.exists():
+        return False
+    try:
+        handle = open(DASHBOARD_LOCK_FILE, "r+")
+    except OSError:
+        return False
+    try:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            return False
+        except OSError:
+            return True
+    finally:
+        handle.close()
+
+
+def try_acquire_dashboard_lock() -> bool:
+    global _dashboard_lock_handle
+    try:
+        DASHBOARD_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+        handle = open(DASHBOARD_LOCK_FILE, "w")
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        handle.seek(0)
+        handle.truncate()
+        handle.write(str(os.getpid()))
+        handle.flush()
+        _dashboard_lock_handle = handle
+        return True
+    except OSError:
+        return False
+
+
+def release_dashboard_lock() -> None:
+    global _dashboard_lock_handle
+    if _dashboard_lock_handle is None:
+        return
+    try:
+        fcntl.flock(_dashboard_lock_handle.fileno(), fcntl.LOCK_UN)
+        _dashboard_lock_handle.close()
+    finally:
+        _dashboard_lock_handle = None
 
 
 def try_acquire_excel_lock() -> bool:
@@ -787,8 +855,16 @@ def run_excel_catchup(*, skip_if_fresh: bool = False) -> int:
         log.info("Another Excel refresh is already running; skipping catch-up")
         return 0
 
+    if dashboard_lock_is_held():
+        log.info("Dashboard refresh in progress; skipping Excel catch-up")
+        return 0
+
+    rows = load_cached_dashboard_rows()
+    if not rows:
+        log.warning("No cached dashboard rows for Excel catch-up; skipping")
+        return 1
+
     try:
-        rows, _, _ = fetch_dashboard_from_summary()
         if refresh_excel_ticket_details(rows):
             push_tickets(required=False)
             log.info("Excel catch-up completed successfully")
@@ -1279,6 +1355,22 @@ DASHBOARD_STATIC_FILES = [
     "tickets-features.js",
 ]
 
+AUTOMATION_SYNC_FILES = [
+    "run_dashboard.py",
+    "databricks_connect.py",
+    "databricks_query_worker.py",
+    "dashboard_alerts.py",
+    "requirements-ci.txt",
+    "dashboard_query.sql",
+    "weekly_query.sql",
+    "daily_query.sql",
+    "ticket_details_query.sql",
+    "team_incidents_query.sql",
+    "team_tasks_query.sql",
+    "team_member_incident.sql",
+    "team_member_task.sql",
+]
+
 TICKETS_STATIC_FILES = [
     "tickets.html",
     "tickets-features.js",
@@ -1286,6 +1378,21 @@ TICKETS_STATIC_FILES = [
     "dashboard_history.json",
     "xlsx.full.min.js",
 ]
+
+
+def sync_automation_to_repo(repo_dir: Path) -> None:
+    """Keep GHA automation/ in sync with the Mac source scripts."""
+    dest = repo_dir / "automation"
+    dest.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    for fname in AUTOMATION_SYNC_FILES:
+        src = SCRIPT_DIR / fname
+        if not src.exists():
+            continue
+        shutil.copy2(str(src), str(dest / fname))
+        copied += 1
+    if copied:
+        log.info("Synced %s file(s) to repo automation/", copied)
 
 
 def _ensure_gh_user():
@@ -1381,8 +1488,10 @@ def push_to_github(html_path) -> bool:
         if src.exists():
             shutil.copy2(str(src), str(repo_dir / fname))
 
+    sync_automation_to_repo(repo_dir)
+
     subprocess.run(
-        ["git", "-C", str(repo_dir), "add", "index.html", *DASHBOARD_STATIC_FILES],
+        ["git", "-C", str(repo_dir), "add", "index.html", *DASHBOARD_STATIC_FILES, "automation"],
         capture_output=True,
     )
 
@@ -1694,44 +1803,54 @@ def main():
 
     log.info(f"=== Dashboard automation started at {now_str} (ci={CI_MODE}) ===")
 
-    if (
-        CI_MODE
-        and args.skip_if_fresh is not None
-        and args.skip_if_fresh >= 0
-        and dashboard_is_fresh(args.skip_if_fresh)
-    ):
-        updated = parse_dashboard_updated_at()
-        log.info(
-            "Dashboard already fresh (updated %s); skipping GHA run — Mac likely handled it",
-            updated.strftime("%Y/%m/%d %H:%M") if updated else "recently",
-        )
-        sys.exit(0)
+    if not try_acquire_dashboard_lock():
+        log.info("Another dashboard refresh is already running; exiting")
+        sys.exit(0 if CI_MODE else 1)
 
-    seal_previous_month_if_needed()
-
+    exit_code = 0
     try:
-        rows, weekly_info, daily_info = fetch_dashboard_from_summary()
-    except Exception as e:
-        log.error(f"Databricks query failed: {e}")
-        record_ticket_query_failure(str(e))
-        maybe_alert_ticket_failure_streak(load_ticket_health()["consecutive_failures"], str(e))
-        notify_failure_safe("SN Dashboard", e)
-        sys.exit(1)
+        if (
+            CI_MODE
+            and args.skip_if_fresh is not None
+            and args.skip_if_fresh >= 0
+            and dashboard_is_fresh(args.skip_if_fresh)
+        ):
+            updated = parse_dashboard_updated_at()
+            log.info(
+                "Dashboard already fresh (updated %s); skipping GHA run — Mac likely handled it",
+                updated.strftime("%Y/%m/%d %H:%M") if updated else "recently",
+            )
+        else:
+            seal_previous_month_if_needed()
 
-    html_path = publish_dashboard(rows, weekly_info, daily_info)
+            try:
+                rows, weekly_info, daily_info = fetch_dashboard_from_summary()
+            except Exception as e:
+                log.error(f"Databricks query failed: {e}")
+                record_ticket_query_failure(str(e))
+                maybe_alert_ticket_failure_streak(load_ticket_health()["consecutive_failures"], str(e))
+                notify_failure_safe("SN Dashboard", e)
+                exit_code = 1
+            else:
+                html_path = publish_dashboard(rows, weekly_info, daily_info)
 
-    days_left = (TOKEN_EXPIRY - today_display()).days
-    if days_left <= TOKEN_WARN_DAYS:
-        log.warning(
-            "Databricks token expires in %s days (%s); renew before automation stops",
-            days_left,
-            TOKEN_EXPIRY,
-        )
+                days_left = (TOKEN_EXPIRY - today_display()).days
+                if days_left <= TOKEN_WARN_DAYS:
+                    log.warning(
+                        "Databricks token expires in %s days (%s); renew before automation stops",
+                        days_left,
+                        TOKEN_EXPIRY,
+                    )
 
-    push_dashboard(html_path, required=True)
-    log.info("Dashboard charts published (Excel updates separately on tickets.html)")
+                if not push_dashboard(html_path, required=True):
+                    exit_code = 1
+                else:
+                    log.info("Dashboard charts published (Excel updates separately on tickets.html)")
+                    log.info("=== Dashboard automation completed ===")
+    finally:
+        release_dashboard_lock()
 
-    log.info("=== Dashboard automation completed ===")
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
