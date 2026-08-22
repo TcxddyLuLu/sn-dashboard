@@ -67,6 +67,7 @@ EXCEL_LOCK_FILE = SCRIPT_DIR / ".excel_refresh.lock"
 DASHBOARD_LOCK_FILE = SCRIPT_DIR / ".dashboard_refresh.lock"
 DATABRICKS_QUERY_LOCK_FILE = SCRIPT_DIR / ".databricks_query.lock"
 QUERY_TIMEOUT_SUMMARY_LOCAL = 600
+GIT_NETWORK_TIMEOUT_SEC = 120
 SQL_PLACEHOLDER_RE = re.compile(r"__MONTH_[A-Z_]+__|\{_MONTH_[A-Z_]+\}")
 
 NAME_OVERRIDES = {
@@ -682,6 +683,28 @@ def rows_from_summary(monthly, weekly, daily):
     return rows, weekly_info, daily_info
 
 
+def summary_rows_from_display_monthly(monthly_display: list[dict]) -> list[dict]:
+    """Rebuild employee_id rows from dashboard_history monthly display format."""
+    name_to_id = {}
+    for employee_id in EMPLOYEE_IDS:
+        name_to_id[NAME_OVERRIDES.get(employee_id, employee_id)] = employee_id
+        name_to_id[employee_id] = employee_id
+
+    rows = []
+    for item in monthly_display:
+        employee_name = item.get("employee", "")
+        employee_id = name_to_id.get(employee_name)
+        if not employee_id:
+            continue
+        rows.append({
+            "employee_id": employee_id,
+            "employee_name": employee_name,
+            "incident_count": int(item.get("incidents") or 0),
+            "task_count": int(item.get("tasks") or 0),
+        })
+    return rows
+
+
 def load_cached_dashboard_rows() -> list[dict]:
     """Read last published monthly rows (Excel catch-up must not re-query Databricks)."""
     key = now_display().strftime("%Y-%m")
@@ -695,9 +718,19 @@ def load_cached_dashboard_rows() -> list[dict]:
             continue
         try:
             history = json.loads(history_path.read_text(encoding="utf-8"))
-            monthly = history.get(key, {}).get("monthly")
+            month_data = history.get(key, {})
+            summary_rows = month_data.get("summary_rows")
+            if summary_rows:
+                return summary_rows
+            monthly = month_data.get("monthly")
             if monthly:
-                return monthly
+                rebuilt = summary_rows_from_display_monthly(monthly)
+                if rebuilt:
+                    log.info(
+                        "Rebuilt %s summary row(s) from dashboard_history monthly display",
+                        len(rebuilt),
+                    )
+                    return rebuilt
         except (OSError, json.JSONDecodeError) as exc:
             log.warning("Could not read cached dashboard rows from %s: %s", history_path, exc)
     return []
@@ -1387,6 +1420,15 @@ def update_dashboard_history(rows, weekly_info=None, daily_info=None):
     history[month_key] = {
         "label": month_label,
         "monthly": monthly,
+        "summary_rows": [
+            {
+                "employee_id": r["employee_id"],
+                "employee_name": r["employee_name"],
+                "incident_count": int(r["incident_count"]),
+                "task_count": int(r["task_count"]),
+            }
+            for r in rows
+        ],
         "weekly": weekly_info or prev.get("weekly", {"weeks": [], "data": []}),
         "daily": daily_info or prev.get("daily"),
     }
@@ -1498,17 +1540,42 @@ def _clean_ci_git_noise(repo_dir: Path) -> None:
 def _ci_git_pull_with_autostash(repo_dir: Path, *, attempts: int = 3) -> bool:
     _clean_ci_git_noise(repo_dir)
     for attempt in range(1, attempts + 1):
-        pull = subprocess.run(
-            ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
-            capture_output=True,
-            text=True,
-        )
-        if pull.returncode == 0:
+        try:
+            pull = subprocess.run(
+                ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
+                capture_output=True,
+                text=True,
+                timeout=GIT_NETWORK_TIMEOUT_SEC,
+            )
+        except subprocess.TimeoutExpired:
+            log.warning("CI git pull attempt %s/%s timed out after %ss", attempt, attempts, GIT_NETWORK_TIMEOUT_SEC)
+            pull = None
+        if pull is not None and pull.returncode == 0:
             return True
-        log.warning("CI git pull attempt %s/%s failed: %s", attempt, attempts, pull.stderr.strip())
+        if pull is not None:
+            log.warning("CI git pull attempt %s/%s failed: %s", attempt, attempts, pull.stderr.strip())
         if attempt < attempts:
             time.sleep(5)
     return False
+
+
+def _git_run(repo_dir, args, env=None, *, timeout: int = GIT_NETWORK_TIMEOUT_SEC):
+    try:
+        return subprocess.run(
+            ["git", "-C", str(repo_dir), *args],
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        log.warning("Git %s timed out after %ss", " ".join(args[:2]), timeout)
+        return subprocess.CompletedProcess(
+            args=["git", *args],
+            returncode=124,
+            stdout=exc.stdout or "",
+            stderr=(exc.stderr or "") + f"\nTimed out after {timeout}s",
+        )
 
 
 def _ensure_gh_user():
@@ -1582,15 +1649,11 @@ def push_to_github(html_path) -> bool:
 
     pull_result = None
     for attempt in range(1, 4):
-        pull_result = subprocess.run(
-            ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
-            env=env, capture_output=True, text=True,
-        )
+        pull_result = _git_run(repo_dir, ["pull", "--rebase", "--autostash"], env=env)
         if pull_result.returncode == 0:
             break
         log.warning(f"Git pull attempt {attempt}/3 failed: {pull_result.stderr.strip()}")
         if attempt < 3:
-            import time
             time.sleep(5)
     if pull_result is None or pull_result.returncode != 0:
         log.warning(f"Git pull failed: {pull_result.stderr if pull_result else 'unknown'}")
@@ -1631,25 +1694,16 @@ def push_to_github(html_path) -> bool:
         notify_push_failure("SN Dashboard", "git commit", commit_result.stderr)
         return False
 
-    push_result = subprocess.run(
-        ["git", "-C", str(repo_dir), "push"],
-        capture_output=True, text=True, env=env,
-    )
+    push_result = _git_run(repo_dir, ["push"], env=env)
     if push_result.returncode == 0:
         log.info("GitHub Pages updated successfully")
         return True
 
     if "rejected" in (push_result.stderr or "").lower():
         log.warning("Push rejected, retrying after pull --rebase --autostash")
-        retry_pull = subprocess.run(
-            ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
-            env=env, capture_output=True, text=True,
-        )
+        retry_pull = _git_run(repo_dir, ["pull", "--rebase", "--autostash"], env=env)
         if retry_pull.returncode == 0:
-            push_result = subprocess.run(
-                ["git", "-C", str(repo_dir), "push"],
-                capture_output=True, text=True, env=env,
-            )
+            push_result = _git_run(repo_dir, ["push"], env=env)
             if push_result.returncode == 0:
                 log.info("GitHub Pages updated successfully (after retry)")
                 return True
@@ -1701,7 +1755,14 @@ def push_to_github_ci() -> bool:
         log.error("CI git pull failed after retries")
         return False
 
-    push = subprocess.run(["git", "push"], cwd=repo_dir, capture_output=True, text=True)
+    try:
+        push = subprocess.run(
+            ["git", "push"], cwd=repo_dir, capture_output=True, text=True,
+            timeout=GIT_NETWORK_TIMEOUT_SEC,
+        )
+    except subprocess.TimeoutExpired:
+        log.error("CI git push timed out after %ss", GIT_NETWORK_TIMEOUT_SEC)
+        return False
     if push.returncode == 0:
         log.info("GitHub Pages updated successfully")
         return True
@@ -1709,7 +1770,14 @@ def push_to_github_ci() -> bool:
     if "rejected" in (push.stderr or "").lower():
         log.warning("CI push rejected, retrying after pull --rebase --autostash")
         if _ci_git_pull_with_autostash(repo_dir):
-            push = subprocess.run(["git", "push"], cwd=repo_dir, capture_output=True, text=True)
+            try:
+                push = subprocess.run(
+                    ["git", "push"], cwd=repo_dir, capture_output=True, text=True,
+                    timeout=GIT_NETWORK_TIMEOUT_SEC,
+                )
+            except subprocess.TimeoutExpired:
+                log.error("CI git push timed out after %ss", GIT_NETWORK_TIMEOUT_SEC)
+                return False
             if push.returncode == 0:
                 log.info("GitHub Pages updated successfully (after retry)")
                 return True
@@ -1740,15 +1808,11 @@ def push_tickets_to_github() -> bool:
 
     pull_result = None
     for attempt in range(1, 4):
-        pull_result = subprocess.run(
-            ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
-            env=env, capture_output=True, text=True,
-        )
+        pull_result = _git_run(repo_dir, ["pull", "--rebase", "--autostash"], env=env)
         if pull_result.returncode == 0:
             break
         log.warning(f"Git pull attempt {attempt}/3 failed: {pull_result.stderr.strip()}")
         if attempt < 3:
-            import time
             time.sleep(5)
     if pull_result is None or pull_result.returncode != 0:
         log.warning(f"Git pull failed: {pull_result.stderr if pull_result else 'unknown'}")
@@ -1787,25 +1851,16 @@ def push_tickets_to_github() -> bool:
         notify_push_failure("SN Dashboard Tickets", "git commit", commit_result.stderr)
         return False
 
-    push_result = subprocess.run(
-        ["git", "-C", str(repo_dir), "push"],
-        capture_output=True, text=True, env=env,
-    )
+    push_result = _git_run(repo_dir, ["push"], env=env)
     if push_result.returncode == 0:
         log.info("GitHub Pages tickets updated successfully")
         return True
 
     if "rejected" in (push_result.stderr or "").lower():
         log.warning("Tickets push rejected, retrying after pull --rebase --autostash")
-        retry_pull = subprocess.run(
-            ["git", "-C", str(repo_dir), "pull", "--rebase", "--autostash"],
-            env=env, capture_output=True, text=True,
-        )
+        retry_pull = _git_run(repo_dir, ["pull", "--rebase", "--autostash"], env=env)
         if retry_pull.returncode == 0:
-            push_result = subprocess.run(
-                ["git", "-C", str(repo_dir), "push"],
-                capture_output=True, text=True, env=env,
-            )
+            push_result = _git_run(repo_dir, ["push"], env=env)
             if push_result.returncode == 0:
                 log.info("GitHub Pages tickets updated successfully (after retry)")
                 return True
@@ -1863,7 +1918,14 @@ def push_tickets_to_github_ci() -> bool:
         log.error("CI tickets git pull failed after retries")
         return False
 
-    push = subprocess.run(["git", "push"], cwd=repo_dir, capture_output=True, text=True)
+    try:
+        push = subprocess.run(
+            ["git", "push"], cwd=repo_dir, capture_output=True, text=True,
+            timeout=GIT_NETWORK_TIMEOUT_SEC,
+        )
+    except subprocess.TimeoutExpired:
+        log.error("CI tickets git push timed out after %ss", GIT_NETWORK_TIMEOUT_SEC)
+        return False
     if push.returncode == 0:
         log.info("GitHub Pages tickets updated successfully")
         return True
@@ -1871,7 +1933,14 @@ def push_tickets_to_github_ci() -> bool:
     if "rejected" in (push.stderr or "").lower():
         log.warning("CI tickets push rejected, retrying after pull --rebase --autostash")
         if _ci_git_pull_with_autostash(repo_dir):
-            push = subprocess.run(["git", "push"], cwd=repo_dir, capture_output=True, text=True)
+            try:
+                push = subprocess.run(
+                    ["git", "push"], cwd=repo_dir, capture_output=True, text=True,
+                    timeout=GIT_NETWORK_TIMEOUT_SEC,
+                )
+            except subprocess.TimeoutExpired:
+                log.error("CI tickets git push timed out after %ss", GIT_NETWORK_TIMEOUT_SEC)
+                return False
             if push.returncode == 0:
                 log.info("GitHub Pages tickets updated successfully (after retry)")
                 return True
@@ -1918,6 +1987,7 @@ def main():
         sys.exit(0 if CI_MODE else 1)
 
     exit_code = 0
+    html_path = None
     try:
         if (
             CI_MODE
@@ -1951,14 +2021,15 @@ def main():
                         days_left,
                         TOKEN_EXPIRY,
                     )
-
-                if not push_dashboard(html_path, required=True):
-                    exit_code = 1
-                else:
-                    log.info("Dashboard charts published (Excel updates separately on tickets.html)")
-                    log.info("=== Dashboard automation completed ===")
     finally:
         release_dashboard_lock()
+
+    if html_path is not None:
+        if not push_dashboard(html_path, required=True):
+            exit_code = 1
+        else:
+            log.info("Dashboard charts published (Excel updates separately on tickets.html)")
+            log.info("=== Dashboard automation completed ===")
 
     sys.exit(exit_code)
 
