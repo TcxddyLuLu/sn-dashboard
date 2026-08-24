@@ -1559,22 +1559,35 @@ def _ci_git_pull_with_autostash(repo_dir: Path, *, attempts: int = 3) -> bool:
     return False
 
 
-def _recover_git_repo(repo_dir: Path, env: dict | None = None) -> None:
+def _git_repo_state(repo_dir: Path, env: dict | None = None) -> str:
+    result = _git_run(repo_dir, ["status", "-sb"], env=env, timeout=30)
+    return result.stdout if result.returncode == 0 else ""
+
+
+def _recover_git_repo(repo_dir: Path, env: dict | None = None, *, force: bool = False) -> None:
     """Clear unfinished rebase/merge states that block pull --rebase --autostash."""
-    rd = str(repo_dir)
     git_dir = repo_dir / ".git"
-    if (git_dir / "rebase-merge").exists() or (git_dir / "rebase-apply").exists():
+    status = _git_repo_state(repo_dir, env=env).lower()
+    in_rebase = (
+        (git_dir / "rebase-merge").exists()
+        or (git_dir / "rebase-apply").exists()
+        or "rebase in progress" in status
+        or "rebasing" in status
+    )
+    if in_rebase:
         log.warning("Detected unfinished git rebase; aborting before pull")
         _git_run(repo_dir, ["rebase", "--abort"], env=env, timeout=30)
-    if (git_dir / "MERGE_HEAD").exists():
+        force = True
+    if (git_dir / "MERGE_HEAD").exists() or "you have unmerged paths" in status:
         log.warning("Detected unfinished git merge; aborting before pull")
         _git_run(repo_dir, ["merge", "--abort"], env=env, timeout=30)
 
     conflicts = _git_run(repo_dir, ["diff", "--name-only", "--diff-filter=U"], env=env, timeout=30)
-    if conflicts.returncode == 0 and conflicts.stdout.strip():
-        log.warning("Unresolved merge conflicts detected; resetting repo to origin/main")
+    if force or (conflicts.returncode == 0 and conflicts.stdout.strip()):
+        log.warning("Resetting local sn-dashboard repo to origin/main (force=%s)", force)
         _git_run(repo_dir, ["fetch", "origin"], env=env)
         _git_run(repo_dir, ["reset", "--hard", "origin/main"], env=env, timeout=30)
+        _git_run(repo_dir, ["clean", "-fd"], env=env, timeout=30)
 
 
 def _git_run(repo_dir, args, env=None, *, timeout: int = GIT_NETWORK_TIMEOUT_SEC):
@@ -1675,6 +1688,9 @@ def push_to_github(html_path) -> bool:
         if "未合并" in pull_result.stderr or "unmerged" in stderr or "conflict" in stderr:
             log.warning("Git pull blocked by merge state; attempting repo recovery")
             _recover_git_repo(repo_dir, env=env)
+        elif attempt == 2:
+            log.warning("Git pull still failing; force-resetting repo before final attempt")
+            _recover_git_repo(repo_dir, env=env, force=True)
         log.warning(f"Git pull attempt {attempt}/3 failed: {pull_result.stderr.strip()}")
         if attempt < 3:
             time.sleep(5)
@@ -1839,6 +1855,9 @@ def push_tickets_to_github() -> bool:
         if "未合并" in pull_result.stderr or "unmerged" in stderr or "conflict" in stderr:
             log.warning("Git pull blocked by merge state; attempting repo recovery")
             _recover_git_repo(repo_dir, env=env)
+        elif attempt == 2:
+            log.warning("Git pull still failing; force-resetting repo before final attempt")
+            _recover_git_repo(repo_dir, env=env, force=True)
         log.warning(f"Git pull attempt {attempt}/3 failed: {pull_result.stderr.strip()}")
         if attempt < 3:
             time.sleep(5)
