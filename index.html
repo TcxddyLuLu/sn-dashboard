@@ -88,18 +88,153 @@
     align-items: center;
     gap: 14px;
     box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .mvp-icon,
+  .mvp-info {
+    position: relative;
+    z-index: 1;
+  }
+  @keyframes mvp-gold-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes mvp-gold-sparkle {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.02); }
+  }
+  @keyframes mvp-silver-shimmer {
+    0%, 100% { background-position: 0% 40%; }
+    50% { background-position: 100% 60%; }
+  }
+  @keyframes mvp-silver-sparkle {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 0.95; }
+  }
+  @keyframes mvp-bronze-glow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes mvp-bronze-ember {
+    0%, 100% { opacity: 0.5; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-2px); }
   }
   .mvp-card.gold {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 2px solid #f59e0b;
+    background: linear-gradient(135deg, #fff7d6 0%, #fde68a 40%, #fbbf24 100%);
+    background-size: 220% 220%;
+    animation: mvp-gold-shimmer 3s ease-in-out infinite;
+    border: 2px solid #a855f7;
+    box-shadow:
+      0 0 0 1px #fbbf24,
+      0 4px 18px rgba(251, 191, 36, 0.5),
+      inset 0 0 28px rgba(255, 215, 0, 0.25);
+  }
+  .mvp-card.gold::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image:
+      radial-gradient(circle at 12% 35%, rgba(255, 255, 255, 0.95) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 78% 22%, rgba(255, 215, 0, 0.95) 2px, transparent 2px),
+      radial-gradient(circle at 88% 68%, rgba(255, 255, 255, 0.85) 1.2px, transparent 1.2px),
+      radial-gradient(circle at 28% 82%, rgba(251, 191, 36, 0.9) 1.6px, transparent 1.6px),
+      radial-gradient(circle at 52% 48%, rgba(168, 85, 247, 0.55) 1px, transparent 1px),
+      radial-gradient(circle at 65% 55%, rgba(255, 255, 255, 0.8) 1px, transparent 1px);
+    animation: mvp-gold-sparkle 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .mvp-card.gold::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.5) 50%, transparent 70%);
+    animation: mvp-gold-shimmer 3.8s ease-in-out infinite;
+    pointer-events: none;
   }
   .mvp-card.silver {
-    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-    border: 2px solid #94a3b8;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 45%, #cbd5e1 100%);
+    background-size: 220% 220%;
+    animation: mvp-silver-shimmer 3.6s ease-in-out infinite;
+    border: 2px solid #64748b;
+    box-shadow:
+      0 0 0 1px #f1f5f9,
+      0 4px 16px rgba(148, 163, 184, 0.45),
+      inset 0 0 24px rgba(255, 255, 255, 0.65);
+  }
+  .mvp-card.silver::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image:
+      radial-gradient(circle at 15% 40%, rgba(255, 255, 255, 1) 1.4px, transparent 1.4px),
+      radial-gradient(circle at 72% 28%, rgba(226, 232, 240, 0.95) 1.8px, transparent 1.8px),
+      radial-gradient(circle at 85% 72%, rgba(255, 255, 255, 0.9) 1.2px, transparent 1.2px),
+      radial-gradient(circle at 38% 78%, rgba(148, 163, 184, 0.85) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 55% 50%, rgba(255, 255, 255, 0.95) 1px, transparent 1px),
+      radial-gradient(circle at 92% 45%, rgba(203, 213, 225, 0.9) 1.3px, transparent 1.3px);
+    animation: mvp-silver-sparkle 2.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .mvp-card.silver::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(120deg, transparent 35%, rgba(255, 255, 255, 0.7) 50%, transparent 65%);
+    animation: mvp-silver-shimmer 4s ease-in-out infinite;
+    pointer-events: none;
   }
   .mvp-card.bronze {
-    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
-    border: 2px solid #ea580c;
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 45%, #fdba74 100%);
+    background-size: 220% 220%;
+    animation: mvp-bronze-glow 3.2s ease-in-out infinite;
+    border: 2px solid #c2410c;
+    box-shadow:
+      0 0 0 1px #fb923c,
+      0 4px 16px rgba(234, 88, 12, 0.4),
+      inset 0 0 22px rgba(254, 215, 170, 0.45);
+  }
+  .mvp-card.bronze::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image:
+      radial-gradient(circle at 18% 32%, rgba(255, 237, 213, 0.95) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 75% 25%, rgba(251, 146, 60, 0.9) 1.8px, transparent 1.8px),
+      radial-gradient(circle at 82% 70%, rgba(255, 247, 237, 0.9) 1.2px, transparent 1.2px),
+      radial-gradient(circle at 32% 85%, rgba(234, 88, 12, 0.75) 1.4px, transparent 1.4px),
+      radial-gradient(circle at 58% 52%, rgba(253, 186, 116, 0.85) 1px, transparent 1px),
+      radial-gradient(circle at 90% 48%, rgba(255, 159, 67, 0.8) 1.3px, transparent 1.3px);
+    animation: mvp-bronze-ember 2.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .mvp-card.bronze::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(110deg, transparent 32%, rgba(255, 237, 213, 0.55) 50%, transparent 68%);
+    animation: mvp-bronze-glow 3.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mvp-card.gold,
+    .mvp-card.silver,
+    .mvp-card.bronze,
+    .mvp-card.gold::before,
+    .mvp-card.gold::after,
+    .mvp-card.silver::before,
+    .mvp-card.silver::after,
+    .mvp-card.bronze::before,
+    .mvp-card.bronze::after {
+      animation: none;
+    }
   }
   .mvp-icon {
     font-size: 32px;
@@ -446,6 +581,71 @@
     animation: blink-warn 2s ease-in-out infinite;
     color: #ff1744 !important;
   }
+  @keyframes week-mvp-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes week-mvp-particles {
+    0%, 100% { opacity: 0.55; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-1px); }
+  }
+  table.heatmap td.week-col .week-cell-inner.week-mvp {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    color: #78350f !important;
+    font-weight: 800;
+    background: linear-gradient(
+      125deg,
+      #fff7d6 0%,
+      #fde68a 22%,
+      #fbbf24 45%,
+      #fde68a 68%,
+      #fff7d6 100%
+    );
+    background-size: 220% 220%;
+    animation: week-mvp-shimmer 2.8s ease-in-out infinite;
+    border: 2px solid #a855f7;
+    box-shadow:
+      0 0 0 1px #fbbf24,
+      0 0 14px rgba(251, 191, 36, 0.55),
+      inset 0 0 18px rgba(255, 215, 0, 0.35);
+  }
+  table.heatmap td.week-col .week-cell-inner.week-mvp::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    z-index: -1;
+    background-image:
+      radial-gradient(circle at 18% 28%, rgba(255, 255, 255, 0.95) 1.2px, transparent 1.2px),
+      radial-gradient(circle at 62% 18%, rgba(255, 215, 0, 0.9) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 82% 72%, rgba(255, 255, 255, 0.85) 1px, transparent 1px),
+      radial-gradient(circle at 35% 78%, rgba(251, 191, 36, 0.95) 1.3px, transparent 1.3px),
+      radial-gradient(circle at 55% 48%, rgba(255, 255, 255, 0.75) 1px, transparent 1px),
+      radial-gradient(circle at 92% 42%, rgba(253, 224, 71, 0.9) 1.2px, transparent 1.2px);
+    animation: week-mvp-particles 2.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  table.heatmap td.week-col .week-cell-inner.week-mvp::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 35%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 65%
+    );
+    animation: week-mvp-shimmer 3.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    table.heatmap td.week-col .week-cell-inner.week-mvp,
+    table.heatmap td.week-col .week-cell-inner.week-mvp::before,
+    table.heatmap td.week-col .week-cell-inner.week-mvp::after {
+      animation: none;
+    }
+  }
   .heatmap-legend {
     display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
     margin-top: 12px; font-size: 12px; color: #94a3b8;
@@ -481,7 +681,7 @@
     <h1>Monthly Completed Tickets</h1>
     <div class="meta">
       <div class="month" id="monthTitle"></div>
-      <div class="updated" id="updatedTime">Updated: 2026/8/24 14:56</div>
+      <div class="updated" id="updatedTime">Updated: 2026/8/24 15:00</div>
       <div style="font-size:11px;opacity:.6;margin-top:2px;">每日 9:00～17:00 每小时更新</div>
     </div>
   </div>
@@ -1031,16 +1231,33 @@ function renderWeekColumnHeader(col) {
   return `<th class="${cls.join(' ')}" title="${col.label}">${col.header}<br><span style="font-weight:400;font-size:10px">${col.label}</span></th>`;
 }
 
-function renderWeekColumnCell(emp, col) {
+function renderWeekColumnCell(emp, col, weekMax) {
   const row = getWeeklyRow(emp);
   const cell = row ? normWeekCell(row.weekly[col.weekIdx]) : { inc: 0, task: 0 };
   const total = cell.inc + cell.task;
   const zeroRed = total === 0 && col.weekIdx <= (WEEKLY_DATA?.currentWeek ?? 99);
+  const maxForWeek = weekMax[col.weekIdx] || 0;
+  const isWeekMax = total > 0 && maxForWeek > 0 && total === maxForWeek;
   const cls = ['week-col'];
   if (col.isCurrent) cls.push('current-week');
   let innerCls = 'week-cell-inner';
-  if (total === 0 && zeroRed) innerCls += ' blink-zero';
+  if (isWeekMax) innerCls += ' week-mvp';
+  else if (total === 0 && zeroRed) innerCls += ' blink-zero';
   return `<td class="${cls.join(' ')}"><div class="${innerCls}" title="Inc ${cell.inc} + Task ${cell.task}">${total}</div></td>`;
+}
+
+function computeWeekMax(weekCols) {
+  const weekMax = {};
+  weekCols.forEach((col) => {
+    let max = 0;
+    (WEEKLY_DATA?.data || []).forEach((row) => {
+      const cell = normWeekCell(row.weekly[col.weekIdx]);
+      const total = cell.inc + cell.task;
+      if (total > max) max = total;
+    });
+    weekMax[col.weekIdx] = max;
+  });
+  return weekMax;
 }
 
 function renderDailyHeatmap(monthKey) {
@@ -1054,6 +1271,7 @@ function renderDailyHeatmap(monthKey) {
   const todayKey = dailyDateKey(today.y, today.m, today.d);
 
   const weekCols = weekColumnsForMonth(data.year, data.month);
+  const weekMax = computeWeekMax(weekCols);
   let weekColPtr = 0;
 
   const dayMax = {};
@@ -1120,7 +1338,7 @@ function renderDailyHeatmap(monthKey) {
       html += `<td class="${cls.join(' ')}"><div class="${innerCls}"${innerStyle} title="${emp} · ${d.key} · ${v}">${text}</div></td>`;
 
       if (weekColPtr < weekCols.length && d.day === weekCols[weekColPtr].afterDay) {
-        html += renderWeekColumnCell(emp, weekCols[weekColPtr]);
+        html += renderWeekColumnCell(emp, weekCols[weekColPtr], weekMax);
         weekColPtr++;
       }
     });
@@ -1138,6 +1356,7 @@ function renderDailyHeatmap(monthKey) {
     `<span>1→15 蓝由浅至深：</span>${legendScale}<span>15+ 同 15</span>`,
     '<span><i style="background:#f8fafc;border:1px solid #e2e8f0"></i> 周末无数据 · / 未来空白</span>',
     '<span><i style="background:#fde68a;border:1px solid #f59e0b"></i> 当天最高单量（浅金闪烁）</span>',
+    '<span><i style="background:linear-gradient(135deg,#fde68a,#fbbf24);border:2px solid #a855f7;box-shadow:0 0 6px rgba(251,191,36,.5)"></i> 当周最高单量（紫金框 + 金粒）</span>',
     '<span><i style="background:#475569"></i> 周汇总列（Inc+Task 总数）</span>',
   ].join('');
 }
