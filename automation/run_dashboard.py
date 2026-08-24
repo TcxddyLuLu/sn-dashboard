@@ -1559,6 +1559,24 @@ def _ci_git_pull_with_autostash(repo_dir: Path, *, attempts: int = 3) -> bool:
     return False
 
 
+def _recover_git_repo(repo_dir: Path, env: dict | None = None) -> None:
+    """Clear unfinished rebase/merge states that block pull --rebase --autostash."""
+    rd = str(repo_dir)
+    git_dir = repo_dir / ".git"
+    if (git_dir / "rebase-merge").exists() or (git_dir / "rebase-apply").exists():
+        log.warning("Detected unfinished git rebase; aborting before pull")
+        _git_run(repo_dir, ["rebase", "--abort"], env=env, timeout=30)
+    if (git_dir / "MERGE_HEAD").exists():
+        log.warning("Detected unfinished git merge; aborting before pull")
+        _git_run(repo_dir, ["merge", "--abort"], env=env, timeout=30)
+
+    conflicts = _git_run(repo_dir, ["diff", "--name-only", "--diff-filter=U"], env=env, timeout=30)
+    if conflicts.returncode == 0 and conflicts.stdout.strip():
+        log.warning("Unresolved merge conflicts detected; resetting repo to origin/main")
+        _git_run(repo_dir, ["fetch", "origin"], env=env)
+        _git_run(repo_dir, ["reset", "--hard", "origin/main"], env=env, timeout=30)
+
+
 def _git_run(repo_dir, args, env=None, *, timeout: int = GIT_NETWORK_TIMEOUT_SEC):
     try:
         return subprocess.run(
@@ -1646,12 +1664,17 @@ def push_to_github(html_path) -> bool:
             return False
 
     _ensure_git_config(repo_dir)
+    _recover_git_repo(repo_dir, env=env)
 
     pull_result = None
     for attempt in range(1, 4):
         pull_result = _git_run(repo_dir, ["pull", "--rebase", "--autostash"], env=env)
         if pull_result.returncode == 0:
             break
+        stderr = (pull_result.stderr or "").lower()
+        if "未合并" in pull_result.stderr or "unmerged" in stderr or "conflict" in stderr:
+            log.warning("Git pull blocked by merge state; attempting repo recovery")
+            _recover_git_repo(repo_dir, env=env)
         log.warning(f"Git pull attempt {attempt}/3 failed: {pull_result.stderr.strip()}")
         if attempt < 3:
             time.sleep(5)
@@ -1805,12 +1828,17 @@ def push_tickets_to_github() -> bool:
             return False
 
     _ensure_git_config(repo_dir)
+    _recover_git_repo(repo_dir, env=env)
 
     pull_result = None
     for attempt in range(1, 4):
         pull_result = _git_run(repo_dir, ["pull", "--rebase", "--autostash"], env=env)
         if pull_result.returncode == 0:
             break
+        stderr = (pull_result.stderr or "").lower()
+        if "未合并" in pull_result.stderr or "unmerged" in stderr or "conflict" in stderr:
+            log.warning("Git pull blocked by merge state; attempting repo recovery")
+            _recover_git_repo(repo_dir, env=env)
         log.warning(f"Git pull attempt {attempt}/3 failed: {pull_result.stderr.strip()}")
         if attempt < 3:
             time.sleep(5)
