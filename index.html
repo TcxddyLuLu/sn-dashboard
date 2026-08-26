@@ -88,153 +88,18 @@
     align-items: center;
     gap: 14px;
     box-shadow: 0 2px 8px rgba(0,0,0,.08);
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
-  }
-  .mvp-icon,
-  .mvp-info {
-    position: relative;
-    z-index: 1;
-  }
-  @keyframes mvp-gold-shimmer {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-  @keyframes mvp-gold-sparkle {
-    0%, 100% { opacity: 0.5; transform: scale(1); }
-    50% { opacity: 1; transform: scale(1.02); }
-  }
-  @keyframes mvp-silver-shimmer {
-    0%, 100% { background-position: 0% 40%; }
-    50% { background-position: 100% 60%; }
-  }
-  @keyframes mvp-silver-sparkle {
-    0%, 100% { opacity: 0.45; }
-    50% { opacity: 0.95; }
-  }
-  @keyframes mvp-bronze-glow {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-  @keyframes mvp-bronze-ember {
-    0%, 100% { opacity: 0.5; transform: translateY(0); }
-    50% { opacity: 1; transform: translateY(-2px); }
   }
   .mvp-card.gold {
-    background: linear-gradient(135deg, #fff7d6 0%, #fde68a 40%, #fbbf24 100%);
-    background-size: 220% 220%;
-    animation: mvp-gold-shimmer 3s ease-in-out infinite;
-    border: 2px solid #a855f7;
-    box-shadow:
-      0 0 0 1px #fbbf24,
-      0 4px 18px rgba(251, 191, 36, 0.5),
-      inset 0 0 28px rgba(255, 215, 0, 0.25);
-  }
-  .mvp-card.gold::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background-image:
-      radial-gradient(circle at 12% 35%, rgba(255, 255, 255, 0.95) 1.5px, transparent 1.5px),
-      radial-gradient(circle at 78% 22%, rgba(255, 215, 0, 0.95) 2px, transparent 2px),
-      radial-gradient(circle at 88% 68%, rgba(255, 255, 255, 0.85) 1.2px, transparent 1.2px),
-      radial-gradient(circle at 28% 82%, rgba(251, 191, 36, 0.9) 1.6px, transparent 1.6px),
-      radial-gradient(circle at 52% 48%, rgba(168, 85, 247, 0.55) 1px, transparent 1px),
-      radial-gradient(circle at 65% 55%, rgba(255, 255, 255, 0.8) 1px, transparent 1px);
-    animation: mvp-gold-sparkle 2.4s ease-in-out infinite;
-    pointer-events: none;
-  }
-  .mvp-card.gold::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.5) 50%, transparent 70%);
-    animation: mvp-gold-shimmer 3.8s ease-in-out infinite;
-    pointer-events: none;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #f59e0b;
   }
   .mvp-card.silver {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 45%, #cbd5e1 100%);
-    background-size: 220% 220%;
-    animation: mvp-silver-shimmer 3.6s ease-in-out infinite;
-    border: 2px solid #64748b;
-    box-shadow:
-      0 0 0 1px #f1f5f9,
-      0 4px 16px rgba(148, 163, 184, 0.45),
-      inset 0 0 24px rgba(255, 255, 255, 0.65);
-  }
-  .mvp-card.silver::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background-image:
-      radial-gradient(circle at 15% 40%, rgba(255, 255, 255, 1) 1.4px, transparent 1.4px),
-      radial-gradient(circle at 72% 28%, rgba(226, 232, 240, 0.95) 1.8px, transparent 1.8px),
-      radial-gradient(circle at 85% 72%, rgba(255, 255, 255, 0.9) 1.2px, transparent 1.2px),
-      radial-gradient(circle at 38% 78%, rgba(148, 163, 184, 0.85) 1.5px, transparent 1.5px),
-      radial-gradient(circle at 55% 50%, rgba(255, 255, 255, 0.95) 1px, transparent 1px),
-      radial-gradient(circle at 92% 45%, rgba(203, 213, 225, 0.9) 1.3px, transparent 1.3px);
-    animation: mvp-silver-sparkle 2.6s ease-in-out infinite;
-    pointer-events: none;
-  }
-  .mvp-card.silver::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background: linear-gradient(120deg, transparent 35%, rgba(255, 255, 255, 0.7) 50%, transparent 65%);
-    animation: mvp-silver-shimmer 4s ease-in-out infinite;
-    pointer-events: none;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    border: 2px solid #94a3b8;
   }
   .mvp-card.bronze {
-    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 45%, #fdba74 100%);
-    background-size: 220% 220%;
-    animation: mvp-bronze-glow 3.2s ease-in-out infinite;
-    border: 2px solid #c2410c;
-    box-shadow:
-      0 0 0 1px #fb923c,
-      0 4px 16px rgba(234, 88, 12, 0.4),
-      inset 0 0 22px rgba(254, 215, 170, 0.45);
-  }
-  .mvp-card.bronze::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background-image:
-      radial-gradient(circle at 18% 32%, rgba(255, 237, 213, 0.95) 1.5px, transparent 1.5px),
-      radial-gradient(circle at 75% 25%, rgba(251, 146, 60, 0.9) 1.8px, transparent 1.8px),
-      radial-gradient(circle at 82% 70%, rgba(255, 247, 237, 0.9) 1.2px, transparent 1.2px),
-      radial-gradient(circle at 32% 85%, rgba(234, 88, 12, 0.75) 1.4px, transparent 1.4px),
-      radial-gradient(circle at 58% 52%, rgba(253, 186, 116, 0.85) 1px, transparent 1px),
-      radial-gradient(circle at 90% 48%, rgba(255, 159, 67, 0.8) 1.3px, transparent 1.3px);
-    animation: mvp-bronze-ember 2.5s ease-in-out infinite;
-    pointer-events: none;
-  }
-  .mvp-card.bronze::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    background: linear-gradient(110deg, transparent 32%, rgba(255, 237, 213, 0.55) 50%, transparent 68%);
-    animation: mvp-bronze-glow 3.5s ease-in-out infinite;
-    pointer-events: none;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .mvp-card.gold,
-    .mvp-card.silver,
-    .mvp-card.bronze,
-    .mvp-card.gold::before,
-    .mvp-card.gold::after,
-    .mvp-card.silver::before,
-    .mvp-card.silver::after,
-    .mvp-card.bronze::before,
-    .mvp-card.bronze::after {
-      animation: none;
-    }
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+    border: 2px solid #ea580c;
   }
   .mvp-icon {
     font-size: 32px;
@@ -581,71 +446,6 @@
     animation: blink-warn 2s ease-in-out infinite;
     color: #ff1744 !important;
   }
-  @keyframes week-mvp-shimmer {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-  @keyframes week-mvp-particles {
-    0%, 100% { opacity: 0.55; transform: translateY(0); }
-    50% { opacity: 1; transform: translateY(-1px); }
-  }
-  table.heatmap td.week-col .week-cell-inner.week-mvp {
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
-    color: #78350f !important;
-    font-weight: 800;
-    background: linear-gradient(
-      125deg,
-      #fff7d6 0%,
-      #fde68a 22%,
-      #fbbf24 45%,
-      #fde68a 68%,
-      #fff7d6 100%
-    );
-    background-size: 220% 220%;
-    animation: week-mvp-shimmer 2.8s ease-in-out infinite;
-    border: 2px solid #a855f7;
-    box-shadow:
-      0 0 0 1px #fbbf24,
-      0 0 14px rgba(251, 191, 36, 0.55),
-      inset 0 0 18px rgba(255, 215, 0, 0.35);
-  }
-  table.heatmap td.week-col .week-cell-inner.week-mvp::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    z-index: -1;
-    background-image:
-      radial-gradient(circle at 18% 28%, rgba(255, 255, 255, 0.95) 1.2px, transparent 1.2px),
-      radial-gradient(circle at 62% 18%, rgba(255, 215, 0, 0.9) 1.5px, transparent 1.5px),
-      radial-gradient(circle at 82% 72%, rgba(255, 255, 255, 0.85) 1px, transparent 1px),
-      radial-gradient(circle at 35% 78%, rgba(251, 191, 36, 0.95) 1.3px, transparent 1.3px),
-      radial-gradient(circle at 55% 48%, rgba(255, 255, 255, 0.75) 1px, transparent 1px),
-      radial-gradient(circle at 92% 42%, rgba(253, 224, 71, 0.9) 1.2px, transparent 1.2px);
-    animation: week-mvp-particles 2.2s ease-in-out infinite;
-    pointer-events: none;
-  }
-  table.heatmap td.week-col .week-cell-inner.week-mvp::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      105deg,
-      transparent 35%,
-      rgba(255, 255, 255, 0.45) 50%,
-      transparent 65%
-    );
-    animation: week-mvp-shimmer 3.5s ease-in-out infinite;
-    pointer-events: none;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    table.heatmap td.week-col .week-cell-inner.week-mvp,
-    table.heatmap td.week-col .week-cell-inner.week-mvp::before,
-    table.heatmap td.week-col .week-cell-inner.week-mvp::after {
-      animation: none;
-    }
-  }
   .heatmap-legend {
     display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
     margin-top: 12px; font-size: 12px; color: #94a3b8;
@@ -681,7 +481,7 @@
     <h1>Monthly Completed Tickets</h1>
     <div class="meta">
       <div class="month" id="monthTitle"></div>
-      <div class="updated" id="updatedTime">Updated: 2026/8/26 15:00</div>
+      <div class="updated" id="updatedTime">Updated: 2026/8/26 16:42</div>
       <div style="font-size:11px;opacity:.6;margin-top:2px;">每日 9:00～17:00 每小时更新</div>
     </div>
   </div>
@@ -751,30 +551,30 @@ let CURRENT_MONTH_KEY = "2026-08";
    DATA — replace this array with real query output, or paste below
    ================================================================ */
 let DATA = [
-  { employee: 'Howie Tan', incidents: 22, tasks: 128 },
-  { employee: 'Ping Wang', incidents: 93, tasks: 23 },
-  { employee: 'liang Xiang', incidents: 112, tasks: 0 },
+  { employee: 'Howie Tan', incidents: 22, tasks: 129 },
+  { employee: 'Ping Wang', incidents: 92, tasks: 23 },
+  { employee: 'liang Xiang', incidents: 114, tasks: 0 },
+  { employee: 'He Feng', incidents: 16, tasks: 97 },
   { employee: 'Junfeng Deng', incidents: 21, tasks: 88 },
   { employee: 'Karen Ou Yang', incidents: 57, tasks: 51 },
   { employee: 'Dom Chang', incidents: 90, tasks: 16 },
-  { employee: 'He Feng', incidents: 9, tasks: 97 },
   { employee: 'Hao Zhu', incidents: 93, tasks: 8 },
   { employee: 'Yang Ding', incidents: 2, tasks: 88 },
-  { employee: 'Kenneth Chung', incidents: 27, tasks: 49 },
+  { employee: 'Kenneth Chung', incidents: 29, tasks: 49 },
   { employee: 'Harry Yip', incidents: 20, tasks: 55 },
   { employee: 'Hooxi Zhu', incidents: 45, tasks: 29 },
   { employee: 'Xinyu Zhang', incidents: 49, tasks: 23 },
-  { employee: 'Rory Ju', incidents: 36, tasks: 33 },
+  { employee: 'Rory Ju', incidents: 36, tasks: 34 },
   { employee: 'Thomas Tao', incidents: 40, tasks: 28 },
-  { employee: 'Peter Zhang', incidents: 36, tasks: 28 },
+  { employee: 'Peter Zhang', incidents: 36, tasks: 29 },
   { employee: 'Freddie Qiang', incidents: 43, tasks: 17 },
   { employee: 'Alex Xu', incidents: 26, tasks: 33 },
   { employee: 'Andy Lan', incidents: 26, tasks: 31 },
+  { employee: 'Charles Lee', incidents: 50, tasks: 5 },
+  { employee: 'Yibo Wang', incidents: 49, tasks: 6 },
   { employee: 'Vance Chen', incidents: 13, tasks: 41 },
-  { employee: 'Yibo Wang', incidents: 47, tasks: 6 },
   { employee: 'Jacky Chan', incidents: 10, tasks: 42 },
   { employee: 'Roy Wei', incidents: 12, tasks: 39 },
-  { employee: 'Charles Lee', incidents: 45, tasks: 5 },
   { employee: 'Lee Li', incidents: 7, tasks: 30 },
   { employee: 'Allen Guo', incidents: 9, tasks: 26 },
   { employee: 'Bob Liu', incidents: 10, tasks: 16 },
@@ -1033,12 +833,12 @@ function loadFromPaste() {
 /* ================================================================
    WEEKLY_DATA — weekly breakdown, injected by run_dashboard.py
    ================================================================ */
-let WEEKLY_DATA = {"weeks": ["7/27-8/2", "8/3-9", "8/10-16", "8/17-23", "8/24-30", "8/31-9/6"], "currentWeek": 4, "data": [{"employee": "Howie Tan", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 30}, {"inc": 5, "task": 44}, {"inc": 12, "task": 39}, {"inc": 0, "task": 15}, {"inc": 0, "task": 0}], "total": {"inc": 22, "task": 128}}, {"employee": "Ping Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 32, "task": 7}, {"inc": 15, "task": 3}, {"inc": 12, "task": 0}, {"inc": 34, "task": 13}, {"inc": 0, "task": 0}], "total": {"inc": 93, "task": 23}}, {"employee": "liang Xiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 43, "task": 0}, {"inc": 21, "task": 0}, {"inc": 28, "task": 0}, {"inc": 20, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 112, "task": 0}}, {"employee": "Junfeng Deng", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 26}, {"inc": 7, "task": 28}, {"inc": 8, "task": 18}, {"inc": 0, "task": 16}, {"inc": 0, "task": 0}], "total": {"inc": 21, "task": 88}}, {"employee": "Karen Ou Yang", "weekly": [{"inc": 0, "task": 0}, {"inc": 13, "task": 14}, {"inc": 18, "task": 17}, {"inc": 15, "task": 11}, {"inc": 11, "task": 9}, {"inc": 0, "task": 0}], "total": {"inc": 57, "task": 51}}, {"employee": "Dom Chang", "weekly": [{"inc": 4, "task": 0}, {"inc": 5, "task": 4}, {"inc": 23, "task": 0}, {"inc": 37, "task": 5}, {"inc": 21, "task": 7}, {"inc": 0, "task": 0}], "total": {"inc": 90, "task": 16}}, {"employee": "He Feng", "weekly": [{"inc": 0, "task": 0}, {"inc": 9, "task": 41}, {"inc": 0, "task": 0}, {"inc": 0, "task": 29}, {"inc": 0, "task": 27}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 97}}, {"employee": "Hao Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 29, "task": 1}, {"inc": 32, "task": 4}, {"inc": 32, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 93, "task": 8}}, {"employee": "Yang Ding", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 13}, {"inc": 0, "task": 37}, {"inc": 0, "task": 38}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 88}}, {"employee": "Kenneth Chung", "weekly": [{"inc": 0, "task": 0}, {"inc": 10, "task": 35}, {"inc": 5, "task": 3}, {"inc": 9, "task": 6}, {"inc": 3, "task": 5}, {"inc": 0, "task": 0}], "total": {"inc": 27, "task": 49}}, {"employee": "Harry Yip", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 10}, {"inc": 8, "task": 12}, {"inc": 8, "task": 30}, {"inc": 3, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 20, "task": 55}}, {"employee": "Hooxi Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 11, "task": 5}, {"inc": 14, "task": 20}, {"inc": 14, "task": 3}, {"inc": 6, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 45, "task": 29}}, {"employee": "Xinyu Zhang", "weekly": [{"inc": 3, "task": 0}, {"inc": 12, "task": 3}, {"inc": 14, "task": 8}, {"inc": 20, "task": 12}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 49, "task": 23}}, {"employee": "Rory Ju", "weekly": [{"inc": 0, "task": 0}, {"inc": 15, "task": 7}, {"inc": 9, "task": 10}, {"inc": 4, "task": 13}, {"inc": 8, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 36, "task": 33}}, {"employee": "Thomas Tao", "weekly": [{"inc": 0, "task": 0}, {"inc": 8, "task": 9}, {"inc": 23, "task": 6}, {"inc": 8, "task": 7}, {"inc": 1, "task": 6}, {"inc": 0, "task": 0}], "total": {"inc": 40, "task": 28}}, {"employee": "Peter Zhang", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 16, "task": 20}, {"inc": 9, "task": 6}, {"inc": 11, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 36, "task": 28}}, {"employee": "Freddie Qiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 17, "task": 7}, {"inc": 17, "task": 6}, {"inc": 9, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 43, "task": 17}}, {"employee": "Alex Xu", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 6}, {"inc": 6, "task": 12}, {"inc": 10, "task": 12}, {"inc": 4, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 26, "task": 33}}, {"employee": "Andy Lan", "weekly": [{"inc": 0, "task": 0}, {"inc": 12, "task": 14}, {"inc": 0, "task": 0}, {"inc": 12, "task": 14}, {"inc": 2, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 26, "task": 31}}, {"employee": "Vance Chen", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 13}, {"inc": 5, "task": 10}, {"inc": 0, "task": 12}, {"inc": 4, "task": 6}, {"inc": 0, "task": 0}], "total": {"inc": 13, "task": 41}}, {"employee": "Yibo Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 0}, {"inc": 8, "task": 1}, {"inc": 28, "task": 5}, {"inc": 10, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 47, "task": 6}}, {"employee": "Jacky Chan", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 3}, {"inc": 2, "task": 24}, {"inc": 3, "task": 10}, {"inc": 1, "task": 5}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 42}}, {"employee": "Roy Wei", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 5}, {"inc": 6, "task": 12}, {"inc": 6, "task": 10}, {"inc": 0, "task": 12}, {"inc": 0, "task": 0}], "total": {"inc": 12, "task": 39}}, {"employee": "Charles Lee", "weekly": [{"inc": 0, "task": 0}, {"inc": 20, "task": 1}, {"inc": 9, "task": 3}, {"inc": 14, "task": 0}, {"inc": 2, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 45, "task": 5}}, {"employee": "Lee Li", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 18}, {"inc": 1, "task": 5}, {"inc": 2, "task": 1}, {"inc": 4, "task": 6}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 30}}, {"employee": "Allen Guo", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 9}, {"inc": 2, "task": 5}, {"inc": 6, "task": 5}, {"inc": 1, "task": 7}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 26}}, {"employee": "Bob Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 3, "task": 7}, {"inc": 2, "task": 2}, {"inc": 4, "task": 5}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 16}}, {"employee": "Aaron Jiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 9}, {"inc": 1, "task": 1}, {"inc": 1, "task": 2}, {"inc": 1, "task": 4}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 16}}, {"employee": "Guichong You", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 8}}, {"employee": "Luby Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 0}, {"inc": 1, "task": 0}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 1}}, {"employee": "Zhi Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 8}}, {"employee": "Yin Ye", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}, {"inc": 2, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 4}}, {"employee": "Yong Zhao", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 1}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 5}}, {"employee": "Freddie Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}]};
+let WEEKLY_DATA = {"weeks": ["7/27-8/2", "8/3-9", "8/10-16", "8/17-23", "8/24-30", "8/31-9/6"], "currentWeek": 4, "data": [{"employee": "Howie Tan", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 30}, {"inc": 5, "task": 44}, {"inc": 12, "task": 39}, {"inc": 0, "task": 16}, {"inc": 0, "task": 0}], "total": {"inc": 22, "task": 129}}, {"employee": "Ping Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 32, "task": 7}, {"inc": 15, "task": 3}, {"inc": 12, "task": 0}, {"inc": 33, "task": 13}, {"inc": 0, "task": 0}], "total": {"inc": 92, "task": 23}}, {"employee": "liang Xiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 43, "task": 0}, {"inc": 21, "task": 0}, {"inc": 28, "task": 0}, {"inc": 22, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 114, "task": 0}}, {"employee": "He Feng", "weekly": [{"inc": 0, "task": 0}, {"inc": 9, "task": 41}, {"inc": 0, "task": 0}, {"inc": 0, "task": 29}, {"inc": 7, "task": 27}, {"inc": 0, "task": 0}], "total": {"inc": 16, "task": 97}}, {"employee": "Junfeng Deng", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 26}, {"inc": 7, "task": 28}, {"inc": 8, "task": 18}, {"inc": 0, "task": 16}, {"inc": 0, "task": 0}], "total": {"inc": 21, "task": 88}}, {"employee": "Karen Ou Yang", "weekly": [{"inc": 0, "task": 0}, {"inc": 13, "task": 14}, {"inc": 18, "task": 17}, {"inc": 15, "task": 11}, {"inc": 11, "task": 9}, {"inc": 0, "task": 0}], "total": {"inc": 57, "task": 51}}, {"employee": "Dom Chang", "weekly": [{"inc": 4, "task": 0}, {"inc": 5, "task": 4}, {"inc": 23, "task": 0}, {"inc": 37, "task": 5}, {"inc": 21, "task": 7}, {"inc": 0, "task": 0}], "total": {"inc": 90, "task": 16}}, {"employee": "Hao Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 29, "task": 1}, {"inc": 32, "task": 4}, {"inc": 32, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 93, "task": 8}}, {"employee": "Yang Ding", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 13}, {"inc": 0, "task": 37}, {"inc": 0, "task": 38}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 88}}, {"employee": "Kenneth Chung", "weekly": [{"inc": 0, "task": 0}, {"inc": 10, "task": 35}, {"inc": 5, "task": 3}, {"inc": 9, "task": 6}, {"inc": 5, "task": 5}, {"inc": 0, "task": 0}], "total": {"inc": 29, "task": 49}}, {"employee": "Harry Yip", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 10}, {"inc": 8, "task": 12}, {"inc": 8, "task": 30}, {"inc": 3, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 20, "task": 55}}, {"employee": "Hooxi Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 11, "task": 5}, {"inc": 14, "task": 20}, {"inc": 14, "task": 3}, {"inc": 6, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 45, "task": 29}}, {"employee": "Xinyu Zhang", "weekly": [{"inc": 3, "task": 0}, {"inc": 12, "task": 3}, {"inc": 14, "task": 8}, {"inc": 20, "task": 12}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 49, "task": 23}}, {"employee": "Rory Ju", "weekly": [{"inc": 0, "task": 0}, {"inc": 15, "task": 7}, {"inc": 9, "task": 10}, {"inc": 4, "task": 13}, {"inc": 8, "task": 4}, {"inc": 0, "task": 0}], "total": {"inc": 36, "task": 34}}, {"employee": "Thomas Tao", "weekly": [{"inc": 0, "task": 0}, {"inc": 8, "task": 9}, {"inc": 23, "task": 6}, {"inc": 8, "task": 7}, {"inc": 1, "task": 6}, {"inc": 0, "task": 0}], "total": {"inc": 40, "task": 28}}, {"employee": "Peter Zhang", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 16, "task": 20}, {"inc": 9, "task": 6}, {"inc": 11, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 36, "task": 29}}, {"employee": "Freddie Qiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 17, "task": 7}, {"inc": 17, "task": 6}, {"inc": 9, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 43, "task": 17}}, {"employee": "Alex Xu", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 6}, {"inc": 6, "task": 12}, {"inc": 10, "task": 12}, {"inc": 4, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 26, "task": 33}}, {"employee": "Andy Lan", "weekly": [{"inc": 0, "task": 0}, {"inc": 12, "task": 14}, {"inc": 0, "task": 0}, {"inc": 12, "task": 14}, {"inc": 2, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 26, "task": 31}}, {"employee": "Charles Lee", "weekly": [{"inc": 0, "task": 0}, {"inc": 20, "task": 1}, {"inc": 9, "task": 3}, {"inc": 14, "task": 0}, {"inc": 7, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 50, "task": 5}}, {"employee": "Yibo Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 0}, {"inc": 8, "task": 1}, {"inc": 28, "task": 5}, {"inc": 12, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 49, "task": 6}}, {"employee": "Vance Chen", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 13}, {"inc": 5, "task": 10}, {"inc": 0, "task": 12}, {"inc": 4, "task": 6}, {"inc": 0, "task": 0}], "total": {"inc": 13, "task": 41}}, {"employee": "Jacky Chan", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 3}, {"inc": 2, "task": 24}, {"inc": 3, "task": 10}, {"inc": 1, "task": 5}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 42}}, {"employee": "Roy Wei", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 5}, {"inc": 6, "task": 12}, {"inc": 6, "task": 10}, {"inc": 0, "task": 12}, {"inc": 0, "task": 0}], "total": {"inc": 12, "task": 39}}, {"employee": "Lee Li", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 18}, {"inc": 1, "task": 5}, {"inc": 2, "task": 1}, {"inc": 4, "task": 6}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 30}}, {"employee": "Allen Guo", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 9}, {"inc": 2, "task": 5}, {"inc": 6, "task": 5}, {"inc": 1, "task": 7}, {"inc": 0, "task": 0}], "total": {"inc": 9, "task": 26}}, {"employee": "Bob Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 3, "task": 7}, {"inc": 2, "task": 2}, {"inc": 4, "task": 5}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 10, "task": 16}}, {"employee": "Aaron Jiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 9}, {"inc": 1, "task": 1}, {"inc": 1, "task": 2}, {"inc": 1, "task": 4}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 16}}, {"employee": "Guichong You", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 8}}, {"employee": "Luby Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 0}, {"inc": 1, "task": 0}, {"inc": 1, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 1}}, {"employee": "Zhi Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 8}}, {"employee": "Yin Ye", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}, {"inc": 2, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 4}}, {"employee": "Yong Zhao", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 1}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 5}}, {"employee": "Freddie Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}]};
 
 /* ================================================================
    DAILY_DATA — daily heatmap, injected by run_dashboard.py
    ================================================================ */
-let DAILY_DATA = {"year": 2026, "month": 8, "matrix": {"Dom Chang": {"2026-08-01": 2, "2026-08-02": 2, "2026-08-03": 7, "2026-08-08": 2, "2026-08-10": 8, "2026-08-11": 12, "2026-08-16": 3, "2026-08-17": 20, "2026-08-18": 13, "2026-08-19": 9, "2026-08-24": 14, "2026-08-25": 14}, "Xinyu Zhang": {"2026-08-02": 3, "2026-08-03": 9, "2026-08-04": 4, "2026-08-05": 2, "2026-08-10": 10, "2026-08-11": 7, "2026-08-12": 2, "2026-08-13": 3, "2026-08-18": 8, "2026-08-19": 10, "2026-08-20": 5, "2026-08-21": 9}, "Allen Guo": {"2026-08-03": 1, "2026-08-04": 2, "2026-08-05": 3, "2026-08-06": 3, "2026-08-10": 2, "2026-08-11": 1, "2026-08-13": 2, "2026-08-14": 2, "2026-08-17": 2, "2026-08-18": 1, "2026-08-20": 8, "2026-08-24": 2, "2026-08-25": 2, "2026-08-26": 4}, "Andy Lan": {"2026-08-03": 1, "2026-08-04": 5, "2026-08-05": 15, "2026-08-07": 5, "2026-08-17": 6, "2026-08-18": 3, "2026-08-20": 2, "2026-08-21": 1, "2026-08-23": 14, "2026-08-25": 5}, "Bob Liu": {"2026-08-03": 4, "2026-08-07": 6, "2026-08-10": 1, "2026-08-11": 1, "2026-08-13": 2, "2026-08-17": 2, "2026-08-18": 1, "2026-08-19": 3, "2026-08-20": 1, "2026-08-21": 2, "2026-08-24": 2, "2026-08-25": 1}, "Charles Lee": {"2026-08-03": 1, "2026-08-06": 1, "2026-08-07": 19, "2026-08-12": 1, "2026-08-13": 2, "2026-08-14": 9, "2026-08-17": 1, "2026-08-18": 7, "2026-08-19": 4, "2026-08-21": 2, "2026-08-25": 3}, "He Feng": {"2026-08-03": 11, "2026-08-04": 18, "2026-08-05": 9, "2026-08-06": 9, "2026-08-07": 3, "2026-08-17": 10, "2026-08-18": 1, "2026-08-19": 9, "2026-08-20": 9, "2026-08-24": 9, "2026-08-25": 9, "2026-08-26": 9}, "Howie Tan": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 1, "2026-08-07": 32, "2026-08-10": 1, "2026-08-11": 16, "2026-08-12": 12, "2026-08-13": 9, "2026-08-14": 11, "2026-08-17": 7, "2026-08-18": 1, "2026-08-19": 24, "2026-08-20": 7, "2026-08-21": 12, "2026-08-24": 7, "2026-08-25": 7, "2026-08-26": 1}, "Harry Yip": {"2026-08-03": 1, "2026-08-05": 5, "2026-08-06": 1, "2026-08-07": 4, "2026-08-10": 4, "2026-08-11": 3, "2026-08-12": 6, "2026-08-13": 5, "2026-08-14": 2, "2026-08-17": 6, "2026-08-18": 5, "2026-08-20": 4, "2026-08-21": 23, "2026-08-24": 3, "2026-08-25": 3}, "Hooxi Zhu": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 3, "2026-08-06": 1, "2026-08-07": 10, "2026-08-10": 5, "2026-08-11": 9, "2026-08-12": 8, "2026-08-13": 8, "2026-08-14": 4, "2026-08-17": 6, "2026-08-18": 2, "2026-08-19": 3, "2026-08-20": 5, "2026-08-21": 1, "2026-08-24": 6, "2026-08-25": 1}, "Hao Zhu": {"2026-08-03": 6, "2026-08-04": 4, "2026-08-05": 5, "2026-08-06": 7, "2026-08-07": 8, "2026-08-10": 8, "2026-08-11": 8, "2026-08-12": 9, "2026-08-13": 5, "2026-08-14": 6, "2026-08-17": 8, "2026-08-18": 8, "2026-08-19": 6, "2026-08-20": 8, "2026-08-21": 5}, "Kenneth Chung": {"2026-08-03": 1, "2026-08-04": 11, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 31, "2026-08-10": 2, "2026-08-11": 5, "2026-08-13": 1, "2026-08-18": 9, "2026-08-19": 2, "2026-08-20": 3, "2026-08-21": 1, "2026-08-25": 7, "2026-08-26": 1}, "Lee Li": {"2026-08-03": 6, "2026-08-04": 2, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 8, "2026-08-12": 5, "2026-08-13": 1, "2026-08-17": 2, "2026-08-20": 1, "2026-08-24": 5, "2026-08-26": 5}, "Luby Lu": {"2026-08-03": 2, "2026-08-04": 3, "2026-08-12": 1, "2026-08-20": 2}, "liang Xiang": {"2026-08-03": 14, "2026-08-04": 11, "2026-08-05": 18, "2026-08-11": 4, "2026-08-12": 8, "2026-08-13": 9, "2026-08-18": 1, "2026-08-19": 8, "2026-08-20": 12, "2026-08-21": 7, "2026-08-24": 8, "2026-08-25": 6, "2026-08-26": 6}, "Thomas Tao": {"2026-08-03": 3, "2026-08-04": 6, "2026-08-06": 1, "2026-08-07": 7, "2026-08-10": 9, "2026-08-11": 5, "2026-08-12": 5, "2026-08-13": 5, "2026-08-14": 5, "2026-08-17": 5, "2026-08-18": 4, "2026-08-19": 1, "2026-08-20": 5, "2026-08-24": 3, "2026-08-25": 4}, "Vance Chen": {"2026-08-03": 4, "2026-08-04": 3, "2026-08-05": 4, "2026-08-06": 4, "2026-08-07": 2, "2026-08-10": 3, "2026-08-11": 4, "2026-08-12": 3, "2026-08-13": 5, "2026-08-17": 4, "2026-08-18": 3, "2026-08-19": 2, "2026-08-20": 3, "2026-08-24": 6, "2026-08-25": 4}, "Yang Ding": {"2026-08-03": 4, "2026-08-04": 2, "2026-08-05": 4, "2026-08-07": 5, "2026-08-11": 13, "2026-08-12": 16, "2026-08-14": 8, "2026-08-17": 6, "2026-08-18": 1, "2026-08-19": 15, "2026-08-21": 16}, "Roy Wei": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 1, "2026-08-10": 7, "2026-08-11": 6, "2026-08-12": 1, "2026-08-13": 3, "2026-08-14": 1, "2026-08-17": 1, "2026-08-18": 1, "2026-08-19": 7, "2026-08-20": 6, "2026-08-21": 1, "2026-08-24": 1, "2026-08-25": 10, "2026-08-26": 1}, "Yin Ye": {"2026-08-03": 1, "2026-08-05": 2, "2026-08-17": 1, "2026-08-19": 3}, "Zhi Lu": {"2026-08-03": 2, "2026-08-05": 2, "2026-08-17": 2, "2026-08-26": 2}, "Aaron Jiang": {"2026-08-04": 1, "2026-08-05": 6, "2026-08-07": 4, "2026-08-12": 2, "2026-08-19": 2, "2026-08-21": 1, "2026-08-24": 5}, "Jacky Chan": {"2026-08-04": 4, "2026-08-05": 2, "2026-08-07": 1, "2026-08-10": 3, "2026-08-11": 3, "2026-08-12": 3, "2026-08-13": 4, "2026-08-14": 13, "2026-08-17": 6, "2026-08-18": 1, "2026-08-19": 3, "2026-08-20": 3, "2026-08-24": 2, "2026-08-25": 4}, "Freddie Qiang": {"2026-08-04": 7, "2026-08-05": 5, "2026-08-06": 7, "2026-08-07": 5, "2026-08-12": 11, "2026-08-13": 7, "2026-08-14": 3, "2026-08-15": 2, "2026-08-20": 9, "2026-08-21": 2, "2026-08-23": 2}, "Rory Ju": {"2026-08-04": 7, "2026-08-05": 12, "2026-08-06": 1, "2026-08-07": 2, "2026-08-11": 8, "2026-08-12": 6, "2026-08-13": 5, "2026-08-17": 6, "2026-08-18": 4, "2026-08-19": 1, "2026-08-20": 6, "2026-08-24": 3, "2026-08-25": 5, "2026-08-26": 3}, "Alex Xu": {"2026-08-05": 12, "2026-08-11": 9, "2026-08-12": 6, "2026-08-13": 3, "2026-08-17": 1, "2026-08-18": 12, "2026-08-20": 3, "2026-08-21": 6, "2026-08-24": 2, "2026-08-25": 5}, "Junfeng Deng": {"2026-08-05": 21, "2026-08-06": 1, "2026-08-07": 10, "2026-08-10": 11, "2026-08-11": 1, "2026-08-12": 6, "2026-08-13": 1, "2026-08-14": 16, "2026-08-17": 1, "2026-08-18": 1, "2026-08-19": 10, "2026-08-20": 13, "2026-08-21": 1, "2026-08-24": 1, "2026-08-25": 13, "2026-08-26": 2}, "Yibo Wang": {"2026-08-05": 1, "2026-08-11": 2, "2026-08-12": 1, "2026-08-13": 4, "2026-08-14": 2, "2026-08-17": 20, "2026-08-18": 10, "2026-08-19": 1, "2026-08-20": 1, "2026-08-21": 1, "2026-08-24": 5, "2026-08-26": 5}, "Ping Wang": {"2026-08-06": 8, "2026-08-07": 30, "2026-08-09": 1, "2026-08-14": 15, "2026-08-15": 2, "2026-08-16": 1, "2026-08-17": 11, "2026-08-22": 1, "2026-08-24": 11, "2026-08-25": 22, "2026-08-26": 14}, "Karen Ou Yang": {"2026-08-07": 27, "2026-08-10": 6, "2026-08-11": 1, "2026-08-12": 8, "2026-08-13": 9, "2026-08-14": 11, "2026-08-17": 2, "2026-08-18": 9, "2026-08-19": 6, "2026-08-20": 2, "2026-08-21": 7, "2026-08-24": 14, "2026-08-25": 6}, "Guichong You": {"2026-08-10": 2, "2026-08-12": 2, "2026-08-19": 2, "2026-08-24": 2}, "Peter Zhang": {"2026-08-12": 6, "2026-08-13": 30, "2026-08-17": 6, "2026-08-18": 3, "2026-08-19": 2, "2026-08-20": 4, "2026-08-24": 4, "2026-08-25": 4, "2026-08-26": 5}, "Yong Zhao": {"2026-08-12": 2, "2026-08-20": 1, "2026-08-26": 2}, "Freddie Liu": {}}, "maxVal": 32};
+let DAILY_DATA = {"year": 2026, "month": 8, "matrix": {"Dom Chang": {"2026-08-01": 2, "2026-08-02": 2, "2026-08-03": 7, "2026-08-08": 2, "2026-08-10": 8, "2026-08-11": 12, "2026-08-16": 3, "2026-08-17": 20, "2026-08-18": 13, "2026-08-19": 9, "2026-08-24": 14, "2026-08-25": 14}, "Xinyu Zhang": {"2026-08-02": 3, "2026-08-03": 9, "2026-08-04": 4, "2026-08-05": 2, "2026-08-10": 10, "2026-08-11": 7, "2026-08-12": 2, "2026-08-13": 3, "2026-08-18": 8, "2026-08-19": 10, "2026-08-20": 5, "2026-08-21": 9}, "Allen Guo": {"2026-08-03": 1, "2026-08-04": 2, "2026-08-05": 3, "2026-08-06": 3, "2026-08-10": 2, "2026-08-11": 1, "2026-08-13": 2, "2026-08-14": 2, "2026-08-17": 2, "2026-08-18": 1, "2026-08-20": 8, "2026-08-24": 2, "2026-08-25": 2, "2026-08-26": 4}, "Andy Lan": {"2026-08-03": 1, "2026-08-04": 5, "2026-08-05": 15, "2026-08-07": 5, "2026-08-17": 6, "2026-08-18": 3, "2026-08-20": 2, "2026-08-21": 1, "2026-08-23": 14, "2026-08-25": 5}, "Bob Liu": {"2026-08-03": 4, "2026-08-07": 6, "2026-08-10": 1, "2026-08-11": 1, "2026-08-13": 2, "2026-08-17": 2, "2026-08-18": 1, "2026-08-19": 3, "2026-08-20": 1, "2026-08-21": 2, "2026-08-24": 2, "2026-08-25": 1}, "Charles Lee": {"2026-08-03": 1, "2026-08-06": 1, "2026-08-07": 19, "2026-08-12": 1, "2026-08-13": 2, "2026-08-14": 9, "2026-08-17": 1, "2026-08-18": 7, "2026-08-19": 4, "2026-08-21": 2, "2026-08-25": 3, "2026-08-26": 5}, "He Feng": {"2026-08-03": 11, "2026-08-04": 18, "2026-08-05": 9, "2026-08-06": 9, "2026-08-07": 3, "2026-08-17": 10, "2026-08-18": 1, "2026-08-19": 9, "2026-08-20": 9, "2026-08-24": 9, "2026-08-25": 9, "2026-08-26": 16}, "Howie Tan": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 1, "2026-08-07": 32, "2026-08-10": 1, "2026-08-11": 16, "2026-08-12": 12, "2026-08-13": 9, "2026-08-14": 11, "2026-08-17": 7, "2026-08-18": 1, "2026-08-19": 24, "2026-08-20": 7, "2026-08-21": 12, "2026-08-24": 7, "2026-08-25": 7, "2026-08-26": 2}, "Harry Yip": {"2026-08-03": 1, "2026-08-05": 5, "2026-08-06": 1, "2026-08-07": 4, "2026-08-10": 4, "2026-08-11": 3, "2026-08-12": 6, "2026-08-13": 5, "2026-08-14": 2, "2026-08-17": 6, "2026-08-18": 5, "2026-08-20": 4, "2026-08-21": 23, "2026-08-24": 3, "2026-08-25": 3}, "Hooxi Zhu": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 3, "2026-08-06": 1, "2026-08-07": 10, "2026-08-10": 5, "2026-08-11": 9, "2026-08-12": 8, "2026-08-13": 8, "2026-08-14": 4, "2026-08-17": 6, "2026-08-18": 2, "2026-08-19": 3, "2026-08-20": 5, "2026-08-21": 1, "2026-08-24": 6, "2026-08-25": 1}, "Hao Zhu": {"2026-08-03": 6, "2026-08-04": 4, "2026-08-05": 5, "2026-08-06": 7, "2026-08-07": 8, "2026-08-10": 8, "2026-08-11": 8, "2026-08-12": 9, "2026-08-13": 5, "2026-08-14": 6, "2026-08-17": 8, "2026-08-18": 8, "2026-08-19": 6, "2026-08-20": 8, "2026-08-21": 5}, "Kenneth Chung": {"2026-08-03": 1, "2026-08-04": 11, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 31, "2026-08-10": 2, "2026-08-11": 5, "2026-08-13": 1, "2026-08-18": 9, "2026-08-19": 2, "2026-08-20": 3, "2026-08-21": 1, "2026-08-25": 7, "2026-08-26": 3}, "Lee Li": {"2026-08-03": 6, "2026-08-04": 2, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 8, "2026-08-12": 5, "2026-08-13": 1, "2026-08-17": 2, "2026-08-20": 1, "2026-08-24": 5, "2026-08-26": 5}, "Luby Lu": {"2026-08-03": 2, "2026-08-04": 3, "2026-08-12": 1, "2026-08-20": 2}, "liang Xiang": {"2026-08-03": 14, "2026-08-04": 11, "2026-08-05": 18, "2026-08-11": 4, "2026-08-12": 8, "2026-08-13": 9, "2026-08-18": 1, "2026-08-19": 8, "2026-08-20": 12, "2026-08-21": 7, "2026-08-24": 8, "2026-08-25": 6, "2026-08-26": 8}, "Thomas Tao": {"2026-08-03": 3, "2026-08-04": 6, "2026-08-06": 1, "2026-08-07": 7, "2026-08-10": 9, "2026-08-11": 5, "2026-08-12": 5, "2026-08-13": 5, "2026-08-14": 5, "2026-08-17": 5, "2026-08-18": 4, "2026-08-19": 1, "2026-08-20": 5, "2026-08-24": 3, "2026-08-25": 4}, "Vance Chen": {"2026-08-03": 4, "2026-08-04": 3, "2026-08-05": 4, "2026-08-06": 4, "2026-08-07": 2, "2026-08-10": 3, "2026-08-11": 4, "2026-08-12": 3, "2026-08-13": 5, "2026-08-17": 4, "2026-08-18": 3, "2026-08-19": 2, "2026-08-20": 3, "2026-08-24": 6, "2026-08-25": 4}, "Yang Ding": {"2026-08-03": 4, "2026-08-04": 2, "2026-08-05": 4, "2026-08-07": 5, "2026-08-11": 13, "2026-08-12": 16, "2026-08-14": 8, "2026-08-17": 6, "2026-08-18": 1, "2026-08-19": 15, "2026-08-21": 16}, "Roy Wei": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 1, "2026-08-10": 7, "2026-08-11": 6, "2026-08-12": 1, "2026-08-13": 3, "2026-08-14": 1, "2026-08-17": 1, "2026-08-18": 1, "2026-08-19": 7, "2026-08-20": 6, "2026-08-21": 1, "2026-08-24": 1, "2026-08-25": 10, "2026-08-26": 1}, "Yin Ye": {"2026-08-03": 1, "2026-08-05": 2, "2026-08-17": 1, "2026-08-19": 3}, "Zhi Lu": {"2026-08-03": 2, "2026-08-05": 2, "2026-08-17": 2, "2026-08-26": 2}, "Aaron Jiang": {"2026-08-04": 1, "2026-08-05": 6, "2026-08-07": 4, "2026-08-12": 2, "2026-08-19": 2, "2026-08-21": 1, "2026-08-24": 5}, "Jacky Chan": {"2026-08-04": 4, "2026-08-05": 2, "2026-08-07": 1, "2026-08-10": 3, "2026-08-11": 3, "2026-08-12": 3, "2026-08-13": 4, "2026-08-14": 13, "2026-08-17": 6, "2026-08-18": 1, "2026-08-19": 3, "2026-08-20": 3, "2026-08-24": 2, "2026-08-25": 4}, "Freddie Qiang": {"2026-08-04": 7, "2026-08-05": 5, "2026-08-06": 7, "2026-08-07": 5, "2026-08-12": 11, "2026-08-13": 7, "2026-08-14": 3, "2026-08-15": 2, "2026-08-20": 9, "2026-08-21": 2, "2026-08-23": 2}, "Rory Ju": {"2026-08-04": 7, "2026-08-05": 12, "2026-08-06": 1, "2026-08-07": 2, "2026-08-11": 8, "2026-08-12": 6, "2026-08-13": 5, "2026-08-17": 6, "2026-08-18": 4, "2026-08-19": 1, "2026-08-20": 6, "2026-08-24": 3, "2026-08-25": 5, "2026-08-26": 4}, "Alex Xu": {"2026-08-05": 12, "2026-08-11": 9, "2026-08-12": 6, "2026-08-13": 3, "2026-08-17": 1, "2026-08-18": 12, "2026-08-20": 3, "2026-08-21": 6, "2026-08-24": 2, "2026-08-25": 5}, "Junfeng Deng": {"2026-08-05": 21, "2026-08-06": 1, "2026-08-07": 10, "2026-08-10": 11, "2026-08-11": 1, "2026-08-12": 6, "2026-08-13": 1, "2026-08-14": 16, "2026-08-17": 1, "2026-08-18": 1, "2026-08-19": 10, "2026-08-20": 13, "2026-08-21": 1, "2026-08-24": 1, "2026-08-25": 13, "2026-08-26": 2}, "Yibo Wang": {"2026-08-05": 1, "2026-08-11": 2, "2026-08-12": 1, "2026-08-13": 4, "2026-08-14": 2, "2026-08-17": 20, "2026-08-18": 10, "2026-08-19": 1, "2026-08-20": 1, "2026-08-21": 1, "2026-08-24": 5, "2026-08-26": 7}, "Ping Wang": {"2026-08-06": 8, "2026-08-07": 30, "2026-08-09": 1, "2026-08-14": 15, "2026-08-15": 2, "2026-08-16": 1, "2026-08-17": 11, "2026-08-22": 1, "2026-08-24": 11, "2026-08-25": 21, "2026-08-26": 14}, "Karen Ou Yang": {"2026-08-07": 27, "2026-08-10": 6, "2026-08-11": 1, "2026-08-12": 8, "2026-08-13": 9, "2026-08-14": 11, "2026-08-17": 2, "2026-08-18": 9, "2026-08-19": 6, "2026-08-20": 2, "2026-08-21": 7, "2026-08-24": 14, "2026-08-25": 6}, "Guichong You": {"2026-08-10": 2, "2026-08-12": 2, "2026-08-19": 2, "2026-08-24": 2}, "Peter Zhang": {"2026-08-12": 6, "2026-08-13": 30, "2026-08-17": 6, "2026-08-18": 3, "2026-08-19": 2, "2026-08-20": 4, "2026-08-24": 4, "2026-08-25": 4, "2026-08-26": 6}, "Yong Zhao": {"2026-08-12": 2, "2026-08-20": 1, "2026-08-26": 2}, "Freddie Liu": {}}, "maxVal": 32};
 
 /* ================================================================
    DAILY HEATMAP (CST)
@@ -1231,33 +1031,16 @@ function renderWeekColumnHeader(col) {
   return `<th class="${cls.join(' ')}" title="${col.label}">${col.header}<br><span style="font-weight:400;font-size:10px">${col.label}</span></th>`;
 }
 
-function renderWeekColumnCell(emp, col, weekMax) {
+function renderWeekColumnCell(emp, col) {
   const row = getWeeklyRow(emp);
   const cell = row ? normWeekCell(row.weekly[col.weekIdx]) : { inc: 0, task: 0 };
   const total = cell.inc + cell.task;
   const zeroRed = total === 0 && col.weekIdx <= (WEEKLY_DATA?.currentWeek ?? 99);
-  const maxForWeek = weekMax[col.weekIdx] || 0;
-  const isWeekMax = total > 0 && maxForWeek > 0 && total === maxForWeek;
   const cls = ['week-col'];
   if (col.isCurrent) cls.push('current-week');
   let innerCls = 'week-cell-inner';
-  if (isWeekMax) innerCls += ' week-mvp';
-  else if (total === 0 && zeroRed) innerCls += ' blink-zero';
+  if (total === 0 && zeroRed) innerCls += ' blink-zero';
   return `<td class="${cls.join(' ')}"><div class="${innerCls}" title="Inc ${cell.inc} + Task ${cell.task}">${total}</div></td>`;
-}
-
-function computeWeekMax(weekCols) {
-  const weekMax = {};
-  weekCols.forEach((col) => {
-    let max = 0;
-    (WEEKLY_DATA?.data || []).forEach((row) => {
-      const cell = normWeekCell(row.weekly[col.weekIdx]);
-      const total = cell.inc + cell.task;
-      if (total > max) max = total;
-    });
-    weekMax[col.weekIdx] = max;
-  });
-  return weekMax;
 }
 
 function renderDailyHeatmap(monthKey) {
@@ -1271,7 +1054,6 @@ function renderDailyHeatmap(monthKey) {
   const todayKey = dailyDateKey(today.y, today.m, today.d);
 
   const weekCols = weekColumnsForMonth(data.year, data.month);
-  const weekMax = computeWeekMax(weekCols);
   let weekColPtr = 0;
 
   const dayMax = {};
@@ -1338,7 +1120,7 @@ function renderDailyHeatmap(monthKey) {
       html += `<td class="${cls.join(' ')}"><div class="${innerCls}"${innerStyle} title="${emp} · ${d.key} · ${v}">${text}</div></td>`;
 
       if (weekColPtr < weekCols.length && d.day === weekCols[weekColPtr].afterDay) {
-        html += renderWeekColumnCell(emp, weekCols[weekColPtr], weekMax);
+        html += renderWeekColumnCell(emp, weekCols[weekColPtr]);
         weekColPtr++;
       }
     });
@@ -1356,7 +1138,6 @@ function renderDailyHeatmap(monthKey) {
     `<span>1→15 蓝由浅至深：</span>${legendScale}<span>15+ 同 15</span>`,
     '<span><i style="background:#f8fafc;border:1px solid #e2e8f0"></i> 周末无数据 · / 未来空白</span>',
     '<span><i style="background:#fde68a;border:1px solid #f59e0b"></i> 当天最高单量（浅金闪烁）</span>',
-    '<span><i style="background:linear-gradient(135deg,#fde68a,#fbbf24);border:2px solid #a855f7;box-shadow:0 0 6px rgba(251,191,36,.5)"></i> 当周最高单量（紫金框 + 金粒）</span>',
     '<span><i style="background:#475569"></i> 周汇总列（Inc+Task 总数）</span>',
   ].join('');
 }
