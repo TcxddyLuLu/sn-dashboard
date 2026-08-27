@@ -1021,7 +1021,9 @@ def fetch_tickets_optional():
 
 def publish_dashboard(rows, weekly_info, daily_info=None):
     update_dashboard_history(rows, weekly_info, daily_info)
-    return update_html(rows, weekly_info, daily_info)
+    html_path = update_html(rows, weekly_info, daily_info)
+    update_employee_detail_html(rows, weekly_info, daily_info)
+    return html_path
 
 
 def push_tickets(html_path=None, *, required: bool) -> bool:
@@ -1389,6 +1391,45 @@ def update_html(rows, weekly_info=None, daily_info=None):
     return html_path
 
 
+def update_employee_detail_html(rows, weekly_info=None, daily_info=None):
+    """Inject current-month snapshot into employee-detail.html for GitHub Pages."""
+    template_path = SCRIPT_DIR / "employee-detail.html"
+    html_path = (output_dir() / "employee-detail.html") if CI_MODE else template_path
+    html = template_path.read_text(encoding="utf-8")
+
+    month_key = now_display().strftime("%Y-%m")
+    html = re.sub(
+        r'let CURRENT_MONTH_KEY = ".*?";',
+        f'let CURRENT_MONTH_KEY = "{month_key}";',
+        html,
+    )
+
+    monthly = [
+        {
+            "employee": r["employee_name"],
+            "incidents": int(r["incident_count"]),
+            "tasks": int(r["task_count"]),
+        }
+        for r in rows
+    ]
+    snapshot = {
+        "monthly": monthly,
+        "weekly": weekly_info or {"weeks": [], "data": [], "currentWeek": -1},
+        "daily": daily_info,
+    }
+    snapshot_js = json.dumps(snapshot, ensure_ascii=False)
+    html = re.sub(
+        r"let INLINE_MONTH_SNAPSHOT = [\s\S]*?;",
+        f"let INLINE_MONTH_SNAPSHOT = {snapshot_js};",
+        html,
+        count=1,
+    )
+
+    html_path.write_text(html, encoding="utf-8")
+    log.info("%s updated", html_path.name)
+    return html_path
+
+
 def update_dashboard_history(rows, weekly_info=None, daily_info=None):
     """Persist current month snapshot for month-picker on GitHub Pages."""
     month_key = now_display().strftime("%Y-%m")
@@ -1463,6 +1504,8 @@ DASHBOARD_STATIC_FILES = [
     "chart.min.js",
     "dashboard-features.js",
     "dashboard_history.json",
+    "employee-detail.html",
+    "employee-detail-features.js",
     "tickets.html",
     "tickets-features.js",
 ]

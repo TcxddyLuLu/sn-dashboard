@@ -277,7 +277,10 @@ async function loadHistoryAndBoot() {
   }
 
   const keys = monthKeys();
-  if (!activeMonthKey || (keys.length && !DASHBOARD_HISTORY[activeMonthKey])) {
+  const urlMonth = new URLSearchParams(window.location.search).get('month');
+  if (urlMonth && (DASHBOARD_HISTORY[urlMonth] || urlMonth === CURRENT_MONTH_KEY)) {
+    activeMonthKey = urlMonth;
+  } else if (!activeMonthKey || (keys.length && !DASHBOARD_HISTORY[activeMonthKey])) {
     activeMonthKey = CURRENT_MONTH_KEY || keys[0] || '';
   } else if (!keys.length && CURRENT_MONTH_KEY) {
     activeMonthKey = CURRENT_MONTH_KEY;
