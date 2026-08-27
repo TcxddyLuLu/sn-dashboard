@@ -18,6 +18,18 @@ function qp(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
+function dashboardHomeFile() {
+  const host = window.location.hostname;
+  const port = window.location.port;
+  if (host.endsWith('github.io') || port === '8090') return 'index.html';
+  return 'dashboard.html';
+}
+
+function dashboardHomeHref(monthKey) {
+  const file = dashboardHomeFile();
+  return monthKey ? `${file}?month=${encodeURIComponent(monthKey)}` : file;
+}
+
 function parseMonthKey(key) {
   const [y, m] = key.split('-').map(Number);
   return { y, m };
@@ -491,7 +503,7 @@ function renderPage(emp, monthKey) {
   const monthLabel = payload.label || formatMonthLabel(monthKey);
 
   const back = document.getElementById('backLink');
-  if (back) back.href = `dashboard.html?month=${encodeURIComponent(monthKey)}`;
+  if (back) back.href = dashboardHomeHref(monthKey);
 
   renderSummary(emp, record, monthLabel);
   renderWeekCards(record);
