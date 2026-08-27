@@ -1744,6 +1744,14 @@ def push_to_github(html_path) -> bool:
 
     shutil.copy2(str(html_path), str(repo_dir / "index.html"))
 
+    dashboard_redirect = (
+        "<!DOCTYPE html><html lang=\"zh-CN\"><head><meta charset=\"UTF-8\">"
+        "<title>Redirecting…</title>"
+        "<script>location.replace('index.html' + location.search + location.hash);</script>"
+        "</head><body><p><a href=\"index.html\">Dashboard</a></p></body></html>"
+    )
+    (repo_dir / "dashboard.html").write_text(dashboard_redirect, encoding="utf-8")
+
     for fname in DASHBOARD_STATIC_FILES:
         src = SCRIPT_DIR / fname
         if src.exists():
@@ -1754,7 +1762,7 @@ def push_to_github(html_path) -> bool:
     untrack_ci_runtime_files(repo_dir)
 
     subprocess.run(
-        ["git", "-C", str(repo_dir), "add", "index.html", *DASHBOARD_STATIC_FILES, "automation", ".gitignore"],
+        ["git", "-C", str(repo_dir), "add", "index.html", "dashboard.html", *DASHBOARD_STATIC_FILES, "automation", ".gitignore"],
         capture_output=True,
     )
 
