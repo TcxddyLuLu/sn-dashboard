@@ -1391,9 +1391,17 @@ def update_html(rows, weekly_info=None, daily_info=None):
     return html_path
 
 
+def employee_detail_template_path() -> Path:
+    """Source template for employee-detail.html (local dir or repo root in CI)."""
+    for candidate in (SCRIPT_DIR / "employee-detail.html", SCRIPT_DIR.parent / "employee-detail.html"):
+        if candidate.exists():
+            return candidate
+    return SCRIPT_DIR / "employee-detail.html"
+
+
 def update_employee_detail_html(rows, weekly_info=None, daily_info=None):
     """Inject current-month snapshot into employee-detail.html for GitHub Pages."""
-    template_path = SCRIPT_DIR / "employee-detail.html"
+    template_path = employee_detail_template_path()
     html_path = (output_dir() / "employee-detail.html") if CI_MODE else template_path
     html = template_path.read_text(encoding="utf-8")
 
@@ -1524,6 +1532,8 @@ AUTOMATION_SYNC_FILES = [
     "team_tasks_query.sql",
     "team_member_incident.sql",
     "team_member_task.sql",
+    "employee-detail.html",
+    "employee-detail-features.js",
 ]
 
 TICKETS_STATIC_FILES = [

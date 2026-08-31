@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>员工单量详情 — SN Dashboard</title>
+<link rel="preload" href="chart.min.js" as="script">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+    padding: 24px;
+  }
+  .dashboard { max-width: 1200px; margin: 0 auto; }
+  .nav { margin-bottom: 14px; font-size: 14px; }
+  .nav a { color: #2563eb; text-decoration: none; }
+  .nav a:hover { text-decoration: underline; }
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    color: #fff;
+    padding: 28px 32px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header h1 { font-size: 26px; font-weight: 700; }
+  .header .meta { text-align: right; font-size: 14px; opacity: .9; }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .card .label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .card .value { font-size: 32px; font-weight: 700; margin-top: 2px; }
+  .card.incident .value { color: #3b82f6; }
+  .card.task .value { color: #f97316; }
+  .card.total .value { color: #1e293b; }
+  .card.days .value { color: #8b5cf6; }
+  .section {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    margin-bottom: 20px;
+  }
+  .section h3 { font-size: 16px; margin-bottom: 12px; }
+  .section .subhead { font-size: 12px; color: #64748b; margin-bottom: 14px; }
+  .week-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .week-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .week-card.current {
+    border-color: #2563eb;
+    background: #eff6ff;
+    box-shadow: inset 0 -3px 0 #2563eb;
+  }
+  .wk-title { font-weight: 700; font-size: 15px; }
+  .wk-range { font-size: 11px; color: #64748b; margin: 4px 0 8px; }
+  .wk-stats .inc { color: #3b82f6; font-weight: 600; }
+  .wk-stats .task { color: #f97316; font-weight: 600; }
+  .wk-total { font-size: 13px; margin-top: 6px; font-weight: 600; }
+  .sync-panel { overflow-x: auto; }
+  .sync-grid {
+    --day-w: 36px;
+    --week-w: 46px;
+    --label-w: 56px;
+    --sum-w: 44px;
+    display: grid;
+    grid-template-columns: var(--label-w) max-content var(--sum-w);
+    column-gap: 0;
+    align-items: stretch;
+    min-width: min-content;
+  }
+  .sync-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    padding: 0 8px 0 0;
+    background: #fff;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+  }
+  .sync-label.header { align-items: flex-end; padding-bottom: 6px; min-height: 44px; }
+  .sync-sum {
+    text-align: center;
+    font-weight: 700;
+    font-size: 12px;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    min-height: 30px;
+  }
+  .sync-sum.header {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0f172a;
+    background: #cbd5e1;
+    border-color: #94a3b8;
+    min-height: 44px;
+    align-self: stretch;
+  }
+  .sync-track {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: var(--block-gap, 10px);
+  }
+  .week-block {
+    display: flex;
+    flex-direction: column;
+    border: 2px solid #cbd5e1;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+    flex: 0 0 auto;
+  }
+  .week-block.current {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
+  }
+  .week-block.orphan {
+    border-style: dashed;
+    border-color: #e2e8f0;
+    background: #fff;
+  }
+  .week-block-title {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #475569;
+    padding: 6px 8px 4px;
+    border-bottom: 1px solid #e2e8f0;
+    background: rgba(248, 250, 252, 0.9);
+    white-space: nowrap;
+  }
+  .week-block.current .week-block-title {
+    color: #1d4ed8;
+    background: #eff6ff;
+  }
+  .week-block-row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .day-col {
+    width: var(--day-w);
+    flex: 0 0 var(--day-w);
+    text-align: center;
+    border-right: 1px solid #f1f5f9;
+  }
+  .day-col:last-child { border-right: none; }
+  .day-col.head {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 0 2px;
+    color: #334155;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .day-col.head .sub { font-weight: 400; font-size: 10px; color: #64748b; display: block; }
+  .day-col.head.weekend { opacity: 0.7; }
+  .day-col.val { padding: 0; }
+  .day-col.val .cell-inner {
+    width: var(--day-w);
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
+  }
+  .day-col.val.weekend .cell-inner { color: #94a3b8; }
+  .day-col.val.future .cell-inner { background: #f8fafc; color: #e2e8f0; }
+  .day-col.val .cell-inner.blink-zero {
+    animation: blink-warn 2s ease-in-out infinite;
+    color: #ef4444;
+    background: #fef2f2 !important;
+  }
+  .week-sum-col {
+    width: var(--week-w);
+    flex: 0 0 var(--week-w);
+    border-left: 2px solid #94a3b8;
+    background: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 700;
+    font-size: 12px;
+    color: #334155;
+    padding: 4px 2px;
+  }
+  .week-sum-col .wk-h { font-size: 10px; color: #64748b; font-weight: 600; margin-top: 2px; }
+  .week-sum-col.head {
+    background: #cbd5e1;
+    font-size: 11px;
+    min-height: 44px;
+  }
+  .sync-chart-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: var(--label-w) max-content;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px dashed #e2e8f0;
+  }
+  .sync-chart-area {
+    position: relative;
+    display: inline-block;
+    min-height: var(--chart-h, 300px);
+  }
+  .sync-track.chart-track {
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute;
+    height: 0;
+    overflow: hidden;
+  }
+  .week-block.chart-mirror {
+    border-color: transparent;
+    box-shadow: none;
+    background: transparent;
+  }
+  .week-block.chart-mirror .chart-pad { visibility: hidden; }
+  .sync-chart-wrap {
+    height: var(--chart-h, 300px);
+    overflow: visible;
+  }
+  .sync-chart-wrap canvas { display: block; }
+  @keyframes blink-warn {
+    0%, 100% { opacity: 1; }
+    50% { opacity: .45; }
+  }
+  .wk-chip {
+    background: var(--band);
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: #475569;
+  }
+  .error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="dashboard">
+  <div id="errorBanner" class="error-banner" style="display:none"></div>
+  <div class="nav"><a id="backLink" href="index.html">← 返回 Dashboard</a></div>
+
+  <div class="header">
+    <h1 id="empName">—</h1>
+    <div class="meta">
+      <div id="monthLabel">—</div>
+      <div style="font-size:12px;opacity:.75;margin-top:4px;">个人月度关单视图</div>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card incident"><div class="label">Incidents</div><div class="value" id="sumInc">0</div></div>
+    <div class="card task"><div class="label">SC Tasks</div><div class="value" id="sumTask">0</div></div>
+    <div class="card total"><div class="label">Total</div><div class="value" id="sumAll">0</div></div>
+    <div class="card days"><div class="label">有单天数</div><div class="value" id="sumDays">0</div></div>
+  </div>
+
+  <div class="section">
+    <h3>每周汇总</h3>
+    <div class="subhead">自然周（周一至周日），与 Dashboard 周表一致</div>
+    <div class="week-cards" id="weekCards"></div>
+  </div>
+
+  <div class="section">
+    <h3>每日 Heatmap + 趋势</h3>
+    <div class="subhead">每周为一块整体（含 W 汇总列）；折线图与上方日期列垂直对齐</div>
+    <div class="sync-panel" id="syncPanel"></div>
+    <div class="week-legend" id="weekLegend" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;font-size:12px;"></div>
+  </div>
+</div>
+<script>
+let CURRENT_MONTH_KEY = "2026-08";
+let INLINE_MONTH_SNAPSHOT = {"monthly": [{"employee": "Howie Tan", "incidents": 25, "tasks": 152}, {"employee": "Ping Wang", "incidents": 109, "tasks": 30}, {"employee": "liang Xiang", "incidents": 132, "tasks": 0}, {"employee": "Andy Lan", "incidents": 82, "tasks": 47}, {"employee": "Dom Chang", "incidents": 102, "tasks": 16}, {"employee": "He Feng", "incidents": 16, "tasks": 100}, {"employee": "Karen Ou Yang", "incidents": 57, "tasks": 59}, {"employee": "Junfeng Deng", "incidents": 25, "tasks": 90}, {"employee": "Kenneth Chung", "incidents": 34, "tasks": 77}, {"employee": "Hao Zhu", "incidents": 93, "tasks": 8}, {"employee": "Yang Ding", "incidents": 2, "tasks": 95}, {"employee": "Xinyu Zhang", "incidents": 59, "tasks": 23}, {"employee": "Harry Yip", "incidents": 22, "tasks": 58}, {"employee": "Hooxi Zhu", "incidents": 48, "tasks": 30}, {"employee": "Freddie Qiang", "incidents": 58, "tasks": 20}, {"employee": "Rory Ju", "incidents": 38, "tasks": 35}, {"employee": "Peter Zhang", "incidents": 39, "tasks": 33}, {"employee": "Thomas Tao", "incidents": 40, "tasks": 31}, {"employee": "Alex Xu", "incidents": 30, "tasks": 40}, {"employee": "Yibo Wang", "incidents": 64, "tasks": 6}, {"employee": "Roy Wei", "incidents": 16, "tasks": 46}, {"employee": "Vance Chen", "incidents": 14, "tasks": 47}, {"employee": "Jacky Chan", "incidents": 11, "tasks": 46}, {"employee": "Charles Lee", "incidents": 50, "tasks": 5}, {"employee": "Allen Guo", "incidents": 11, "tasks": 32}, {"employee": "Lee Li", "incidents": 7, "tasks": 33}, {"employee": "Bob Liu", "incidents": 12, "tasks": 20}, {"employee": "Aaron Jiang", "incidents": 6, "tasks": 17}, {"employee": "Zhi Lu", "incidents": 0, "tasks": 10}, {"employee": "Luby Lu", "incidents": 7, "tasks": 2}, {"employee": "Guichong You", "incidents": 0, "tasks": 8}, {"employee": "Yin Ye", "incidents": 3, "tasks": 4}, {"employee": "Yong Zhao", "incidents": 0, "tasks": 5}, {"employee": "Freddie Liu", "incidents": 0, "tasks": 0}], "weekly": {"weeks": ["7/27-8/2", "8/3-9", "8/10-16", "8/17-23", "8/24-30", "8/31-9/6"], "currentWeek": 5, "data": [{"employee": "Howie Tan", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 30}, {"inc": 5, "task": 44}, {"inc": 12, "task": 39}, {"inc": 3, "task": 38}, {"inc": 0, "task": 1}], "total": {"inc": 25, "task": 152}}, {"employee": "Ping Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 32, "task": 7}, {"inc": 15, "task": 3}, {"inc": 12, "task": 0}, {"inc": 50, "task": 18}, {"inc": 0, "task": 2}], "total": {"inc": 109, "task": 30}}, {"employee": "liang Xiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 43, "task": 0}, {"inc": 21, "task": 0}, {"inc": 28, "task": 0}, {"inc": 40, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 132, "task": 0}}, {"employee": "Andy Lan", "weekly": [{"inc": 0, "task": 0}, {"inc": 12, "task": 14}, {"inc": 0, "task": 0}, {"inc": 12, "task": 14}, {"inc": 58, "task": 19}, {"inc": 0, "task": 0}], "total": {"inc": 82, "task": 47}}, {"employee": "Dom Chang", "weekly": [{"inc": 4, "task": 0}, {"inc": 5, "task": 4}, {"inc": 23, "task": 0}, {"inc": 37, "task": 5}, {"inc": 33, "task": 7}, {"inc": 0, "task": 0}], "total": {"inc": 102, "task": 16}}, {"employee": "He Feng", "weekly": [{"inc": 0, "task": 0}, {"inc": 9, "task": 41}, {"inc": 0, "task": 0}, {"inc": 0, "task": 29}, {"inc": 7, "task": 29}, {"inc": 0, "task": 1}], "total": {"inc": 16, "task": 100}}, {"employee": "Karen Ou Yang", "weekly": [{"inc": 0, "task": 0}, {"inc": 13, "task": 14}, {"inc": 18, "task": 17}, {"inc": 15, "task": 11}, {"inc": 11, "task": 17}, {"inc": 0, "task": 0}], "total": {"inc": 57, "task": 59}}, {"employee": "Junfeng Deng", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 26}, {"inc": 7, "task": 28}, {"inc": 8, "task": 18}, {"inc": 4, "task": 18}, {"inc": 0, "task": 0}], "total": {"inc": 25, "task": 90}}, {"employee": "Kenneth Chung", "weekly": [{"inc": 0, "task": 0}, {"inc": 10, "task": 35}, {"inc": 5, "task": 3}, {"inc": 9, "task": 6}, {"inc": 10, "task": 33}, {"inc": 0, "task": 0}], "total": {"inc": 34, "task": 77}}, {"employee": "Hao Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 29, "task": 1}, {"inc": 32, "task": 4}, {"inc": 32, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 93, "task": 8}}, {"employee": "Yang Ding", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 13}, {"inc": 0, "task": 37}, {"inc": 0, "task": 38}, {"inc": 0, "task": 0}, {"inc": 0, "task": 7}], "total": {"inc": 2, "task": 95}}, {"employee": "Xinyu Zhang", "weekly": [{"inc": 3, "task": 0}, {"inc": 12, "task": 3}, {"inc": 14, "task": 8}, {"inc": 20, "task": 12}, {"inc": 10, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 59, "task": 23}}, {"employee": "Harry Yip", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 10}, {"inc": 8, "task": 12}, {"inc": 8, "task": 30}, {"inc": 5, "task": 6}, {"inc": 0, "task": 0}], "total": {"inc": 22, "task": 58}}, {"employee": "Hooxi Zhu", "weekly": [{"inc": 0, "task": 0}, {"inc": 11, "task": 5}, {"inc": 14, "task": 20}, {"inc": 14, "task": 3}, {"inc": 9, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 48, "task": 30}}, {"employee": "Freddie Qiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 17, "task": 7}, {"inc": 17, "task": 6}, {"inc": 9, "task": 4}, {"inc": 15, "task": 3}, {"inc": 0, "task": 0}], "total": {"inc": 58, "task": 20}}, {"employee": "Rory Ju", "weekly": [{"inc": 0, "task": 0}, {"inc": 15, "task": 7}, {"inc": 9, "task": 10}, {"inc": 4, "task": 13}, {"inc": 10, "task": 4}, {"inc": 0, "task": 1}], "total": {"inc": 38, "task": 35}}, {"employee": "Peter Zhang", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 16, "task": 20}, {"inc": 9, "task": 6}, {"inc": 14, "task": 7}, {"inc": 0, "task": 0}], "total": {"inc": 39, "task": 33}}, {"employee": "Thomas Tao", "weekly": [{"inc": 0, "task": 0}, {"inc": 8, "task": 9}, {"inc": 23, "task": 6}, {"inc": 8, "task": 7}, {"inc": 1, "task": 6}, {"inc": 0, "task": 3}], "total": {"inc": 40, "task": 31}}, {"employee": "Alex Xu", "weekly": [{"inc": 0, "task": 0}, {"inc": 6, "task": 6}, {"inc": 6, "task": 12}, {"inc": 10, "task": 12}, {"inc": 8, "task": 10}, {"inc": 0, "task": 0}], "total": {"inc": 30, "task": 40}}, {"employee": "Yibo Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 0}, {"inc": 8, "task": 1}, {"inc": 28, "task": 5}, {"inc": 27, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 64, "task": 6}}, {"employee": "Roy Wei", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 5}, {"inc": 6, "task": 12}, {"inc": 6, "task": 10}, {"inc": 4, "task": 18}, {"inc": 0, "task": 1}], "total": {"inc": 16, "task": 46}}, {"employee": "Vance Chen", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 13}, {"inc": 5, "task": 10}, {"inc": 0, "task": 12}, {"inc": 5, "task": 12}, {"inc": 0, "task": 0}], "total": {"inc": 14, "task": 47}}, {"employee": "Jacky Chan", "weekly": [{"inc": 0, "task": 0}, {"inc": 4, "task": 3}, {"inc": 2, "task": 24}, {"inc": 3, "task": 10}, {"inc": 2, "task": 8}, {"inc": 0, "task": 1}], "total": {"inc": 11, "task": 46}}, {"employee": "Charles Lee", "weekly": [{"inc": 0, "task": 0}, {"inc": 20, "task": 1}, {"inc": 9, "task": 3}, {"inc": 14, "task": 0}, {"inc": 7, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 50, "task": 5}}, {"employee": "Allen Guo", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 9}, {"inc": 2, "task": 5}, {"inc": 6, "task": 5}, {"inc": 3, "task": 13}, {"inc": 0, "task": 0}], "total": {"inc": 11, "task": 32}}, {"employee": "Lee Li", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 18}, {"inc": 1, "task": 5}, {"inc": 2, "task": 1}, {"inc": 4, "task": 9}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 33}}, {"employee": "Bob Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 3, "task": 7}, {"inc": 2, "task": 2}, {"inc": 4, "task": 5}, {"inc": 3, "task": 5}, {"inc": 0, "task": 1}], "total": {"inc": 12, "task": 20}}, {"employee": "Aaron Jiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 2, "task": 9}, {"inc": 1, "task": 1}, {"inc": 1, "task": 2}, {"inc": 2, "task": 5}, {"inc": 0, "task": 0}], "total": {"inc": 6, "task": 17}}, {"employee": "Zhi Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 2}], "total": {"inc": 0, "task": 10}}, {"employee": "Luby Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 5, "task": 0}, {"inc": 1, "task": 0}, {"inc": 1, "task": 1}, {"inc": 0, "task": 1}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 2}}, {"employee": "Guichong You", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 4}, {"inc": 0, "task": 2}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 8}}, {"employee": "Yin Ye", "weekly": [{"inc": 0, "task": 0}, {"inc": 1, "task": 2}, {"inc": 0, "task": 0}, {"inc": 2, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 4}}, {"employee": "Yong Zhao", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 2}, {"inc": 0, "task": 1}, {"inc": 0, "task": 2}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 5}}, {"employee": "Freddie Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}]}, "daily": {"year": 2026, "month": 8, "matrix": {"Dom Chang": {"2026-08-01": 2, "2026-08-02": 2, "2026-08-03": 7, "2026-08-08": 2, "2026-08-10": 8, "2026-08-11": 12, "2026-08-16": 3, "2026-08-17": 20, "2026-08-18": 13, "2026-08-19": 9, "2026-08-24": 14, "2026-08-25": 14, "2026-08-26": 5, "2026-08-27": 7}, "Xinyu Zhang": {"2026-08-02": 3, "2026-08-03": 9, "2026-08-04": 4, "2026-08-05": 2, "2026-08-10": 10, "2026-08-11": 7, "2026-08-12": 2, "2026-08-13": 3, "2026-08-18": 8, "2026-08-19": 10, "2026-08-20": 5, "2026-08-21": 9, "2026-08-28": 5, "2026-08-29": 5}, "Allen Guo": {"2026-08-03": 1, "2026-08-04": 2, "2026-08-05": 3, "2026-08-06": 3, "2026-08-10": 2, "2026-08-11": 1, "2026-08-13": 2, "2026-08-14": 2, "2026-08-17": 2, "2026-08-18": 1, "2026-08-20": 8, "2026-08-24": 2, "2026-08-25": 2, "2026-08-26": 7, "2026-08-27": 4, "2026-08-28": 1}, "Andy Lan": {"2026-08-03": 1, "2026-08-04": 5, "2026-08-05": 15, "2026-08-07": 5, "2026-08-17": 6, "2026-08-18": 3, "2026-08-20": 2, "2026-08-21": 1, "2026-08-23": 14, "2026-08-25": 5, "2026-08-27": 37, "2026-08-28": 24, "2026-08-29": 11}, "Bob Liu": {"2026-08-03": 4, "2026-08-07": 6, "2026-08-10": 1, "2026-08-11": 1, "2026-08-13": 2, "2026-08-17": 2, "2026-08-18": 1, "2026-08-19": 3, "2026-08-20": 1, "2026-08-21": 2, "2026-08-24": 2, "2026-08-25": 1, "2026-08-27": 5, "2026-08-31": 1}, "Charles Lee": {"2026-08-03": 1, "2026-08-06": 1, "2026-08-07": 19, "2026-08-12": 1, "2026-08-13": 2, "2026-08-14": 9, "2026-08-17": 1, "2026-08-18": 7, "2026-08-19": 4, "2026-08-21": 2, "2026-08-25": 3, "2026-08-26": 5}, "He Feng": {"2026-08-03": 11, "2026-08-04": 18, "2026-08-05": 9, "2026-08-06": 9, "2026-08-07": 3, "2026-08-17": 10, "2026-08-18": 1, "2026-08-19": 9, "2026-08-20": 9, "2026-08-24": 9, "2026-08-25": 9, "2026-08-26": 16, "2026-08-27": 2, "2026-08-31": 1}, "Howie Tan": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 1, "2026-08-07": 32, "2026-08-10": 1, "2026-08-11": 16, "2026-08-12": 12, "2026-08-13": 9, "2026-08-14": 11, "2026-08-17": 7, "2026-08-18": 1, "2026-08-19": 24, "2026-08-20": 7, "2026-08-21": 12, "2026-08-24": 7, "2026-08-25": 7, "2026-08-26": 10, "2026-08-27": 7, "2026-08-28": 10, "2026-08-31": 1}, "Harry Yip": {"2026-08-03": 1, "2026-08-05": 5, "2026-08-06": 1, "2026-08-07": 4, "2026-08-10": 4, "2026-08-11": 3, "2026-08-12": 6, "2026-08-13": 5, "2026-08-14": 2, "2026-08-17": 6, "2026-08-18": 5, "2026-08-20": 4, "2026-08-21": 23, "2026-08-24": 3, "2026-08-25": 3, "2026-08-27": 5}, "Hooxi Zhu": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 3, "2026-08-06": 1, "2026-08-07": 10, "2026-08-10": 5, "2026-08-11": 9, "2026-08-12": 8, "2026-08-13": 8, "2026-08-14": 4, "2026-08-17": 6, "2026-08-18": 2, "2026-08-19": 3, "2026-08-20": 5, "2026-08-21": 1, "2026-08-24": 6, "2026-08-25": 1, "2026-08-27": 4}, "Hao Zhu": {"2026-08-03": 6, "2026-08-04": 4, "2026-08-05": 5, "2026-08-06": 7, "2026-08-07": 8, "2026-08-10": 8, "2026-08-11": 8, "2026-08-12": 9, "2026-08-13": 5, "2026-08-14": 6, "2026-08-17": 8, "2026-08-18": 8, "2026-08-19": 6, "2026-08-20": 8, "2026-08-21": 5}, "Kenneth Chung": {"2026-08-03": 1, "2026-08-04": 11, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 31, "2026-08-10": 2, "2026-08-11": 5, "2026-08-13": 1, "2026-08-18": 9, "2026-08-19": 2, "2026-08-20": 3, "2026-08-21": 1, "2026-08-25": 7, "2026-08-26": 3, "2026-08-27": 5, "2026-08-28": 28}, "Lee Li": {"2026-08-03": 6, "2026-08-04": 2, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 8, "2026-08-12": 5, "2026-08-13": 1, "2026-08-17": 2, "2026-08-20": 1, "2026-08-24": 5, "2026-08-26": 6, "2026-08-27": 2}, "Luby Lu": {"2026-08-03": 2, "2026-08-04": 3, "2026-08-12": 1, "2026-08-20": 2, "2026-08-28": 1}, "liang Xiang": {"2026-08-03": 14, "2026-08-04": 11, "2026-08-05": 18, "2026-08-11": 4, "2026-08-12": 8, "2026-08-13": 9, "2026-08-18": 1, "2026-08-19": 8, "2026-08-20": 12, "2026-08-21": 7, "2026-08-24": 8, "2026-08-25": 6, "2026-08-26": 8, "2026-08-27": 6, "2026-08-28": 12}, "Thomas Tao": {"2026-08-03": 3, "2026-08-04": 6, "2026-08-06": 1, "2026-08-07": 7, "2026-08-10": 9, "2026-08-11": 5, "2026-08-12": 5, "2026-08-13": 5, "2026-08-14": 5, "2026-08-17": 5, "2026-08-18": 4, "2026-08-19": 1, "2026-08-20": 5, "2026-08-24": 3, "2026-08-25": 4, "2026-08-31": 3}, "Vance Chen": {"2026-08-03": 4, "2026-08-04": 3, "2026-08-05": 4, "2026-08-06": 4, "2026-08-07": 2, "2026-08-10": 3, "2026-08-11": 4, "2026-08-12": 3, "2026-08-13": 5, "2026-08-17": 4, "2026-08-18": 3, "2026-08-19": 2, "2026-08-20": 3, "2026-08-24": 6, "2026-08-25": 4, "2026-08-26": 3, "2026-08-27": 4}, "Yang Ding": {"2026-08-03": 4, "2026-08-04": 2, "2026-08-05": 4, "2026-08-07": 5, "2026-08-11": 13, "2026-08-12": 16, "2026-08-14": 8, "2026-08-17": 6, "2026-08-18": 1, "2026-08-19": 15, "2026-08-21": 16, "2026-08-31": 7}, "Roy Wei": {"2026-08-03": 1, "2026-08-04": 1, "2026-08-05": 1, "2026-08-06": 1, "2026-08-07": 1, "2026-08-10": 7, "2026-08-11": 6, "2026-08-12": 1, "2026-08-13": 3, "2026-08-14": 1, "2026-08-17": 1, "2026-08-18": 1, "2026-08-19": 7, "2026-08-20": 6, "2026-08-21": 1, "2026-08-24": 1, "2026-08-25": 10, "2026-08-26": 1, "2026-08-27": 1, "2026-08-28": 9, "2026-08-31": 1}, "Yin Ye": {"2026-08-03": 1, "2026-08-05": 2, "2026-08-17": 1, "2026-08-19": 3}, "Zhi Lu": {"2026-08-03": 2, "2026-08-05": 2, "2026-08-17": 2, "2026-08-26": 2, "2026-08-31": 2}, "Aaron Jiang": {"2026-08-04": 1, "2026-08-05": 6, "2026-08-07": 4, "2026-08-12": 2, "2026-08-19": 2, "2026-08-21": 1, "2026-08-24": 5, "2026-08-26": 2}, "Jacky Chan": {"2026-08-04": 4, "2026-08-05": 2, "2026-08-07": 1, "2026-08-10": 3, "2026-08-11": 3, "2026-08-12": 3, "2026-08-13": 4, "2026-08-14": 13, "2026-08-17": 6, "2026-08-18": 1, "2026-08-19": 3, "2026-08-20": 3, "2026-08-24": 2, "2026-08-25": 4, "2026-08-26": 3, "2026-08-28": 1, "2026-08-31": 1}, "Freddie Qiang": {"2026-08-04": 7, "2026-08-05": 5, "2026-08-06": 7, "2026-08-07": 5, "2026-08-12": 11, "2026-08-13": 7, "2026-08-14": 3, "2026-08-15": 2, "2026-08-20": 9, "2026-08-21": 2, "2026-08-23": 2, "2026-08-28": 12, "2026-08-29": 3, "2026-08-30": 3}, "Rory Ju": {"2026-08-04": 7, "2026-08-05": 12, "2026-08-06": 1, "2026-08-07": 2, "2026-08-11": 8, "2026-08-12": 6, "2026-08-13": 5, "2026-08-17": 6, "2026-08-18": 4, "2026-08-19": 1, "2026-08-20": 6, "2026-08-24": 3, "2026-08-25": 5, "2026-08-26": 4, "2026-08-27": 1, "2026-08-28": 1, "2026-08-31": 1}, "Alex Xu": {"2026-08-05": 12, "2026-08-11": 9, "2026-08-12": 6, "2026-08-13": 3, "2026-08-17": 1, "2026-08-18": 12, "2026-08-20": 3, "2026-08-21": 6, "2026-08-24": 2, "2026-08-25": 5, "2026-08-27": 9, "2026-08-28": 2}, "Junfeng Deng": {"2026-08-05": 21, "2026-08-06": 1, "2026-08-07": 10, "2026-08-10": 11, "2026-08-11": 1, "2026-08-12": 6, "2026-08-13": 1, "2026-08-14": 16, "2026-08-17": 1, "2026-08-18": 1, "2026-08-19": 10, "2026-08-20": 13, "2026-08-21": 1, "2026-08-24": 1, "2026-08-25": 13, "2026-08-26": 2, "2026-08-27": 5, "2026-08-28": 1}, "Yibo Wang": {"2026-08-05": 1, "2026-08-11": 2, "2026-08-12": 1, "2026-08-13": 4, "2026-08-14": 2, "2026-08-17": 20, "2026-08-18": 10, "2026-08-19": 1, "2026-08-20": 1, "2026-08-21": 1, "2026-08-24": 5, "2026-08-26": 7, "2026-08-27": 7, "2026-08-28": 8}, "Ping Wang": {"2026-08-06": 8, "2026-08-07": 30, "2026-08-09": 1, "2026-08-14": 15, "2026-08-15": 2, "2026-08-16": 1, "2026-08-17": 11, "2026-08-22": 1, "2026-08-24": 11, "2026-08-25": 21, "2026-08-26": 14, "2026-08-27": 15, "2026-08-30": 7, "2026-08-31": 2}, "Karen Ou Yang": {"2026-08-07": 27, "2026-08-10": 6, "2026-08-11": 1, "2026-08-12": 8, "2026-08-13": 9, "2026-08-14": 11, "2026-08-17": 2, "2026-08-18": 9, "2026-08-19": 6, "2026-08-20": 2, "2026-08-21": 7, "2026-08-24": 14, "2026-08-25": 6, "2026-08-27": 5, "2026-08-28": 3}, "Guichong You": {"2026-08-10": 2, "2026-08-12": 2, "2026-08-19": 2, "2026-08-24": 2}, "Peter Zhang": {"2026-08-12": 6, "2026-08-13": 30, "2026-08-17": 6, "2026-08-18": 3, "2026-08-19": 2, "2026-08-20": 4, "2026-08-24": 4, "2026-08-25": 4, "2026-08-26": 8, "2026-08-27": 4, "2026-08-28": 1}, "Yong Zhao": {"2026-08-12": 2, "2026-08-20": 1, "2026-08-26": 2}, "Freddie Liu": {}}, "maxVal": 37}};
+</script>
+<script src="chart.min.js"></script>
+<script src="employee-detail-features.js" defer></script>
+</body>
+</html>
