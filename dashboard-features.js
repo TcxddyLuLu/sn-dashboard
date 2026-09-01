@@ -146,7 +146,8 @@ async function pollRefreshStatus() {
     const data = await resp.json();
     if (data.running) {
       const sec = data.elapsed_sec || 0;
-      setRefreshStatus(`正在查数并推送… ${sec}s（预计 2–3 分钟）`);
+      const eta = sec >= 300 ? '（Databricks 较慢，最多约 10 分钟）' : '（预计 3–8 分钟）';
+      setRefreshStatus(`正在查数并推送… ${sec}s${eta}`);
       return;
     }
     clearInterval(refreshPollTimer);
@@ -276,7 +277,10 @@ async function loadHistoryAndBoot() {
   }
 
   const keys = monthKeys();
-  if (!activeMonthKey || (keys.length && !DASHBOARD_HISTORY[activeMonthKey])) {
+  const urlMonth = new URLSearchParams(window.location.search).get('month');
+  if (urlMonth && (DASHBOARD_HISTORY[urlMonth] || urlMonth === CURRENT_MONTH_KEY)) {
+    activeMonthKey = urlMonth;
+  } else if (!activeMonthKey || (keys.length && !DASHBOARD_HISTORY[activeMonthKey])) {
     activeMonthKey = CURRENT_MONTH_KEY || keys[0] || '';
   } else if (!keys.length && CURRENT_MONTH_KEY) {
     activeMonthKey = CURRENT_MONTH_KEY;
