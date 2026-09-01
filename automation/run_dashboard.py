@@ -928,7 +928,11 @@ def run_excel_catchup(*, skip_if_fresh: bool = False) -> int:
         )
         return 0
     if not should_attempt_excel_refresh():
-        log.info("Excel refresh already satisfied for the current window")
+        if tickets_push_needed():
+            log.info("Excel data fresh locally but GitHub Pages tickets stale; pushing")
+            push_tickets(required=False)
+        else:
+            log.info("Excel refresh already satisfied for the current window")
         return 0
     if not try_acquire_excel_lock():
         log.info("Another Excel refresh is already running; skipping catch-up")
@@ -1307,6 +1311,22 @@ def backfill_month(month_key: str) -> int:
     return len(tickets)
 
 
+def tickets_push_needed() -> bool:
+    """True when local ticket store is newer than what is in the publish repo."""
+    local_at = last_excel_update_at()
+    if local_at is None:
+        return False
+    remote_path = Path(GITHUB_REPO_DIR) / "dashboard_tickets.json"
+    if not remote_path.exists():
+        return True
+    remote_at = parse_excel_updated_at(
+        load_ticket_store(remote_path).get(TICKET_META_EXCEL_UPDATED)
+    )
+    if remote_at is None:
+        return True
+    return local_at > remote_at
+
+
 def seal_previous_month_if_needed():
     """On the 1st, re-query and lock the previous month's data once per day."""
     today = today_display()
@@ -1329,6 +1349,8 @@ def seal_previous_month_if_needed():
         backfill_month(month_key)
         MONTH_SEAL_STAMP.write_text(month_key, encoding="utf-8")
         log.info(f"=== Month seal complete: {month_key} ===")
+        if tickets_push_needed():
+            push_tickets(required=False)
     except Exception as e:
         log.error(f"Month seal failed for {month_key}: {e}")
         notify_failure_safe("SN Dashboard Month Seal", e)
