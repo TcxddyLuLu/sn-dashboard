@@ -1153,21 +1153,24 @@ function dailyFromTickets(monthKey) {
   return matrix;
 }
 
+function hasDailyMatrix(daily) {
+  return !!(daily?.matrix && Object.keys(daily.matrix).length);
+}
+
 function getRawDailyMatrix(monthKey) {
+  const hist = DASHBOARD_HISTORY?.[monthKey]?.daily;
+  if (hasDailyMatrix(hist)) {
+    return hist.matrix;
+  }
   if (
     monthKey === activeMonthKey
     && typeof ACTIVE_MONTH_DAILY !== 'undefined'
-    && ACTIVE_MONTH_DAILY?.matrix
-    && Object.keys(ACTIVE_MONTH_DAILY.matrix).length
+    && hasDailyMatrix(ACTIVE_MONTH_DAILY)
   ) {
     return ACTIVE_MONTH_DAILY.matrix;
   }
-  if (monthKey === CURRENT_MONTH_KEY && DAILY_DATA?.matrix && Object.keys(DAILY_DATA.matrix).length) {
+  if (monthKey === CURRENT_MONTH_KEY && hasDailyMatrix(DAILY_DATA)) {
     return DAILY_DATA.matrix;
-  }
-  const hist = DASHBOARD_HISTORY?.[monthKey]?.daily;
-  if (hist?.matrix && Object.keys(hist.matrix).length) {
-    return hist.matrix;
   }
   return dailyFromTickets(monthKey);
 }

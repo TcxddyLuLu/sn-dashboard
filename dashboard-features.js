@@ -48,13 +48,34 @@ function clearDailyCache(monthKey) {
   else Object.keys(DAILY_DATA_CACHE).forEach((k) => delete DAILY_DATA_CACHE[k]);
 }
 
+function ensureDailyPayload(key, payload) {
+  if (hasDailyMatrix(payload.daily)) {
+    return payload.daily;
+  }
+  if (typeof dailyFromTickets !== 'function') {
+    return payload.daily || null;
+  }
+  const matrix = dailyFromTickets(key);
+  if (!matrix || !Object.keys(matrix).length) {
+    return payload.daily || null;
+  }
+  const [y, m] = key.split('-').map(Number);
+  let maxVal = 1;
+  Object.values(matrix).forEach((days) => {
+    Object.values(days).forEach((v) => {
+      if (v > maxVal) maxVal = v;
+    });
+  });
+  return { year: y, month: m, matrix, maxVal };
+}
+
 function applyMonth(key, renderNow) {
   const payload = monthPayload(key);
   if (!payload) return false;
 
   DATA = payload.monthly;
   WEEKLY_DATA = payload.weekly;
-  ACTIVE_MONTH_DAILY = payload.daily || null;
+  ACTIVE_MONTH_DAILY = ensureDailyPayload(key, payload);
   if (payload.daily && key === CURRENT_MONTH_KEY && typeof DAILY_DATA !== 'undefined') {
     DAILY_DATA = payload.daily;
   }
@@ -256,10 +277,22 @@ function switchMonth(key) {
 async function loadHistoryAndBoot() {
   snapshotInlineMonth();
 
+  const [historyResp, ticketResp] = await Promise.allSettled([
+    fetch('dashboard_history.json?' + Date.now()),
+    fetch('dashboard_tickets.json?' + Date.now()),
+  ]);
+
   try {
-    const resp = await fetch('dashboard_history.json?' + Date.now());
-    if (resp.ok) DASHBOARD_HISTORY = await resp.json();
+    if (historyResp.status === 'fulfilled' && historyResp.value.ok) {
+      DASHBOARD_HISTORY = await historyResp.value.json();
+    }
   } catch (_) { /* fallback to inline DATA for current month */ }
+
+  try {
+    if (ticketResp.status === 'fulfilled' && ticketResp.value.ok) {
+      DASHBOARD_TICKETS = await ticketResp.value.json();
+    }
+  } catch (_) { /* heatmap can still use history.daily */ }
 
   if (CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
     const prev = DASHBOARD_HISTORY[CURRENT_MONTH_KEY] || {};
