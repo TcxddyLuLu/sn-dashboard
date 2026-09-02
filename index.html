@@ -88,18 +88,153 @@
     align-items: center;
     gap: 14px;
     box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .mvp-icon,
+  .mvp-info {
+    position: relative;
+    z-index: 1;
+  }
+  @keyframes mvp-gold-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes mvp-gold-sparkle {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.02); }
+  }
+  @keyframes mvp-silver-shimmer {
+    0%, 100% { background-position: 0% 40%; }
+    50% { background-position: 100% 60%; }
+  }
+  @keyframes mvp-silver-sparkle {
+    0%, 100% { opacity: 0.45; }
+    50% { opacity: 0.95; }
+  }
+  @keyframes mvp-bronze-glow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes mvp-bronze-ember {
+    0%, 100% { opacity: 0.5; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-2px); }
   }
   .mvp-card.gold {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 2px solid #f59e0b;
+    background: linear-gradient(135deg, #fff7d6 0%, #fde68a 40%, #fbbf24 100%);
+    background-size: 220% 220%;
+    animation: mvp-gold-shimmer 3s ease-in-out infinite;
+    border: 2px solid #a855f7;
+    box-shadow:
+      0 0 0 1px #fbbf24,
+      0 4px 18px rgba(251, 191, 36, 0.5),
+      inset 0 0 28px rgba(255, 215, 0, 0.25);
+  }
+  .mvp-card.gold::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image:
+      radial-gradient(circle at 12% 35%, rgba(255, 255, 255, 0.95) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 78% 22%, rgba(255, 215, 0, 0.95) 2px, transparent 2px),
+      radial-gradient(circle at 88% 68%, rgba(255, 255, 255, 0.85) 1.2px, transparent 1.2px),
+      radial-gradient(circle at 28% 82%, rgba(251, 191, 36, 0.9) 1.6px, transparent 1.6px),
+      radial-gradient(circle at 52% 48%, rgba(168, 85, 247, 0.55) 1px, transparent 1px),
+      radial-gradient(circle at 65% 55%, rgba(255, 255, 255, 0.8) 1px, transparent 1px);
+    animation: mvp-gold-sparkle 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .mvp-card.gold::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.5) 50%, transparent 70%);
+    animation: mvp-gold-shimmer 3.8s ease-in-out infinite;
+    pointer-events: none;
   }
   .mvp-card.silver {
-    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-    border: 2px solid #94a3b8;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 45%, #cbd5e1 100%);
+    background-size: 220% 220%;
+    animation: mvp-silver-shimmer 3.6s ease-in-out infinite;
+    border: 2px solid #64748b;
+    box-shadow:
+      0 0 0 1px #f1f5f9,
+      0 4px 16px rgba(148, 163, 184, 0.45),
+      inset 0 0 24px rgba(255, 255, 255, 0.65);
+  }
+  .mvp-card.silver::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image:
+      radial-gradient(circle at 15% 40%, rgba(255, 255, 255, 1) 1.4px, transparent 1.4px),
+      radial-gradient(circle at 72% 28%, rgba(226, 232, 240, 0.95) 1.8px, transparent 1.8px),
+      radial-gradient(circle at 85% 72%, rgba(255, 255, 255, 0.9) 1.2px, transparent 1.2px),
+      radial-gradient(circle at 38% 78%, rgba(148, 163, 184, 0.85) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 55% 50%, rgba(255, 255, 255, 0.95) 1px, transparent 1px),
+      radial-gradient(circle at 92% 45%, rgba(203, 213, 225, 0.9) 1.3px, transparent 1.3px);
+    animation: mvp-silver-sparkle 2.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .mvp-card.silver::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(120deg, transparent 35%, rgba(255, 255, 255, 0.7) 50%, transparent 65%);
+    animation: mvp-silver-shimmer 4s ease-in-out infinite;
+    pointer-events: none;
   }
   .mvp-card.bronze {
-    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
-    border: 2px solid #ea580c;
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 45%, #fdba74 100%);
+    background-size: 220% 220%;
+    animation: mvp-bronze-glow 3.2s ease-in-out infinite;
+    border: 2px solid #c2410c;
+    box-shadow:
+      0 0 0 1px #fb923c,
+      0 4px 16px rgba(234, 88, 12, 0.4),
+      inset 0 0 22px rgba(254, 215, 170, 0.45);
+  }
+  .mvp-card.bronze::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image:
+      radial-gradient(circle at 18% 32%, rgba(255, 237, 213, 0.95) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 75% 25%, rgba(251, 146, 60, 0.9) 1.8px, transparent 1.8px),
+      radial-gradient(circle at 82% 70%, rgba(255, 247, 237, 0.9) 1.2px, transparent 1.2px),
+      radial-gradient(circle at 32% 85%, rgba(234, 88, 12, 0.75) 1.4px, transparent 1.4px),
+      radial-gradient(circle at 58% 52%, rgba(253, 186, 116, 0.85) 1px, transparent 1px),
+      radial-gradient(circle at 90% 48%, rgba(255, 159, 67, 0.8) 1.3px, transparent 1.3px);
+    animation: mvp-bronze-ember 2.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .mvp-card.bronze::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(110deg, transparent 32%, rgba(255, 237, 213, 0.55) 50%, transparent 68%);
+    animation: mvp-bronze-glow 3.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mvp-card.gold,
+    .mvp-card.silver,
+    .mvp-card.bronze,
+    .mvp-card.gold::before,
+    .mvp-card.gold::after,
+    .mvp-card.silver::before,
+    .mvp-card.silver::after,
+    .mvp-card.bronze::before,
+    .mvp-card.bronze::after {
+      animation: none;
+    }
   }
   .mvp-icon {
     font-size: 32px;
@@ -446,6 +581,71 @@
     animation: blink-warn 2s ease-in-out infinite;
     color: #ff1744 !important;
   }
+  @keyframes week-mvp-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes week-mvp-particles {
+    0%, 100% { opacity: 0.55; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-1px); }
+  }
+  table.heatmap td.week-col .week-cell-inner.week-mvp {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    color: #78350f !important;
+    font-weight: 800;
+    background: linear-gradient(
+      125deg,
+      #fff7d6 0%,
+      #fde68a 22%,
+      #fbbf24 45%,
+      #fde68a 68%,
+      #fff7d6 100%
+    );
+    background-size: 220% 220%;
+    animation: week-mvp-shimmer 2.8s ease-in-out infinite;
+    border: 2px solid #a855f7;
+    box-shadow:
+      0 0 0 1px #fbbf24,
+      0 0 14px rgba(251, 191, 36, 0.55),
+      inset 0 0 18px rgba(255, 215, 0, 0.35);
+  }
+  table.heatmap td.week-col .week-cell-inner.week-mvp::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    z-index: -1;
+    background-image:
+      radial-gradient(circle at 18% 28%, rgba(255, 255, 255, 0.95) 1.2px, transparent 1.2px),
+      radial-gradient(circle at 62% 18%, rgba(255, 215, 0, 0.9) 1.5px, transparent 1.5px),
+      radial-gradient(circle at 82% 72%, rgba(255, 255, 255, 0.85) 1px, transparent 1px),
+      radial-gradient(circle at 35% 78%, rgba(251, 191, 36, 0.95) 1.3px, transparent 1.3px),
+      radial-gradient(circle at 55% 48%, rgba(255, 255, 255, 0.75) 1px, transparent 1px),
+      radial-gradient(circle at 92% 42%, rgba(253, 224, 71, 0.9) 1.2px, transparent 1.2px);
+    animation: week-mvp-particles 2.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  table.heatmap td.week-col .week-cell-inner.week-mvp::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 35%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 65%
+    );
+    animation: week-mvp-shimmer 3.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    table.heatmap td.week-col .week-cell-inner.week-mvp,
+    table.heatmap td.week-col .week-cell-inner.week-mvp::before,
+    table.heatmap td.week-col .week-cell-inner.week-mvp::after {
+      animation: none;
+    }
+  }
   .heatmap-legend {
     display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
     margin-top: 12px; font-size: 12px; color: #94a3b8;
@@ -459,10 +659,35 @@
     body { padding: 0; background: #fff; }
     .data-section { display: none; }
   }
+
+  .preview-banner {
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+  a.emp-detail-link {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  a.emp-detail-link:hover { text-decoration: underline; }
+  a.mvp-detail-link {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  a.mvp-detail-link:hover { text-decoration: underline; }
+  .chart-wrap { cursor: pointer; }
 </style>
 </head>
 <body>
-<div class="dashboard">
+<div class="dashboard" id="dashboardRoot">
   <div id="staleBanner"></div>
   <div id="pageStatus"></div>
 
@@ -481,7 +706,7 @@
     <h1>Monthly Completed Tickets</h1>
     <div class="meta">
       <div class="month" id="monthTitle"></div>
-      <div class="updated" id="updatedTime">Updated: 2026/9/1 20:23</div>
+      <div class="updated" id="updatedTime">Updated: 2026/9/2 09:00</div>
       <div style="font-size:11px;opacity:.6;margin-top:2px;">每日 9:00～17:00 每小时更新</div>
     </div>
   </div>
@@ -547,23 +772,40 @@
 let DASHBOARD_HISTORY = {};
 let CURRENT_MONTH_KEY = "2026-09";
 
+function employeeDetailHref(name) {
+  const month = (typeof activeMonthKey !== 'undefined' && activeMonthKey)
+    ? activeMonthKey
+    : CURRENT_MONTH_KEY;
+  return `employee-detail.html?employee=${encodeURIComponent(name)}&month=${encodeURIComponent(month)}`;
+}
+
+function formatEmployeeCell(name) {
+  const href = employeeDetailHref(name);
+  return `<a class="emp-detail-link" href="${href}">${name}</a>`;
+}
+
+function goEmployeeDetail(name) {
+  window.location.href = employeeDetailHref(name);
+}
+
 /* ================================================================
    DATA — replace this array with real query output, or paste below
    ================================================================ */
 let DATA = [
+  { employee: 'He Feng', incidents: 4, tasks: 16 },
+  { employee: 'Howie Tan', incidents: 7, tasks: 7 },
   { employee: 'Allen Guo', incidents: 0, tasks: 13 },
-  { employee: 'He Feng', incidents: 4, tasks: 9 },
-  { employee: 'Karen Ou Yang', incidents: 4, tasks: 6 },
+  { employee: 'Karen Ou Yang', incidents: 4, tasks: 7 },
   { employee: 'liang Xiang', incidents: 8, tasks: 0 },
-  { employee: 'Howie Tan', incidents: 7, tasks: 0 },
+  { employee: 'Dom Chang', incidents: 3, tasks: 4 },
   { employee: 'Thomas Tao', incidents: 1, tasks: 6 },
-  { employee: 'Dom Chang', incidents: 3, tasks: 3 },
   { employee: 'Peter Zhang', incidents: 3, tasks: 3 },
   { employee: 'Hooxi Zhu', incidents: 5, tasks: 0 },
   { employee: 'Hao Zhu', incidents: 3, tasks: 2 },
   { employee: 'Vance Chen', incidents: 2, tasks: 3 },
   { employee: 'Yang Ding', incidents: 0, tasks: 5 },
   { employee: 'Jacky Chan', incidents: 1, tasks: 3 },
+  { employee: 'Ping Wang', incidents: 4, tasks: 0 },
   { employee: 'Rory Ju', incidents: 3, tasks: 1 },
   { employee: 'Roy Wei', incidents: 0, tasks: 4 },
   { employee: 'Andy Lan', incidents: 0, tasks: 3 },
@@ -579,7 +821,6 @@ let DATA = [
   { employee: 'Guichong You', incidents: 0, tasks: 0 },
   { employee: 'Freddie Qiang', incidents: 0, tasks: 0 },
   { employee: 'Luby Lu', incidents: 0, tasks: 0 },
-  { employee: 'Ping Wang', incidents: 0, tasks: 0 },
   { employee: 'Xinyu Zhang', incidents: 0, tasks: 0 },
   { employee: 'Yibo Wang', incidents: 0, tasks: 0 },
   { employee: 'Yin Ye', incidents: 0, tasks: 0 },
@@ -712,7 +953,7 @@ function render(data) {
       '<div class="mvp-icon">' + s.icon + '</div>' +
       '<div class="mvp-info">' +
         '<div class="mvp-rank">' + s.rank + '</div>' +
-        '<div class="mvp-name">' + d.employee + '</div>' +
+        '<div class="mvp-name"><a class="mvp-detail-link" href="' + employeeDetailHref(d.employee) + '">' + d.employee + '</a></div>' +
         '<div class="mvp-count">' + total + ' tickets (Inc ' + d.incidents + ' / Task ' + d.tasks + ')</div>' +
       '</div>' +
     '</div>';
@@ -763,6 +1004,12 @@ function renderBarChart(labels, incArr, taskArr, rowCount) {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
+      onClick(evt, elements) {
+        if (!elements.length) return;
+        const idx = elements[0].index;
+        const name = chart.data.labels[idx];
+        if (name) goEmployeeDetail(name);
+      },
       layout: { padding: { right: 110, top: 18 } },
       scales: {
         x: {
@@ -833,12 +1080,12 @@ function loadFromPaste() {
 /* ================================================================
    WEEKLY_DATA — weekly breakdown, injected by run_dashboard.py
    ================================================================ */
-let WEEKLY_DATA = {"weeks": ["8/31-9/6", "9/7-13", "9/14-20", "9/21-27", "9/28-10/4"], "currentWeek": 0, "data": [{"employee": "Allen Guo", "weekly": [{"inc": 0, "task": 13}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 13}}, {"employee": "He Feng", "weekly": [{"inc": 4, "task": 9}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 4, "task": 9}}, {"employee": "Karen Ou Yang", "weekly": [{"inc": 4, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 4, "task": 6}}, {"employee": "liang Xiang", "weekly": [{"inc": 8, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 8, "task": 0}}, {"employee": "Howie Tan", "weekly": [{"inc": 7, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 0}}, {"employee": "Thomas Tao", "weekly": [{"inc": 1, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 6}}, {"employee": "Dom Chang", "weekly": [{"inc": 3, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 3}}, {"employee": "Peter Zhang", "weekly": [{"inc": 3, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 3}}, {"employee": "Hooxi Zhu", "weekly": [{"inc": 5, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 0}}, {"employee": "Hao Zhu", "weekly": [{"inc": 3, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 2}}, {"employee": "Vance Chen", "weekly": [{"inc": 2, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 3}}, {"employee": "Yang Ding", "weekly": [{"inc": 0, "task": 5}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 5}}, {"employee": "Jacky Chan", "weekly": [{"inc": 1, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 3}}, {"employee": "Rory Ju", "weekly": [{"inc": 3, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 1}}, {"employee": "Roy Wei", "weekly": [{"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 4}}, {"employee": "Andy Lan", "weekly": [{"inc": 0, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 3}}, {"employee": "Harry Yip", "weekly": [{"inc": 3, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 0}}, {"employee": "Kenneth Chung", "weekly": [{"inc": 2, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 1}}, {"employee": "Lee Li", "weekly": [{"inc": 1, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 2}}, {"employee": "Alex Xu", "weekly": [{"inc": 0, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 2}}, {"employee": "Bob Liu", "weekly": [{"inc": 2, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 0}}, {"employee": "Aaron Jiang", "weekly": [{"inc": 1, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 0}}, {"employee": "Junfeng Deng", "weekly": [{"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 1}}, {"employee": "Charles Lee", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Freddie Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Guichong You", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Freddie Qiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Luby Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Ping Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Xinyu Zhang", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Yibo Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Yin Ye", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Yong Zhao", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Zhi Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}]};
+let WEEKLY_DATA = {"weeks": ["8/31-9/6", "9/7-13", "9/14-20", "9/21-27", "9/28-10/4"], "currentWeek": 0, "data": [{"employee": "He Feng", "weekly": [{"inc": 4, "task": 16}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 4, "task": 16}}, {"employee": "Howie Tan", "weekly": [{"inc": 7, "task": 7}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 7, "task": 7}}, {"employee": "Allen Guo", "weekly": [{"inc": 0, "task": 13}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 13}}, {"employee": "Karen Ou Yang", "weekly": [{"inc": 4, "task": 7}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 4, "task": 7}}, {"employee": "liang Xiang", "weekly": [{"inc": 8, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 8, "task": 0}}, {"employee": "Dom Chang", "weekly": [{"inc": 3, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 4}}, {"employee": "Thomas Tao", "weekly": [{"inc": 1, "task": 6}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 6}}, {"employee": "Peter Zhang", "weekly": [{"inc": 3, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 3}}, {"employee": "Hooxi Zhu", "weekly": [{"inc": 5, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 5, "task": 0}}, {"employee": "Hao Zhu", "weekly": [{"inc": 3, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 2}}, {"employee": "Vance Chen", "weekly": [{"inc": 2, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 3}}, {"employee": "Yang Ding", "weekly": [{"inc": 0, "task": 5}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 5}}, {"employee": "Jacky Chan", "weekly": [{"inc": 1, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 3}}, {"employee": "Ping Wang", "weekly": [{"inc": 4, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 4, "task": 0}}, {"employee": "Rory Ju", "weekly": [{"inc": 3, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 1}}, {"employee": "Roy Wei", "weekly": [{"inc": 0, "task": 4}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 4}}, {"employee": "Andy Lan", "weekly": [{"inc": 0, "task": 3}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 3}}, {"employee": "Harry Yip", "weekly": [{"inc": 3, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 3, "task": 0}}, {"employee": "Kenneth Chung", "weekly": [{"inc": 2, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 1}}, {"employee": "Lee Li", "weekly": [{"inc": 1, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 2}}, {"employee": "Alex Xu", "weekly": [{"inc": 0, "task": 2}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 2}}, {"employee": "Bob Liu", "weekly": [{"inc": 2, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 2, "task": 0}}, {"employee": "Aaron Jiang", "weekly": [{"inc": 1, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 1, "task": 0}}, {"employee": "Junfeng Deng", "weekly": [{"inc": 0, "task": 1}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 1}}, {"employee": "Charles Lee", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Freddie Liu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Guichong You", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Freddie Qiang", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Luby Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Xinyu Zhang", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Yibo Wang", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Yin Ye", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Yong Zhao", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}, {"employee": "Zhi Lu", "weekly": [{"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}, {"inc": 0, "task": 0}], "total": {"inc": 0, "task": 0}}]};
 
 /* ================================================================
    DAILY_DATA — daily heatmap, injected by run_dashboard.py
    ================================================================ */
-let DAILY_DATA = {"year": 2026, "month": 9, "matrix": {"Allen Guo": {"2026-09-01": 13}, "Aaron Jiang": {"2026-09-01": 1}, "Andy Lan": {"2026-09-01": 3}, "Alex Xu": {"2026-09-01": 2}, "Bob Liu": {"2026-09-01": 2}, "Dom Chang": {"2026-09-01": 6}, "He Feng": {"2026-09-01": 13}, "Howie Tan": {"2026-09-01": 7}, "Harry Yip": {"2026-09-01": 3}, "Hooxi Zhu": {"2026-09-01": 5}, "Hao Zhu": {"2026-09-01": 5}, "Jacky Chan": {"2026-09-01": 4}, "Junfeng Deng": {"2026-09-01": 1}, "Kenneth Chung": {"2026-09-01": 3}, "Karen Ou Yang": {"2026-09-01": 10}, "Lee Li": {"2026-09-01": 3}, "liang Xiang": {"2026-09-01": 8}, "Peter Zhang": {"2026-09-01": 6}, "Rory Ju": {"2026-09-01": 4}, "Thomas Tao": {"2026-09-01": 7}, "Vance Chen": {"2026-09-01": 5}, "Yang Ding": {"2026-09-01": 5}, "Roy Wei": {"2026-09-01": 4}, "Charles Lee": {}, "Freddie Liu": {}, "Guichong You": {}, "Freddie Qiang": {}, "Luby Lu": {}, "Ping Wang": {}, "Xinyu Zhang": {}, "Yibo Wang": {}, "Yin Ye": {}, "Yong Zhao": {}, "Zhi Lu": {}}, "maxVal": 13};
+let DAILY_DATA = {"year": 2026, "month": 9, "matrix": {"Allen Guo": {"2026-09-01": 13}, "Aaron Jiang": {"2026-09-01": 1}, "Andy Lan": {"2026-09-01": 3}, "Alex Xu": {"2026-09-01": 2}, "Bob Liu": {"2026-09-01": 2}, "Dom Chang": {"2026-09-01": 6, "2026-09-02": 1}, "He Feng": {"2026-09-01": 13, "2026-09-02": 7}, "Howie Tan": {"2026-09-01": 7, "2026-09-02": 7}, "Harry Yip": {"2026-09-01": 3}, "Hooxi Zhu": {"2026-09-01": 5}, "Hao Zhu": {"2026-09-01": 5}, "Jacky Chan": {"2026-09-01": 4}, "Junfeng Deng": {"2026-09-01": 1}, "Kenneth Chung": {"2026-09-01": 3}, "Karen Ou Yang": {"2026-09-01": 10, "2026-09-02": 1}, "Lee Li": {"2026-09-01": 3}, "liang Xiang": {"2026-09-01": 8}, "Ping Wang": {"2026-09-01": 4}, "Peter Zhang": {"2026-09-01": 6}, "Rory Ju": {"2026-09-01": 4}, "Thomas Tao": {"2026-09-01": 7}, "Vance Chen": {"2026-09-01": 5}, "Yang Ding": {"2026-09-01": 5}, "Roy Wei": {"2026-09-01": 4}, "Charles Lee": {}, "Freddie Liu": {}, "Guichong You": {}, "Freddie Qiang": {}, "Luby Lu": {}, "Xinyu Zhang": {}, "Yibo Wang": {}, "Yin Ye": {}, "Yong Zhao": {}, "Zhi Lu": {}}, "maxVal": 13};
 
 /* ================================================================
    DAILY HEATMAP (CST)
@@ -1031,16 +1278,33 @@ function renderWeekColumnHeader(col) {
   return `<th class="${cls.join(' ')}" title="${col.label}">${col.header}<br><span style="font-weight:400;font-size:10px">${col.label}</span></th>`;
 }
 
-function renderWeekColumnCell(emp, col) {
+function renderWeekColumnCell(emp, col, weekMax) {
   const row = getWeeklyRow(emp);
   const cell = row ? normWeekCell(row.weekly[col.weekIdx]) : { inc: 0, task: 0 };
   const total = cell.inc + cell.task;
   const zeroRed = total === 0 && col.weekIdx <= (WEEKLY_DATA?.currentWeek ?? 99);
+  const maxForWeek = weekMax[col.weekIdx] || 0;
+  const isWeekMax = total > 0 && maxForWeek > 0 && total === maxForWeek;
   const cls = ['week-col'];
   if (col.isCurrent) cls.push('current-week');
   let innerCls = 'week-cell-inner';
-  if (total === 0 && zeroRed) innerCls += ' blink-zero';
+  if (isWeekMax) innerCls += ' week-mvp';
+  else if (total === 0 && zeroRed) innerCls += ' blink-zero';
   return `<td class="${cls.join(' ')}"><div class="${innerCls}" title="Inc ${cell.inc} + Task ${cell.task}">${total}</div></td>`;
+}
+
+function computeWeekMax(weekCols) {
+  const weekMax = {};
+  weekCols.forEach((col) => {
+    let max = 0;
+    (WEEKLY_DATA?.data || []).forEach((row) => {
+      const cell = normWeekCell(row.weekly[col.weekIdx]);
+      const total = cell.inc + cell.task;
+      if (total > max) max = total;
+    });
+    weekMax[col.weekIdx] = max;
+  });
+  return weekMax;
 }
 
 function renderDailyHeatmap(monthKey) {
@@ -1054,6 +1318,7 @@ function renderDailyHeatmap(monthKey) {
   const todayKey = dailyDateKey(today.y, today.m, today.d);
 
   const weekCols = weekColumnsForMonth(data.year, data.month);
+  const weekMax = computeWeekMax(weekCols);
   let weekColPtr = 0;
 
   const dayMax = {};
@@ -1081,7 +1346,7 @@ function renderDailyHeatmap(monthKey) {
   data.employees.forEach((emp) => {
     let rowTotal = 0;
     weekColPtr = 0;
-    html += `<tr><td class="emp-col">${emp}</td>`;
+    html += `<tr><td class="emp-col">${formatEmployeeCell(emp)}</td>`;
     data.days.forEach((d) => {
       const v = data.matrix[emp][d.key] || 0;
       rowTotal += v;
@@ -1120,7 +1385,7 @@ function renderDailyHeatmap(monthKey) {
       html += `<td class="${cls.join(' ')}"><div class="${innerCls}"${innerStyle} title="${emp} · ${d.key} · ${v}">${text}</div></td>`;
 
       if (weekColPtr < weekCols.length && d.day === weekCols[weekColPtr].afterDay) {
-        html += renderWeekColumnCell(emp, weekCols[weekColPtr]);
+        html += renderWeekColumnCell(emp, weekCols[weekColPtr], weekMax);
         weekColPtr++;
       }
     });
@@ -1138,6 +1403,7 @@ function renderDailyHeatmap(monthKey) {
     `<span>1→15 蓝由浅至深：</span>${legendScale}<span>15+ 同 15</span>`,
     '<span><i style="background:#f8fafc;border:1px solid #e2e8f0"></i> 周末无数据 · / 未来空白</span>',
     '<span><i style="background:#fde68a;border:1px solid #f59e0b"></i> 当天最高单量（浅金闪烁）</span>',
+    '<span><i style="background:linear-gradient(135deg,#fde68a,#fbbf24);border:2px solid #a855f7;box-shadow:0 0 6px rgba(251,191,36,.5)"></i> 当周最高单量（紫金框 + 金粒）</span>',
     '<span><i style="background:#475569"></i> 周汇总列（Inc+Task 总数）</span>',
   ].join('');
 }
