@@ -1225,6 +1225,79 @@ def monthly_summary_from_tickets(tickets):
     )
 
 
+def daily_info_from_tickets(tickets, monthly_rows, year: int, month: int):
+    """Rebuild per-day heatmap matrix from sealed ticket details."""
+    monthly = monthly_rows or monthly_summary_from_tickets(tickets)
+    matrix = {}
+    max_val = 1
+    prefix = f"{year:04d}-{month:02d}-"
+
+    for t in tickets:
+        closed = t.get("closed") or ""
+        if not closed.startswith(prefix):
+            continue
+        emp = t["employee"]
+        if emp not in matrix:
+            matrix[emp] = {}
+        matrix[emp][closed] = matrix[emp].get(closed, 0) + 1
+        if matrix[emp][closed] > max_val:
+            max_val = matrix[emp][closed]
+
+    for row in monthly:
+        matrix.setdefault(row["employee"], {})
+
+    return {
+        "year": year,
+        "month": month,
+        "matrix": matrix,
+        "maxVal": max_val,
+    }
+
+
+def backfill_history_daily_from_tickets(month_keys: list[str] | None = None) -> list[str]:
+    """Fill missing dashboard_history daily matrices from dashboard_tickets.json."""
+    history_path = output_dir() / "dashboard_history.json"
+    if history_path.exists():
+        history = json.loads(history_path.read_text(encoding="utf-8"))
+    else:
+        repo_history = Path(GITHUB_REPO_DIR) / "dashboard_history.json"
+        history = (
+            json.loads(repo_history.read_text(encoding="utf-8"))
+            if repo_history.exists()
+            else {}
+        )
+
+    store = load_ticket_store()
+    keys = month_keys or sorted(k for k in store if not k.startswith("_"))
+    updated = []
+
+    for month_key in keys:
+        tickets = store.get(month_key)
+        if not isinstance(tickets, list) or not tickets:
+            continue
+        prev = history.get(month_key, {})
+        if prev.get("daily", {}).get("matrix"):
+            continue
+
+        year, month = map(int, month_key.split("-"))
+        monthly = prev.get("monthly") or monthly_summary_from_tickets(tickets)
+        daily = daily_info_from_tickets(tickets, monthly, year, month)
+        if not daily["matrix"]:
+            continue
+
+        history[month_key] = {**prev, "monthly": monthly, "daily": daily}
+        updated.append(month_key)
+        log.info(
+            "dashboard_history.json daily backfilled for %s (%s employees)",
+            month_key,
+            len(daily["matrix"]),
+        )
+
+    if updated:
+        history_path.write_text(json.dumps(history, ensure_ascii=False), encoding="utf-8")
+    return updated
+
+
 def notify_failure_safe(job_name: str, error: Exception) -> None:
     if CI_MODE:
         log.error("%s failed: %s", job_name, error)
@@ -1307,6 +1380,18 @@ def backfill_month(month_key: str) -> int:
     raw = fetch_tickets_for_month(year, month)
     tickets = process_ticket_details(raw, monthly_rows)
     update_dashboard_tickets(tickets, month_key=month_key)
+
+    history_path = output_dir() / "dashboard_history.json"
+    if history_path.exists():
+        history = json.loads(history_path.read_text(encoding="utf-8"))
+    else:
+        history = {}
+    prev = history.get(month_key, {})
+    daily = daily_info_from_tickets(tickets, prev.get("monthly") or [], year, month)
+    history[month_key] = {**prev, "daily": daily}
+    history_path.write_text(json.dumps(history, ensure_ascii=False), encoding="utf-8")
+    log.info(f"dashboard_history.json daily archived for {month_key}")
+
     log.info(f"Backfilled {month_key}: {len(tickets)} tickets")
     return len(tickets)
 
@@ -2100,8 +2185,23 @@ def main():
         metavar="MINUTES",
         help="CI skip if fresh (excel-only: morning/afternoon window; charts: index.html age in minutes)",
     )
+    parser.add_argument(
+        "--backfill-daily",
+        nargs="*",
+        metavar="YYYY-MM",
+        help="Rebuild heatmap daily archives in dashboard_history.json from ticket details",
+    )
     args = parser.parse_args()
     CI_MODE = args.ci or os.environ.get("CI", "").lower() == "true"
+
+    if args.backfill_daily is not None:
+        months = args.backfill_daily or None
+        updated = backfill_history_daily_from_tickets(months)
+        if updated:
+            log.info("Daily backfill complete: %s", ", ".join(updated))
+        else:
+            log.info("Daily backfill: nothing to update")
+        sys.exit(0)
 
     if args.excel_only:
         skip_excel = CI_MODE and args.skip_if_fresh is not None
