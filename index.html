@@ -770,6 +770,7 @@
 
 <script>
 let DASHBOARD_HISTORY = {};
+let DASHBOARD_TICKETS = {};
 let CURRENT_MONTH_KEY = "2026-09";
 
 function employeeDetailHref(name) {
@@ -1153,6 +1154,14 @@ function dailyFromTickets(monthKey) {
 }
 
 function getRawDailyMatrix(monthKey) {
+  if (
+    monthKey === activeMonthKey
+    && typeof ACTIVE_MONTH_DAILY !== 'undefined'
+    && ACTIVE_MONTH_DAILY?.matrix
+    && Object.keys(ACTIVE_MONTH_DAILY.matrix).length
+  ) {
+    return ACTIVE_MONTH_DAILY.matrix;
+  }
   if (monthKey === CURRENT_MONTH_KEY && DAILY_DATA?.matrix && Object.keys(DAILY_DATA.matrix).length) {
     return DAILY_DATA.matrix;
   }
@@ -1161,6 +1170,13 @@ function getRawDailyMatrix(monthKey) {
     return hist.matrix;
   }
   return dailyFromTickets(monthKey);
+}
+
+function weeklyDataForMonth(monthKey) {
+  if (monthKey === activeMonthKey && WEEKLY_DATA?.weeks?.length) {
+    return WEEKLY_DATA;
+  }
+  return DASHBOARD_HISTORY?.[monthKey]?.weekly || WEEKLY_DATA;
 }
 
 function buildDailyView(monthKey, matrix) {
@@ -1242,12 +1258,14 @@ function normWeekCell(v) {
   return { inc: 0, task: n };
 }
 
-function getWeeklyRow(empName) {
-  return (WEEKLY_DATA?.data || []).find((d) => d.employee === empName);
+function getWeeklyRow(empName, weeklyData) {
+  const weekly = weeklyData || WEEKLY_DATA;
+  return (weekly?.data || []).find((d) => d.employee === empName);
 }
 
-function weekColumnsForMonth(y, m) {
-  const weeks = WEEKLY_DATA?.weeks || [];
+function weekColumnsForMonth(y, m, weeklyData) {
+  const weekly = weeklyData || WEEKLY_DATA;
+  const weeks = weekly?.weeks || [];
   const cols = [];
   weeks.forEach((label, wi) => {
     const endPart = label.split('-')[1];
@@ -1265,7 +1283,7 @@ function weekColumnsForMonth(y, m) {
         weekIdx: wi,
         label,
         header: `W${wi + 1}`,
-        isCurrent: wi === WEEKLY_DATA?.currentWeek,
+        isCurrent: wi === weekly?.currentWeek,
       });
     }
   });
@@ -1278,11 +1296,12 @@ function renderWeekColumnHeader(col) {
   return `<th class="${cls.join(' ')}" title="${col.label}">${col.header}<br><span style="font-weight:400;font-size:10px">${col.label}</span></th>`;
 }
 
-function renderWeekColumnCell(emp, col, weekMax) {
-  const row = getWeeklyRow(emp);
+function renderWeekColumnCell(emp, col, weekMax, weeklyData) {
+  const weekly = weeklyData || WEEKLY_DATA;
+  const row = getWeeklyRow(emp, weekly);
   const cell = row ? normWeekCell(row.weekly[col.weekIdx]) : { inc: 0, task: 0 };
   const total = cell.inc + cell.task;
-  const zeroRed = total === 0 && col.weekIdx <= (WEEKLY_DATA?.currentWeek ?? 99);
+  const zeroRed = total === 0 && col.weekIdx <= (weekly?.currentWeek ?? 99);
   const maxForWeek = weekMax[col.weekIdx] || 0;
   const isWeekMax = total > 0 && maxForWeek > 0 && total === maxForWeek;
   const cls = ['week-col'];
@@ -1293,11 +1312,12 @@ function renderWeekColumnCell(emp, col, weekMax) {
   return `<td class="${cls.join(' ')}"><div class="${innerCls}" title="Inc ${cell.inc} + Task ${cell.task}">${total}</div></td>`;
 }
 
-function computeWeekMax(weekCols) {
+function computeWeekMax(weekCols, weeklyData) {
+  const weekly = weeklyData || WEEKLY_DATA;
   const weekMax = {};
   weekCols.forEach((col) => {
     let max = 0;
-    (WEEKLY_DATA?.data || []).forEach((row) => {
+    (weekly?.data || []).forEach((row) => {
       const cell = normWeekCell(row.weekly[col.weekIdx]);
       const total = cell.inc + cell.task;
       if (total > max) max = total;
@@ -1316,9 +1336,10 @@ function renderDailyHeatmap(monthKey) {
   const legend = document.getElementById('heatmapLegend');
   const today = cstTodayParts();
   const todayKey = dailyDateKey(today.y, today.m, today.d);
+  const weeklyData = weeklyDataForMonth(key);
 
-  const weekCols = weekColumnsForMonth(data.year, data.month);
-  const weekMax = computeWeekMax(weekCols);
+  const weekCols = weekColumnsForMonth(data.year, data.month, weeklyData);
+  const weekMax = computeWeekMax(weekCols, weeklyData);
   let weekColPtr = 0;
 
   const dayMax = {};
@@ -1385,7 +1406,7 @@ function renderDailyHeatmap(monthKey) {
       html += `<td class="${cls.join(' ')}"><div class="${innerCls}"${innerStyle} title="${emp} · ${d.key} · ${v}">${text}</div></td>`;
 
       if (weekColPtr < weekCols.length && d.day === weekCols[weekColPtr].afterDay) {
-        html += renderWeekColumnCell(emp, weekCols[weekColPtr], weekMax);
+        html += renderWeekColumnCell(emp, weekCols[weekColPtr], weekMax, weeklyData);
         weekColPtr++;
       }
     });
@@ -1487,11 +1508,12 @@ function checkStaleData() {
 function bootDashboard() {
   checkStaleData();
   try {
-    const payload = DASHBOARD_HISTORY && activeMonthKey && DASHBOARD_HISTORY[activeMonthKey];
-    const mt = document.getElementById('monthTitle');
-    if (mt && payload && payload.label) mt.textContent = payload.label;
-    render(DATA);
-    renderDailyHeatmap(activeMonthKey);
+    if (typeof applyMonth === 'function') {
+      applyMonth(activeMonthKey, true);
+    } else {
+      render(DATA);
+      renderDailyHeatmap(activeMonthKey);
+    }
     showStatus('');
   } catch (err) {
     console.error(err);

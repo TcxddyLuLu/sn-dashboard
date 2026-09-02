@@ -2,6 +2,8 @@
 
 let activeMonthKey = typeof CURRENT_MONTH_KEY !== 'undefined' ? CURRENT_MONTH_KEY : '';
 let INLINE_MONTH_DATA = null;
+/** Daily heatmap payload for the month selected in the toolbar (all months). */
+let ACTIVE_MONTH_DAILY = null;
 
 function snapshotInlineMonth() {
   INLINE_MONTH_DATA = {
@@ -52,6 +54,7 @@ function applyMonth(key, renderNow) {
 
   DATA = payload.monthly;
   WEEKLY_DATA = payload.weekly;
+  ACTIVE_MONTH_DAILY = payload.daily || null;
   if (payload.daily && key === CURRENT_MONTH_KEY && typeof DAILY_DATA !== 'undefined') {
     DAILY_DATA = payload.daily;
   }
@@ -61,7 +64,7 @@ function applyMonth(key, renderNow) {
 
   if (!renderNow) return true;
 
-  clearDailyCache(key);
+  clearDailyCache();
   render(DATA);
   if (typeof renderDailyHeatmap === 'function') renderDailyHeatmap(key);
   return true;
@@ -253,13 +256,6 @@ function switchMonth(key) {
 async function loadHistoryAndBoot() {
   snapshotInlineMonth();
 
-  if (typeof render === 'function' && INLINE_MONTH_DATA?.monthly?.length) {
-    render(INLINE_MONTH_DATA.monthly);
-    if (typeof renderDailyHeatmap === 'function') {
-      renderDailyHeatmap(activeMonthKey || CURRENT_MONTH_KEY);
-    }
-  }
-
   try {
     const resp = await fetch('dashboard_history.json?' + Date.now());
     if (resp.ok) DASHBOARD_HISTORY = await resp.json();
@@ -286,11 +282,10 @@ async function loadHistoryAndBoot() {
     activeMonthKey = CURRENT_MONTH_KEY;
   }
 
-  applyMonth(activeMonthKey, false);
-
   initToolbar();
   initRefreshButtonExtras();
   if (typeof bootDashboard === 'function') bootDashboard();
+  else applyMonth(activeMonthKey, true);
 }
 
 if (document.readyState === 'loading') {
