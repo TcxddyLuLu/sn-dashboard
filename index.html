@@ -1190,6 +1190,10 @@ function buildDailyView(monthKey, matrix) {
   const days = [];
   let maxVal = 1;
 
+  employees.forEach((emp) => {
+    if (!matrix[emp]) matrix[emp] = {};
+  });
+
   for (let d = 1; d <= daysInMonth(y, m); d++) {
     const weekend = isHeatmapWeekend(y, m, d);
     days.push({
@@ -1350,7 +1354,7 @@ function renderDailyHeatmap(monthKey) {
     if (d.future) return;
     let max = 0;
     data.employees.forEach((emp) => {
-      const v = data.matrix[emp][d.key] || 0;
+      const v = data.matrix[emp]?.[d.key] || 0;
       if (v > max) max = v;
     });
     dayMax[d.key] = max;
@@ -1372,7 +1376,7 @@ function renderDailyHeatmap(monthKey) {
     weekColPtr = 0;
     html += `<tr><td class="emp-col">${formatEmployeeCell(emp)}</td>`;
     data.days.forEach((d) => {
-      const v = data.matrix[emp][d.key] || 0;
+      const v = data.matrix[emp]?.[d.key] || 0;
       rowTotal += v;
       const cls = ['cell'];
       if (d.weekend) cls.push('weekend');
