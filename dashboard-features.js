@@ -2,6 +2,8 @@
 
 let activeMonthKey = typeof CURRENT_MONTH_KEY !== 'undefined' ? CURRENT_MONTH_KEY : '';
 let INLINE_MONTH_DATA = null;
+/** Daily heatmap payload for the month selected in the toolbar (all months). */
+let ACTIVE_MONTH_DAILY = null;
 
 function snapshotInlineMonth() {
   INLINE_MONTH_DATA = {
@@ -46,12 +48,34 @@ function clearDailyCache(monthKey) {
   else Object.keys(DAILY_DATA_CACHE).forEach((k) => delete DAILY_DATA_CACHE[k]);
 }
 
+function ensureDailyPayload(key, payload) {
+  if (hasDailyMatrix(payload.daily)) {
+    return payload.daily;
+  }
+  if (typeof dailyFromTickets !== 'function') {
+    return payload.daily || null;
+  }
+  const matrix = dailyFromTickets(key);
+  if (!matrix || !Object.keys(matrix).length) {
+    return payload.daily || null;
+  }
+  const [y, m] = key.split('-').map(Number);
+  let maxVal = 1;
+  Object.values(matrix).forEach((days) => {
+    Object.values(days).forEach((v) => {
+      if (v > maxVal) maxVal = v;
+    });
+  });
+  return { year: y, month: m, matrix, maxVal };
+}
+
 function applyMonth(key, renderNow) {
   const payload = monthPayload(key);
   if (!payload) return false;
 
   DATA = payload.monthly;
   WEEKLY_DATA = payload.weekly;
+  ACTIVE_MONTH_DAILY = ensureDailyPayload(key, payload);
   if (payload.daily && key === CURRENT_MONTH_KEY && typeof DAILY_DATA !== 'undefined') {
     DAILY_DATA = payload.daily;
   }
@@ -61,7 +85,7 @@ function applyMonth(key, renderNow) {
 
   if (!renderNow) return true;
 
-  clearDailyCache(key);
+  clearDailyCache();
   render(DATA);
   if (typeof renderDailyHeatmap === 'function') renderDailyHeatmap(key);
   return true;
@@ -146,7 +170,8 @@ async function pollRefreshStatus() {
     const data = await resp.json();
     if (data.running) {
       const sec = data.elapsed_sec || 0;
-      setRefreshStatus(`正在查数并推送… ${sec}s（预计 2–3 分钟）`);
+      const eta = sec >= 300 ? '（Databricks 较慢，最多约 10 分钟）' : '（预计 3–8 分钟）';
+      setRefreshStatus(`正在查数并推送… ${sec}s${eta}`);
       return;
     }
     clearInterval(refreshPollTimer);
@@ -252,17 +277,22 @@ function switchMonth(key) {
 async function loadHistoryAndBoot() {
   snapshotInlineMonth();
 
-  if (typeof render === 'function' && INLINE_MONTH_DATA?.monthly?.length) {
-    render(INLINE_MONTH_DATA.monthly);
-    if (typeof renderDailyHeatmap === 'function') {
-      renderDailyHeatmap(activeMonthKey || CURRENT_MONTH_KEY);
-    }
-  }
+  const [historyResp, ticketResp] = await Promise.allSettled([
+    fetch('dashboard_history.json?' + Date.now()),
+    fetch('dashboard_tickets.json?' + Date.now()),
+  ]);
 
   try {
-    const resp = await fetch('dashboard_history.json?' + Date.now());
-    if (resp.ok) DASHBOARD_HISTORY = await resp.json();
+    if (historyResp.status === 'fulfilled' && historyResp.value.ok) {
+      DASHBOARD_HISTORY = await historyResp.value.json();
+    }
   } catch (_) { /* fallback to inline DATA for current month */ }
+
+  try {
+    if (ticketResp.status === 'fulfilled' && ticketResp.value.ok) {
+      DASHBOARD_TICKETS = await ticketResp.value.json();
+    }
+  } catch (_) { /* heatmap can still use history.daily */ }
 
   if (CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
     const prev = DASHBOARD_HISTORY[CURRENT_MONTH_KEY] || {};
@@ -276,17 +306,19 @@ async function loadHistoryAndBoot() {
   }
 
   const keys = monthKeys();
-  if (!activeMonthKey || (keys.length && !DASHBOARD_HISTORY[activeMonthKey])) {
+  const urlMonth = new URLSearchParams(window.location.search).get('month');
+  if (urlMonth && (DASHBOARD_HISTORY[urlMonth] || urlMonth === CURRENT_MONTH_KEY)) {
+    activeMonthKey = urlMonth;
+  } else if (!activeMonthKey || (keys.length && !DASHBOARD_HISTORY[activeMonthKey])) {
     activeMonthKey = CURRENT_MONTH_KEY || keys[0] || '';
   } else if (!keys.length && CURRENT_MONTH_KEY) {
     activeMonthKey = CURRENT_MONTH_KEY;
   }
 
-  applyMonth(activeMonthKey, false);
-
   initToolbar();
   initRefreshButtonExtras();
   if (typeof bootDashboard === 'function') bootDashboard();
+  else applyMonth(activeMonthKey, true);
 }
 
 if (document.readyState === 'loading') {
