@@ -73,6 +73,7 @@ function applyMonth(key, renderNow) {
   const payload = monthPayload(key);
   if (!payload) return false;
 
+  activeMonthKey = key;
   DATA = payload.monthly;
   WEEKLY_DATA = payload.weekly;
   ACTIVE_MONTH_DAILY = ensureDailyPayload(key, payload);
