@@ -54,7 +54,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-TOKEN_EXPIRY = date(2026, 9, 8)
+TOKEN_EXPIRY = date(2028, 9, 7)
 TOKEN_WARN_DAYS = 14
 TICKET_FAIL_ALERT_THRESHOLD = 3
 TICKET_HEALTH_FILE = SCRIPT_DIR / "ticket_query_health.json"
