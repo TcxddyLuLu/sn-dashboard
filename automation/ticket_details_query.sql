@@ -8,7 +8,7 @@ sys_user_names AS (
   SELECT u.user_name AS employee_id, u.name AS employee_name
   FROM published_domain.rese_prd_servicenow.sys_user u
   WHERE u.user_name IN (
-    'BLiu60','AGuo22','JDen4','HFeng1',
+    'BLiu60','AGuo22','AZho63','JDen4','HFeng1',
     'LCh158','TTao5','L31','CLe144','RJu1','AXu72',
     'YWa456','HYip2','JCh603','KChu17','ALan2',
     'KOuYan','VCHE11','YWei29','LXIAN2',

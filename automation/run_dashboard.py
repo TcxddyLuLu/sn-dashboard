@@ -75,6 +75,7 @@ NAME_OVERRIDES = {
     "AXu72": "Alex Xu",
     "YWei29": "Roy Wei",
     "AJian3": "Aaron Jiang",
+    "AZho63": "Alan Zhong",
     "HTan3": "Howie Tan",
     "HZh8": "Hooxi Zhu",
 }
@@ -86,7 +87,7 @@ MANUAL_ASSIGNED_TO_NAMES = {
 }
 
 EMPLOYEE_IDS = [
-    'BLiu60','AGuo22','AJian3','JDen4','HTan3','HFeng1',
+    'BLiu60','AGuo22','AJian3','AZho63','JDen4','HTan3','HFeng1',
     'LCh158','TTao5','L31','CLe144','RJu1','AXu72',
     'YWa456','HYip2','JCh603','KChu17','ALan2',
     'KOuYan','VCHE11','YWei29','LXIAN2',
