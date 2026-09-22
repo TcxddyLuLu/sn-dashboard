@@ -1222,11 +1222,21 @@ function checkStaleData() {
 function bootDashboard() {
   checkStaleData();
   try {
-    const payload = DASHBOARD_HISTORY && activeMonthKey && DASHBOARD_HISTORY[activeMonthKey];
-    const mt = document.getElementById('monthTitle');
-    if (mt && payload && payload.label) mt.textContent = payload.label;
-    render(DATA);
-    renderDailyHeatmap(activeMonthKey);
+    const month = (typeof activeMonthKey !== 'undefined' && activeMonthKey)
+      ? activeMonthKey
+      : CURRENT_MONTH_KEY;
+    if (typeof applyMonth === 'function') {
+      if (!applyMonth(month, true)) {
+        render(DATA);
+        if (typeof renderDailyHeatmap === 'function') renderDailyHeatmap(month);
+      }
+    } else {
+      const payload = DASHBOARD_HISTORY && month && DASHBOARD_HISTORY[month];
+      const mt = document.getElementById('monthTitle');
+      if (mt && payload && payload.label) mt.textContent = payload.label;
+      render(DATA);
+      if (typeof renderDailyHeatmap === 'function') renderDailyHeatmap(month);
+    }
     showStatus('');
   } catch (err) {
     console.error(err);
