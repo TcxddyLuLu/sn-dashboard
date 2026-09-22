@@ -777,6 +777,43 @@ def refresh_excel_ticket_details(rows) -> bool:
 _excel_lock_handle = None
 _dashboard_lock_handle = None
 _databricks_lock_handle = None
+LOCK_MAX_AGE_SEC = 7200  # 2h — auto-clear abandoned locks
+
+
+def _read_lock_pid(lock_file: Path) -> int | None:
+    try:
+        text = lock_file.read_text(encoding="utf-8").strip()
+        return int(text) if text.isdigit() else None
+    except OSError:
+        return None
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def clear_stale_lock(lock_file: Path, max_age_sec: int = LOCK_MAX_AGE_SEC) -> bool:
+    """Remove lock files left behind by crashed or hung processes."""
+    if not lock_file.exists():
+        return False
+    pid = _read_lock_pid(lock_file)
+    if pid is not None and not _pid_alive(pid):
+        log.warning("Removing stale lock %s (dead pid %s)", lock_file.name, pid)
+        lock_file.unlink(missing_ok=True)
+        return True
+    try:
+        age = time.time() - lock_file.stat().st_mtime
+        if age > max_age_sec:
+            log.warning("Removing stale lock %s (age %.0fs)", lock_file.name, age)
+            lock_file.unlink(missing_ok=True)
+            return True
+    except OSError:
+        pass
+    return False
 
 
 def wait_for_dashboard_idle(timeout_sec: int = 900) -> bool:
@@ -810,6 +847,7 @@ def dashboard_lock_is_held() -> bool:
 
 def try_acquire_dashboard_lock() -> bool:
     global _dashboard_lock_handle
+    clear_stale_lock(DASHBOARD_LOCK_FILE)
     try:
         DASHBOARD_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
         handle = open(DASHBOARD_LOCK_FILE, "w")
@@ -837,6 +875,7 @@ def release_dashboard_lock() -> None:
 
 def try_acquire_excel_lock() -> bool:
     global _excel_lock_handle
+    clear_stale_lock(EXCEL_LOCK_FILE)
     try:
         EXCEL_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
         handle = open(EXCEL_LOCK_FILE, "w")
@@ -864,6 +903,7 @@ def release_excel_lock() -> None:
 
 def try_acquire_databricks_lock() -> bool:
     global _databricks_lock_handle
+    clear_stale_lock(DATABRICKS_QUERY_LOCK_FILE)
     try:
         DATABRICKS_QUERY_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
         handle = open(DATABRICKS_QUERY_LOCK_FILE, "w")
