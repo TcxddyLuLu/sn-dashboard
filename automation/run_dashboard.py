@@ -657,7 +657,7 @@ def query_team_tickets(*, max_attempts: int = 2, timeout: int | None = None):
     """Fetch team ticket details once; monthly/weekly/daily are derived in Python."""
     ensure_databricks_http_path(SCRIPT_DIR / ".env")
 
-    if not try_acquire_databricks_lock():
+    if not acquire_databricks_lock_with_wait():
         raise RuntimeError("Another Databricks query is already running")
 
     hard_timeout = timeout if timeout is not None else team_query_timeout_seconds()
@@ -984,6 +984,48 @@ def release_excel_lock() -> None:
         _excel_lock_handle = None
 
 
+def databricks_lock_is_held() -> bool:
+    """True when another process holds the Databricks query flock."""
+    if not DATABRICKS_QUERY_LOCK_FILE.exists():
+        return False
+    try:
+        handle = open(DATABRICKS_QUERY_LOCK_FILE, "r+")
+    except OSError:
+        return False
+    try:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            return False
+        except OSError:
+            return True
+    finally:
+        handle.close()
+
+
+def wait_for_databricks_idle(timeout_sec: int = 900) -> bool:
+    """Wait for Excel/chart jobs to release the shared Databricks lock."""
+    deadline = time.time() + timeout_sec
+    while time.time() < deadline:
+        maybe_terminate_stuck_lock_holder(DATABRICKS_QUERY_LOCK_FILE)
+        if not databricks_lock_is_held():
+            return True
+        time.sleep(10)
+    return not databricks_lock_is_held()
+
+
+def acquire_databricks_lock_with_wait(wait_sec: int = 720) -> bool:
+    """Acquire Databricks lock; wait up to wait_sec when Excel refresh overlaps charts."""
+    clear_stale_lock(DATABRICKS_QUERY_LOCK_FILE)
+    deadline = time.time() + wait_sec
+    while time.time() < deadline:
+        if try_acquire_databricks_lock():
+            return True
+        maybe_terminate_stuck_lock_holder(DATABRICKS_QUERY_LOCK_FILE)
+        time.sleep(10)
+    return try_acquire_databricks_lock()
+
+
 def try_acquire_databricks_lock() -> bool:
     global _databricks_lock_handle
     clear_stale_lock(DATABRICKS_QUERY_LOCK_FILE)
@@ -1094,7 +1136,9 @@ def query_summary():
     """Fetch monthly + weekly aggregates. Required for every run."""
     ensure_databricks_http_path(SCRIPT_DIR / ".env")
 
-    if not try_acquire_databricks_lock():
+    if databricks_lock_is_held():
+        log.info("Databricks busy (often Excel at :05); waiting up to 12 min...")
+    if not acquire_databricks_lock_with_wait():
         raise RuntimeError("Another Databricks query is already running")
 
     try:
