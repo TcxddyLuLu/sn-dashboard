@@ -275,55 +275,80 @@ function switchMonth(key) {
   applyMonth(key, true);
 }
 
+/** Paint summary cards from inline DATA before async history fetch (avoids stuck "0" placeholders). */
+function renderInlineSummaryFirst() {
+  if (typeof DATA === 'undefined' || !Array.isArray(DATA) || !DATA.length) return;
+  if (typeof render !== 'function') return;
+  try {
+    const monthTitle = document.getElementById('monthTitle');
+    if (monthTitle && typeof CURRENT_MONTH_KEY !== 'undefined' && CURRENT_MONTH_KEY) {
+      monthTitle.textContent = formatMonthLabel(CURRENT_MONTH_KEY);
+    }
+    render(DATA);
+  } catch (err) {
+    console.error('Initial dashboard render failed:', err);
+  }
+}
+
 async function loadHistoryAndBoot() {
   snapshotInlineMonth();
-
-  const [historyResp, ticketResp] = await Promise.allSettled([
-    fetch('dashboard_history.json?' + Date.now()),
-    fetch('dashboard_tickets.json?' + Date.now()),
-  ]);
+  renderInlineSummaryFirst();
 
   try {
-    if (historyResp.status === 'fulfilled' && historyResp.value.ok) {
-      DASHBOARD_HISTORY = await historyResp.value.json();
+    const [historyResp, ticketResp] = await Promise.allSettled([
+      fetch('dashboard_history.json?' + Date.now()),
+      fetch('dashboard_tickets.json?' + Date.now()),
+    ]);
+
+    try {
+      if (historyResp.status === 'fulfilled' && historyResp.value.ok) {
+        DASHBOARD_HISTORY = await historyResp.value.json();
+      }
+    } catch (_) { /* fallback to inline DATA for current month */ }
+
+    try {
+      if (ticketResp.status === 'fulfilled' && ticketResp.value.ok) {
+        DASHBOARD_TICKETS = await ticketResp.value.json();
+      }
+    } catch (_) { /* heatmap can still use history.daily */ }
+
+    if (CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
+      const prev = DASHBOARD_HISTORY[CURRENT_MONTH_KEY] || {};
+      DASHBOARD_HISTORY[CURRENT_MONTH_KEY] = {
+        ...prev,
+        label: prev.label || formatMonthLabel(CURRENT_MONTH_KEY),
+        monthly: INLINE_MONTH_DATA.monthly,
+        weekly: INLINE_MONTH_DATA.weekly,
+        daily: INLINE_MONTH_DATA.daily || prev.daily,
+      };
     }
-  } catch (_) { /* fallback to inline DATA for current month */ }
 
-  try {
-    if (ticketResp.status === 'fulfilled' && ticketResp.value.ok) {
-      DASHBOARD_TICKETS = await ticketResp.value.json();
+    const keys = monthKeys();
+    const urlMonth = new URLSearchParams(window.location.search).get('month');
+    if (urlMonth && (DASHBOARD_HISTORY[urlMonth] || urlMonth === CURRENT_MONTH_KEY)) {
+      activeMonthKey = urlMonth;
+    } else if (!activeMonthKey || (keys.length && !DASHBOARD_HISTORY[activeMonthKey])) {
+      activeMonthKey = CURRENT_MONTH_KEY || keys[0] || '';
+    } else if (!keys.length && CURRENT_MONTH_KEY) {
+      activeMonthKey = CURRENT_MONTH_KEY;
     }
-  } catch (_) { /* heatmap can still use history.daily */ }
 
-  if (CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
-    const prev = DASHBOARD_HISTORY[CURRENT_MONTH_KEY] || {};
-    DASHBOARD_HISTORY[CURRENT_MONTH_KEY] = {
-      ...prev,
-      label: prev.label || formatMonthLabel(CURRENT_MONTH_KEY),
-      monthly: INLINE_MONTH_DATA.monthly,
-      weekly: INLINE_MONTH_DATA.weekly,
-      daily: INLINE_MONTH_DATA.daily || prev.daily,
-    };
+    initToolbar();
+    initRefreshButtonExtras();
+    if (typeof bootDashboard === 'function') bootDashboard();
+    else applyMonth(activeMonthKey, true);
+  } catch (err) {
+    console.error('loadHistoryAndBoot failed:', err);
+    renderInlineSummaryFirst();
   }
+}
 
-  const keys = monthKeys();
-  const urlMonth = new URLSearchParams(window.location.search).get('month');
-  if (urlMonth && (DASHBOARD_HISTORY[urlMonth] || urlMonth === CURRENT_MONTH_KEY)) {
-    activeMonthKey = urlMonth;
-  } else if (!activeMonthKey || (keys.length && !DASHBOARD_HISTORY[activeMonthKey])) {
-    activeMonthKey = CURRENT_MONTH_KEY || keys[0] || '';
-  } else if (!keys.length && CURRENT_MONTH_KEY) {
-    activeMonthKey = CURRENT_MONTH_KEY;
-  }
-
-  initToolbar();
-  initRefreshButtonExtras();
-  if (typeof bootDashboard === 'function') bootDashboard();
-  else applyMonth(activeMonthKey, true);
+function bootDashboardPage() {
+  loadHistoryAndBoot();
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', loadHistoryAndBoot);
+  document.addEventListener('DOMContentLoaded', bootDashboardPage);
 } else {
-  loadHistoryAndBoot();
+  bootDashboardPage();
 }
