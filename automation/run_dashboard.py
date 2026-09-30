@@ -7,7 +7,7 @@ Daily Dashboard Automation
 - Pushes to GitHub Pages
 """
 
-import os, sys, json, re, subprocess, logging, shutil, argparse, fcntl, time
+import os, sys, json, re, subprocess, logging, shutil, argparse, fcntl, time, signal
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from datetime import datetime, date, timedelta, timezone
@@ -67,6 +67,10 @@ EXCEL_LOCK_FILE = SCRIPT_DIR / ".excel_refresh.lock"
 DASHBOARD_LOCK_FILE = SCRIPT_DIR / ".dashboard_refresh.lock"
 DATABRICKS_QUERY_LOCK_FILE = SCRIPT_DIR / ".databricks_query.lock"
 QUERY_TIMEOUT_SUMMARY_LOCAL = 600
+QUERY_TIMEOUT_SUMMARY_PART_LOCAL = 240
+QUERY_TIMEOUT_SUMMARY_PART_CI = 180
+DATABRICKS_RETRY_DURATION_SEC = 180
+DATABRICKS_SOCKET_TIMEOUT_MS = 60_000
 GIT_NETWORK_TIMEOUT_SEC = 120
 SQL_PLACEHOLDER_RE = re.compile(r"__MONTH_[A-Z_]+__|\{_MONTH_[A-Z_]+\}")
 
@@ -130,6 +134,12 @@ def summary_timeout_seconds() -> int:
     if CI_MODE or os.environ.get("CI", "").lower() == "true":
         return QUERY_TIMEOUT_SUMMARY_CI
     return QUERY_TIMEOUT_SUMMARY_LOCAL
+
+
+def summary_part_timeout_seconds() -> int:
+    if CI_MODE or os.environ.get("CI", "").lower() == "true":
+        return QUERY_TIMEOUT_SUMMARY_PART_CI
+    return QUERY_TIMEOUT_SUMMARY_PART_LOCAL
 
 
 def ticket_timeout_seconds() -> int:
@@ -422,14 +432,26 @@ def build_dashboard_sql(year: int, month: int) -> str:
     return DASHBOARD_SQL.replace(_TS_YEAR, str(year)).replace(_TS_MONTH, str(month))
 
 
-def _execute_team_ticket_sql(sql: str) -> list[dict]:
+def _databricks_connect():
     from databricks import sql as dbsql
 
-    conn = dbsql.connect(
+    retry_sec = int(
+        os.environ.get("DATABRICKS_RETRY_DURATION_SEC", str(DATABRICKS_RETRY_DURATION_SEC))
+    )
+    socket_ms = int(
+        os.environ.get("DATABRICKS_SOCKET_TIMEOUT_MS", str(DATABRICKS_SOCKET_TIMEOUT_MS))
+    )
+    return dbsql.connect(
         server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
         http_path=os.environ["DATABRICKS_HTTP_PATH"],
         access_token=os.environ["DATABRICKS_TOKEN"],
+        _retry_stop_after_attempts_duration=retry_sec,
+        _socket_timeout=socket_ms,
     )
+
+
+def _execute_team_ticket_sql(sql: str) -> list[dict]:
+    conn = _databricks_connect()
     cursor = conn.cursor()
     cursor.execute(sql)
     rows = cursor.fetchall()
@@ -449,45 +471,38 @@ def _fetch_team_tickets_for_month(year: int, month: int) -> list[dict]:
     return normalize_ticket_rows(_run_team_tickets_by_member(year, month))
 
 
-def _run_summary_queries_once():
-    from databricks import sql as dbsql
-
-    conn = dbsql.connect(
-        server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
-        http_path=os.environ["DATABRICKS_HTTP_PATH"],
-        access_token=os.environ["DATABRICKS_TOKEN"],
-    )
+def _fetch_query_rows(sql: str) -> list[dict]:
+    conn = _databricks_connect()
     cursor = conn.cursor()
-
-    cursor.execute(DASHBOARD_SQL)
-    monthly_rows = cursor.fetchall()
-    monthly_cols = [d[0] for d in cursor.description]
-
-    cursor.execute(WEEKLY_SQL)
-    weekly_rows = cursor.fetchall()
-    weekly_cols = [d[0] for d in cursor.description]
-
-    cursor.execute(DAILY_SQL)
-    daily_rows = cursor.fetchall()
-    daily_cols = [d[0] for d in cursor.description]
-
+    cursor.execute(sql)
+    rows = cursor.fetchall()
+    cols = [d[0] for d in cursor.description]
     cursor.close()
     conn.close()
+    return [dict(zip(cols, r)) for r in rows]
 
-    monthly = [dict(zip(monthly_cols, r)) for r in monthly_rows]
-    weekly = [dict(zip(weekly_cols, r)) for r in weekly_rows]
-    daily = [dict(zip(daily_cols, r)) for r in daily_rows]
+
+def _run_monthly_query_once():
+    return _fetch_query_rows(DASHBOARD_SQL)
+
+
+def _run_weekly_query_once():
+    return _fetch_query_rows(WEEKLY_SQL)
+
+
+def _run_daily_query_once():
+    return _fetch_query_rows(DAILY_SQL)
+
+
+def _run_summary_queries_once():
+    monthly = _run_monthly_query_once()
+    weekly = _run_weekly_query_once()
+    daily = _run_daily_query_once()
     return monthly, weekly, daily
 
 
 def _run_ticket_queries_once():
-    from databricks import sql as dbsql
-
-    conn = dbsql.connect(
-        server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"],
-        http_path=os.environ["DATABRICKS_HTTP_PATH"],
-        access_token=os.environ["DATABRICKS_TOKEN"],
-    )
+    conn = _databricks_connect()
     cursor = conn.cursor()
 
     now = now_display()
@@ -541,6 +556,29 @@ def dashboard_is_fresh(max_age_minutes: int) -> bool:
         return False
     age_minutes = (now_display() - updated).total_seconds() / 60
     return age_minutes < max_age_minutes
+
+
+def dashboard_covers_current_schedule_slot() -> bool:
+    """True when index.html was updated during the current hourly refresh window (9–17 CST)."""
+    updated = parse_dashboard_updated_at()
+    if updated is None:
+        return False
+    now = now_display()
+    if updated.date() != now.date():
+        return False
+    if now.hour < TICKET_MORNING_START_HOUR or now.hour > DASHBOARD_LAST_HOUR:
+        return False
+    slot_start = now.replace(minute=0, second=0, microsecond=0)
+    return updated >= slot_start
+
+
+def dashboard_should_skip_ci_refresh(max_age_minutes: int) -> bool:
+    """GHA backup: skip only when this hour's slot is already satisfied."""
+    if dashboard_covers_current_schedule_slot():
+        return True
+    if max_age_minutes < 0:
+        return False
+    return dashboard_is_fresh(max_age_minutes)
 
 
 def last_excel_update_at() -> datetime | None:
@@ -622,15 +660,22 @@ def query_team_tickets(*, max_attempts: int = 2, timeout: int | None = None):
     if not try_acquire_databricks_lock():
         raise RuntimeError("Another Databricks query is already running")
 
+    hard_timeout = timeout if timeout is not None else team_query_timeout_seconds()
     try:
         for attempt in range(1, max_attempts + 1):
-            log.info("Running team tickets query (attempt %s/%s)...", attempt, max_attempts)
+            log.info(
+                "Running team tickets query (attempt %s/%s, timeout %ss)...",
+                attempt,
+                max_attempts,
+                hard_timeout,
+            )
             try:
-                # Per-employee queries run in-process (~1–2 min). Subprocess + Queue deadlocks
-                # when returning 1000+ rows (parent joins before reading the queue).
-                if timeout is not None:
-                    log.info("Team tickets query (in-process, timeout param ignored)")
-                rows = normalize_ticket_rows(_run_team_tickets_once())
+                raw_rows = run_with_hard_timeout(
+                    "databricks_query_worker:run_team_tickets_query",
+                    hard_timeout,
+                    "Team tickets query",
+                )
+                rows = normalize_ticket_rows(raw_rows)
                 log.info("Got %s team ticket rows", len(rows))
                 return rows
             except Exception as e:
@@ -778,6 +823,7 @@ _excel_lock_handle = None
 _dashboard_lock_handle = None
 _databricks_lock_handle = None
 LOCK_MAX_AGE_SEC = 7200  # 2h — auto-clear abandoned locks
+LOCK_HOLDER_MAX_WALL_SEC = 2700  # 45m — kill stuck refresh holding flock
 
 
 def _read_lock_pid(lock_file: Path) -> int | None:
@@ -796,10 +842,47 @@ def _pid_alive(pid: int) -> bool:
         return False
 
 
+def _terminate_pid(pid: int, reason: str) -> None:
+    log.warning("Terminating pid %s (%s)", pid, reason)
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError as exc:
+        log.warning("SIGTERM pid %s failed: %s", pid, exc)
+        return
+    for _ in range(6):
+        if not _pid_alive(pid):
+            return
+        time.sleep(0.5)
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except OSError as exc:
+        log.warning("SIGKILL pid %s failed: %s", pid, exc)
+
+
+def maybe_terminate_stuck_lock_holder(
+    lock_file: Path, max_wall_sec: int = LOCK_HOLDER_MAX_WALL_SEC
+) -> bool:
+    if not lock_file.exists():
+        return False
+    pid = _read_lock_pid(lock_file)
+    if pid is None or not _pid_alive(pid):
+        return False
+    try:
+        age = time.time() - lock_file.stat().st_mtime
+    except OSError:
+        return False
+    if age < max_wall_sec:
+        return False
+    _terminate_pid(pid, f"lock {lock_file.name} held {age:.0f}s")
+    lock_file.unlink(missing_ok=True)
+    return True
+
+
 def clear_stale_lock(lock_file: Path, max_age_sec: int = LOCK_MAX_AGE_SEC) -> bool:
     """Remove lock files left behind by crashed or hung processes."""
     if not lock_file.exists():
         return False
+    maybe_terminate_stuck_lock_holder(lock_file)
     pid = _read_lock_pid(lock_file)
     if pid is not None and not _pid_alive(pid):
         log.warning("Removing stale lock %s (dead pid %s)", lock_file.name, pid)
@@ -1001,6 +1084,12 @@ def run_excel_catchup(*, skip_if_fresh: bool = False) -> int:
         release_excel_lock()
 
 
+def _query_summary_part(worker: str, label: str):
+    part_timeout = summary_part_timeout_seconds()
+    log.info("%s query hard timeout: %ss", label, part_timeout)
+    return run_with_hard_timeout(worker, part_timeout, label)
+
+
 def query_summary():
     """Fetch monthly + weekly aggregates. Required for every run."""
     ensure_databricks_http_path(SCRIPT_DIR / ".env")
@@ -1010,26 +1099,32 @@ def query_summary():
 
     try:
         for attempt in range(1, 3):
-            log.info(f"Running summary queries (attempt {attempt}/2)...")
+            log.info("Running split summary queries (attempt %s/2)...", attempt)
             try:
-                timeout = summary_timeout_seconds()
-                log.info(f"Summary query hard timeout: {timeout}s")
-                monthly, weekly, daily = run_with_hard_timeout(
-                    "databricks_query_worker:run_summary_queries",
-                    timeout,
-                    "Databricks summary queries",
+                monthly = _query_summary_part(
+                    "databricks_query_worker:run_monthly_query", "Monthly summary"
                 )
-                log.info(
-                    f"Got {len(monthly)} monthly rows, {len(weekly)} weekly rows, {len(daily)} daily rows"
+                weekly = _query_summary_part(
+                    "databricks_query_worker:run_weekly_query", "Weekly summary"
                 )
-                return monthly, weekly, daily
-            except Exception as e:
-                log.warning(f"Summary query attempt {attempt} failed: {e}")
+                daily = _query_summary_part(
+                    "databricks_query_worker:run_daily_query", "Daily summary"
+                )
+            except Exception as exc:
+                log.warning("Summary query attempt %s failed: %s", attempt, exc)
                 if attempt < 2:
                     log.info("Retrying in 10 seconds...")
                     time.sleep(10)
-                else:
-                    raise
+                    continue
+                raise
+            log.info(
+                "Got %s monthly rows, %s weekly rows, %s daily rows",
+                len(monthly),
+                len(weekly),
+                len(daily),
+            )
+            return monthly, weekly, daily
+        raise RuntimeError("Summary queries did not complete")
     finally:
         release_databricks_lock()
 
@@ -2263,12 +2358,11 @@ def main():
         if (
             CI_MODE
             and args.skip_if_fresh is not None
-            and args.skip_if_fresh >= 0
-            and dashboard_is_fresh(args.skip_if_fresh)
+            and dashboard_should_skip_ci_refresh(args.skip_if_fresh)
         ):
             updated = parse_dashboard_updated_at()
             log.info(
-                "Dashboard already fresh (updated %s); skipping GHA run — Mac likely handled it",
+                "Dashboard already fresh for this hour (updated %s); skipping GHA run",
                 updated.strftime("%Y/%m/%d %H:%M") if updated else "recently",
             )
         else:
