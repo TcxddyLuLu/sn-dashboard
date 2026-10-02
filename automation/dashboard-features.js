@@ -324,13 +324,18 @@ function switchMonth(key) {
 /** Paint summary cards from inline DATA before async history fetch (avoids stuck "0" placeholders). */
 function renderInlineSummaryFirst() {
   if (typeof DATA === 'undefined' || !Array.isArray(DATA) || !DATA.length) return;
-  if (typeof render !== 'function') return;
   try {
     const monthTitle = document.getElementById('monthTitle');
     if (monthTitle && typeof CURRENT_MONTH_KEY !== 'undefined' && CURRENT_MONTH_KEY) {
       monthTitle.textContent = formatMonthLabel(CURRENT_MONTH_KEY);
     }
-    render(DATA);
+    if (typeof Chart !== 'undefined' && typeof render === 'function') {
+      render(DATA);
+    } else if (typeof paintDashboardSummaryOnly === 'function') {
+      paintDashboardSummaryOnly(DATA);
+    } else if (typeof render === 'function') {
+      render(DATA);
+    }
   } catch (err) {
     console.error('Initial dashboard render failed:', err);
   }

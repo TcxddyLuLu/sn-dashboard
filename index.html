@@ -965,16 +965,25 @@ function render(data) {
   window.__lastChartData = { labels, incArr, taskArr, n: data.length };
 }
 
-function renderBarChart(labels, incArr, taskArr, rowCount) {
+function ensureChartCanvas() {
   const wrap = document.querySelector('.chart-wrap');
+  if (!wrap) return null;
+  let canvas = document.getElementById('chart');
+  if (!canvas) {
+    wrap.innerHTML = '<canvas id="chart"></canvas>';
+    canvas = document.getElementById('chart');
+  }
+  return canvas;
+}
+
+function renderBarChart(labels, incArr, taskArr, rowCount) {
   if (typeof Chart === 'undefined') {
-    wrap.innerHTML = '<p style="padding:24px;color:#64748b;text-align:center">Chart library still loading or blocked. Summary cards and weekly table are available below.</p>';
     return;
   }
 
   const rowH = 32;
   const h = Math.max(360, rowCount * rowH + 40);
-  const canvas = document.getElementById('chart');
+  const canvas = ensureChartCanvas();
   if (!canvas) return;
   canvas.style.height = h + 'px';
   canvas.parentElement.style.height = h + 'px';
@@ -1513,11 +1522,33 @@ function checkStaleData() {
   el.textContent = `⚠ 数据可能已过期（上次更新约 ${hrs} 小时前，已超过预定更新时间）。定时任务可能失败，请联系 Luby 检查自动化。`;
 }
 
+function paintDashboardSummaryOnly(data) {
+  if (!Array.isArray(data) || !data.length) return;
+  const labels = data.map((d) => d.employee);
+  const incArr = data.map((d) => d.incidents);
+  const taskArr = data.map((d) => d.tasks);
+  const totInc = incArr.reduce((s, v) => s + v, 0);
+  const totTask = taskArr.reduce((s, v) => s + v, 0);
+  const active = data.filter((d) => d.incidents + d.tasks > 0).length;
+  const sumInc = document.getElementById('sumInc');
+  const sumTask = document.getElementById('sumTask');
+  const sumAll = document.getElementById('sumAll');
+  const sumEmp = document.getElementById('sumEmp');
+  if (sumInc) sumInc.textContent = totInc;
+  if (sumTask) sumTask.textContent = totTask;
+  if (sumAll) sumAll.textContent = totInc + totTask;
+  if (sumEmp) sumEmp.textContent = active;
+  window.__lastChartData = { labels, incArr, taskArr, n: data.length };
+}
+
 function paintDashboardSummaryInline() {
   if (typeof DATA === 'undefined' || !Array.isArray(DATA) || !DATA.length) return;
-  if (typeof render !== 'function') return;
   try {
-    render(DATA);
+    if (typeof Chart !== 'undefined' && typeof render === 'function') {
+      render(DATA);
+    } else {
+      paintDashboardSummaryOnly(DATA);
+    }
   } catch (err) {
     console.error('paintDashboardSummaryInline failed:', err);
   }
@@ -1549,9 +1580,13 @@ function bootDashboard() {
 paintDashboardSummaryInline();
 
 function retryChart() {
-  if (!window.__lastChartData || typeof Chart === 'undefined') return;
-  const d = window.__lastChartData;
-  renderBarChart(d.labels, d.incArr, d.taskArr, d.n);
+  if (typeof Chart === 'undefined') return;
+  if (window.__lastChartData) {
+    const d = window.__lastChartData;
+    renderBarChart(d.labels, d.incArr, d.taskArr, d.n);
+  } else if (typeof DATA !== 'undefined' && Array.isArray(DATA) && DATA.length) {
+    render(DATA);
+  }
   showStatus('');
 }
 </script>
