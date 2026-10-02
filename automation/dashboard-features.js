@@ -340,6 +340,12 @@ async function loadHistoryAndBoot() {
   } catch (err) {
     console.error('loadHistoryAndBoot failed:', err);
     renderInlineSummaryFirst();
+  } finally {
+    if (typeof paintDashboardSummaryInline === 'function') {
+      paintDashboardSummaryInline();
+    } else {
+      renderInlineSummaryFirst();
+    }
   }
 }
 

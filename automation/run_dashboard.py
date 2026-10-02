@@ -1673,6 +1673,23 @@ def update_html(rows, weekly_info=None, daily_info=None):
         html,
     )
 
+    tot_inc = sum(int(r["incident_count"]) for r in rows)
+    tot_task = sum(int(r["task_count"]) for r in rows)
+    active = sum(
+        1 for r in rows if int(r["incident_count"]) + int(r["task_count"]) > 0
+    )
+    def _inject_card_value(match: re.Match, value: int) -> str:
+        return f"{match.group(1)}{value}{match.group(2)}"
+
+    card_pat = r'(<div class="value" id="sumInc">).*?(</div>)'
+    html = re.sub(card_pat, lambda m: _inject_card_value(m, tot_inc), html, count=1)
+    card_pat = r'(<div class="value" id="sumTask">).*?(</div>)'
+    html = re.sub(card_pat, lambda m: _inject_card_value(m, tot_task), html, count=1)
+    card_pat = r'(<div class="value" id="sumAll">).*?(</div>)'
+    html = re.sub(card_pat, lambda m: _inject_card_value(m, tot_inc + tot_task), html, count=1)
+    card_pat = r'(<div class="value" id="sumEmp">).*?(</div>)'
+    html = re.sub(card_pat, lambda m: _inject_card_value(m, active), html, count=1)
+
     html_path.write_text(html, encoding="utf-8")
     log.info("%s updated", html_path.name)
     return html_path
@@ -1795,6 +1812,8 @@ automation/.databricks_query.lock
 **/__pycache__/
 """
 
+DASHBOARD_FEATURES_BOOT_MARKER = "renderInlineSummaryFirst"
+
 DASHBOARD_STATIC_FILES = [
     "chart.min.js",
     "dashboard-features.js",
@@ -1821,6 +1840,7 @@ AUTOMATION_SYNC_FILES = [
     "team_member_task.sql",
     "employee-detail.html",
     "employee-detail-features.js",
+    "dashboard-features.js",
 ]
 
 TICKETS_STATIC_FILES = [
@@ -1847,6 +1867,17 @@ def untrack_ci_runtime_files(repo_dir: Path) -> None:
         ],
         capture_output=True,
     )
+
+
+def assert_dashboard_static_bundle() -> None:
+    """Block publish if the boot script would leave summary cards stuck at 0."""
+    features = SCRIPT_DIR / "dashboard-features.js"
+    text = features.read_text(encoding="utf-8")
+    if DASHBOARD_FEATURES_BOOT_MARKER not in text:
+        raise RuntimeError(
+            f"{features.name} is missing {DASHBOARD_FEATURES_BOOT_MARKER}; "
+            "refusing to publish a dashboard bundle with broken summary cards"
+        )
 
 
 def sync_automation_to_repo(repo_dir: Path) -> None:
@@ -2039,6 +2070,8 @@ def push_to_github(html_path) -> bool:
         notify_push_failure("SN Dashboard", "git pull", pull_result.stderr if pull_result else "")
         return False
 
+    assert_dashboard_static_bundle()
+
     shutil.copy2(str(html_path), str(repo_dir / "index.html"))
 
     dashboard_redirect = (
@@ -2102,6 +2135,7 @@ def push_to_github(html_path) -> bool:
 
 def push_to_github_ci() -> bool:
     repo_dir = output_dir()
+    assert_dashboard_static_bundle()
     for fname in DASHBOARD_STATIC_FILES:
         src = SCRIPT_DIR / fname
         if src.exists() and src.parent != repo_dir:
