@@ -36,24 +36,6 @@ function monthKeys() {
   return [...keys].sort().reverse();
 }
 
-/** Closed months: keep history monthly in sync with ticket rows (same as main dashboard). */
-function reconcileHistoryFromTickets() {
-  const current = new Date().toISOString().slice(0, 7);
-  for (const [monthKey, tickets] of Object.entries(DASHBOARD_TICKETS || {})) {
-    if (!monthKey || monthKey.startsWith('_') || !Array.isArray(tickets) || !tickets.length) {
-      continue;
-    }
-    if (monthKey >= current) continue;
-    if (!DASHBOARD_HISTORY[monthKey]) {
-      DASHBOARD_HISTORY[monthKey] = { label: formatMonthLabel(monthKey) };
-    }
-    const prev = DASHBOARD_HISTORY[monthKey].monthly || [];
-    const prevTotal = prev.reduce((s, r) => s + r.incidents + r.tasks, 0);
-    if (prevTotal === tickets.length) continue;
-    DASHBOARD_HISTORY[monthKey].monthly = monthlyFromTickets(tickets);
-  }
-}
-
 function updateTicketsMeta() {
   const el = document.getElementById('ticketsUpdatedTime');
   const ts = DASHBOARD_TICKETS._excel_updated_at;
@@ -211,8 +193,6 @@ async function bootTicketsPage() {
     if (histResp.ok) DASHBOARD_HISTORY = await histResp.json();
     if (ticketResp.ok) DASHBOARD_TICKETS = await ticketResp.json();
   } catch (_) { /* show empty state */ }
-
-  reconcileHistoryFromTickets();
 
   const keys = monthKeys();
   activeMonthKey = keys[0] || new Date().toISOString().slice(0, 7);
