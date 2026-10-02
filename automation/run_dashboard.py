@@ -1117,6 +1117,7 @@ def run_excel_catchup(*, skip_if_fresh: bool = False) -> int:
 
     try:
         if refresh_excel_ticket_details(rows):
+            sync_sealed_history_from_ticket_store()
             push_tickets(required=False)
             log.info("Excel catch-up completed successfully")
             return 0
@@ -1205,6 +1206,7 @@ def fetch_tickets_optional():
 
 def publish_dashboard(rows, weekly_info, daily_info=None):
     update_dashboard_history(rows, weekly_info, daily_info)
+    sync_sealed_history_from_ticket_store()
     html_path = update_html(rows, weekly_info, daily_info)
     update_employee_detail_html(rows, weekly_info, daily_info)
     return html_path
@@ -1405,6 +1407,137 @@ def monthly_summary_from_tickets(tickets):
     )
 
 
+def _load_dashboard_history_dict() -> dict:
+    history_path = output_dir() / "dashboard_history.json"
+    if history_path.exists():
+        try:
+            return json.loads(history_path.read_text(encoding="utf-8"))
+        except Exception:
+            return {}
+    for candidate in (
+        Path(GITHUB_REPO_DIR) / "dashboard_history.json",
+        SCRIPT_DIR / "dashboard_history.json",
+    ):
+        if candidate.exists():
+            try:
+                return json.loads(candidate.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+    return {}
+
+
+def _write_dashboard_history_dict(history: dict) -> Path:
+    history_path = output_dir() / "dashboard_history.json"
+    history_path.write_text(json.dumps(history, ensure_ascii=False), encoding="utf-8")
+    return history_path
+
+
+def reconcile_history_month_from_tickets(
+    month_key: str,
+    tickets: list[dict] | None = None,
+    *,
+    allow_current_month: bool = False,
+) -> bool:
+    """Align dashboard_history monthly/daily with ticket detail rows."""
+    if not month_key or month_key.startswith("_"):
+        return False
+
+    current_key = now_display().strftime("%Y-%m")
+    if not allow_current_month and month_key >= current_key:
+        return False
+
+    if tickets is None:
+        tickets = load_ticket_store().get(month_key)
+    if not isinstance(tickets, list) or not tickets:
+        return False
+
+    monthly_display = monthly_summary_from_tickets(tickets)
+    history_total = sum(r["incidents"] + r["tasks"] for r in monthly_display)
+    if history_total != len(tickets):
+        log.warning(
+            "Ticket/monthly row count mismatch for %s (%s tickets vs %s tallied)",
+            month_key,
+            len(tickets),
+            history_total,
+        )
+
+    year, month = map(int, month_key.split("-"))
+    daily = daily_info_from_tickets(tickets, monthly_display, year, month)
+    summary_rows = summary_rows_from_display_monthly(monthly_display)
+
+    history = _load_dashboard_history_dict()
+    prev = history.get(month_key, {})
+    prev_monthly = prev.get("monthly") or []
+    prev_total = sum(
+        int(r.get("incidents") or 0) + int(r.get("tasks") or 0)
+        for r in prev_monthly
+    )
+    monthly_matches = _monthly_snapshot_key(prev_monthly) == _monthly_snapshot_key(
+        monthly_display
+    )
+    if monthly_matches and prev.get("daily", {}).get("matrix"):
+        return False
+
+    history[month_key] = {
+        **prev,
+        "label": prev.get("label") or datetime(year, month, 1).strftime("%B %Y"),
+        "monthly": monthly_display,
+        "summary_rows": [
+            {
+                "employee_id": r["employee_id"],
+                "employee_name": r["employee_name"],
+                "incident_count": int(r["incident_count"]),
+                "task_count": int(r["task_count"]),
+            }
+            for r in summary_rows
+        ],
+        "daily": daily,
+    }
+    _write_dashboard_history_dict(history)
+    log.info(
+        "dashboard_history.json reconciled for %s (%s tickets, was %s)",
+        month_key,
+        len(tickets),
+        prev_total,
+    )
+    return True
+
+
+def _monthly_snapshot_key(monthly: list[dict]) -> tuple:
+    return tuple(
+        sorted(
+            (
+                str(row.get("employee", "")),
+                int(row.get("incidents") or 0),
+                int(row.get("tasks") or 0),
+            )
+            for row in (monthly or [])
+        )
+    )
+
+
+def reconcile_all_history_from_tickets(month_keys: list[str] | None = None) -> list[str]:
+    """Rebuild sealed months in dashboard_history.json from dashboard_tickets.json."""
+    store = load_ticket_store()
+    current_key = now_display().strftime("%Y-%m")
+    keys = month_keys or sorted(k for k in store if not k.startswith("_"))
+    updated = []
+    for month_key in keys:
+        if month_key >= current_key:
+            continue
+        if reconcile_history_month_from_tickets(month_key, store.get(month_key)):
+            updated.append(month_key)
+    return updated
+
+
+def sync_sealed_history_from_ticket_store() -> list[str]:
+    """Keep chart history and Excel ticket rows aligned for all closed months."""
+    updated = reconcile_all_history_from_tickets()
+    if updated:
+        log.info("Sealed months aligned with ticket details: %s", ", ".join(updated))
+    return updated
+
+
 def daily_info_from_tickets(tickets, monthly_rows, year: int, month: int):
     """Rebuild per-day heatmap matrix from sealed ticket details."""
     monthly = monthly_rows or monthly_summary_from_tickets(tickets)
@@ -1534,6 +1667,7 @@ def update_dashboard_tickets(tickets, month_key=None):
         len(tickets),
         store[TICKET_META_EXCEL_UPDATED],
     )
+    reconcile_history_month_from_tickets(month_key, tickets)
     return tickets_path
 
 
@@ -2070,6 +2204,7 @@ def push_to_github(html_path) -> bool:
         notify_push_failure("SN Dashboard", "git pull", pull_result.stderr if pull_result else "")
         return False
 
+    sync_sealed_history_from_ticket_store()
     assert_dashboard_static_bundle()
 
     shutil.copy2(str(html_path), str(repo_dir / "index.html"))
@@ -2248,6 +2383,7 @@ def push_tickets_to_github() -> bool:
         notify_push_failure("SN Dashboard Tickets", "git pull", pull_result.stderr if pull_result else "")
         return False
 
+    sync_sealed_history_from_ticket_store()
     for fname in TICKETS_STATIC_FILES:
         src = SCRIPT_DIR / fname
         if src.exists():
@@ -2405,6 +2541,12 @@ def main():
         metavar="YYYY-MM",
         help="Rebuild heatmap daily archives in dashboard_history.json from ticket details",
     )
+    parser.add_argument(
+        "--reconcile-history",
+        nargs="*",
+        metavar="YYYY-MM",
+        help="Rebuild sealed months in dashboard_history.json from dashboard_tickets.json",
+    )
     args = parser.parse_args()
     CI_MODE = args.ci or os.environ.get("CI", "").lower() == "true"
 
@@ -2415,6 +2557,15 @@ def main():
             log.info("Daily backfill complete: %s", ", ".join(updated))
         else:
             log.info("Daily backfill: nothing to update")
+        sys.exit(0)
+
+    if args.reconcile_history is not None:
+        months = args.reconcile_history or None
+        updated = reconcile_all_history_from_tickets(months)
+        if updated:
+            log.info("History reconcile complete: %s", ", ".join(updated))
+        else:
+            log.info("History reconcile: nothing to update")
         sys.exit(0)
 
     if args.excel_only:

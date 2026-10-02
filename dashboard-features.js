@@ -13,6 +13,52 @@ function snapshotInlineMonth() {
   };
 }
 
+function monthlyFromTickets(tickets) {
+  const totals = {};
+  for (const t of tickets) {
+    if (!totals[t.employee]) {
+      totals[t.employee] = { employee: t.employee, incidents: 0, tasks: 0 };
+    }
+    if (t.type === 'Incident') totals[t.employee].incidents += 1;
+    else totals[t.employee].tasks += 1;
+  }
+  return Object.values(totals).sort((a, b) => {
+    const diff = (b.incidents + b.tasks) - (a.incidents + a.tasks);
+    return diff !== 0 ? diff : a.employee.localeCompare(b.employee);
+  });
+}
+
+/** Past months: chart totals should match Excel ticket rows when both are loaded. */
+function reconcileHistoryFromTickets() {
+  const current = typeof CURRENT_MONTH_KEY !== 'undefined' ? CURRENT_MONTH_KEY : '';
+  for (const [monthKey, tickets] of Object.entries(DASHBOARD_TICKETS || {})) {
+    if (!monthKey || monthKey.startsWith('_') || !Array.isArray(tickets) || !tickets.length) {
+      continue;
+    }
+    if (current && monthKey >= current) continue;
+    if (!DASHBOARD_HISTORY[monthKey]) {
+      DASHBOARD_HISTORY[monthKey] = { label: formatMonthLabel(monthKey) };
+    }
+    const prev = DASHBOARD_HISTORY[monthKey].monthly || [];
+    const prevTotal = prev.reduce((s, r) => s + r.incidents + r.tasks, 0);
+    if (prevTotal === tickets.length) continue;
+    DASHBOARD_HISTORY[monthKey].monthly = monthlyFromTickets(tickets);
+    if (typeof dailyFromTickets === 'function') {
+      const matrix = dailyFromTickets(monthKey);
+      if (matrix && Object.keys(matrix).length) {
+        const [y, m] = monthKey.split('-').map(Number);
+        let maxVal = 1;
+        Object.values(matrix).forEach((days) => {
+          Object.values(days).forEach((v) => {
+            if (v > maxVal) maxVal = v;
+          });
+        });
+        DASHBOARD_HISTORY[monthKey].daily = { year: y, month: m, matrix, maxVal };
+      }
+    }
+  }
+}
+
 function formatMonthLabel(key) {
   const [y, m] = key.split('-').map(Number);
   const names = [
@@ -311,6 +357,8 @@ async function loadHistoryAndBoot() {
         DASHBOARD_TICKETS = await ticketResp.value.json();
       }
     } catch (_) { /* heatmap can still use history.daily */ }
+
+    reconcileHistoryFromTickets();
 
     if (CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
       const prev = DASHBOARD_HISTORY[CURRENT_MONTH_KEY] || {};
