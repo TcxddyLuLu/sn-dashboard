@@ -2,8 +2,8 @@ name: Update Dashboard
 
 on:
   schedule:
-    # 9:00–17:00 hourly, China Standard Time (UTC+8)
-    - cron: "0 1,2,3,4,5,6,7,8,9 * * *"
+    # 09:12–17:12 CST (UTC+8), after Mac LaunchAgent at :08
+    - cron: "12 1,2,3,4,5,6,7,8,9 * * *"
   workflow_dispatch:
 
 permissions:
@@ -16,10 +16,16 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verify Databricks secrets
+        run: |
+          test -n "${{ secrets.DATABRICKS_SERVER_HOSTNAME }}" || { echo "Missing DATABRICKS_SERVER_HOSTNAME"; exit 1; }
+          test -n "${{ secrets.DATABRICKS_HTTP_PATH }}" || { echo "Missing DATABRICKS_HTTP_PATH"; exit 1; }
+          test -n "${{ secrets.DATABRICKS_TOKEN }}" || { echo "Missing DATABRICKS_TOKEN"; exit 1; }
 
       - name: Set up Python
         uses: actions/setup-python@v5

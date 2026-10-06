@@ -574,6 +574,20 @@ def dashboard_covers_current_schedule_slot() -> bool:
 
 def dashboard_should_skip_ci_refresh(max_age_minutes: int) -> bool:
     """GHA backup: skip only when this hour's slot is already satisfied."""
+    now = now_display()
+    updated = parse_dashboard_updated_at()
+    if (
+        updated
+        and TICKET_MORNING_START_HOUR <= now.hour <= DASHBOARD_LAST_HOUR
+    ):
+        age_min = (now - updated).total_seconds() / 60
+        if age_min > 90:
+            log.info(
+                "GHA: dashboard last updated %.0f min ago — Mac likely offline; refreshing",
+                age_min,
+            )
+            return False
+
     if dashboard_covers_current_schedule_slot():
         return True
     if max_age_minutes < 0:
@@ -1084,9 +1098,20 @@ def spawn_excel_catchup_retries() -> None:
         )
 
 
+def excel_should_skip_ci_refresh() -> bool:
+    """GHA Excel backup: skip only when today's window is already satisfied."""
+    if not excel_window_is_fresh():
+        return False
+    last = last_excel_update_at()
+    now = now_display()
+    if last and last.date() == now.date():
+        return True
+    return False
+
+
 def run_excel_catchup(*, skip_if_fresh: bool = False) -> int:
     log.info("=== Excel catch-up started (ci=%s) ===", CI_MODE)
-    if skip_if_fresh and CI_MODE and excel_window_is_fresh():
+    if skip_if_fresh and CI_MODE and excel_should_skip_ci_refresh():
         last = last_excel_update_at()
         log.info(
             "Excel already fresh for current window (updated %s); skipping GHA — Mac likely handled it",
@@ -1104,13 +1129,21 @@ def run_excel_catchup(*, skip_if_fresh: bool = False) -> int:
         log.info("Another Excel refresh is already running; skipping catch-up")
         return 0
 
-    if dashboard_lock_is_held():
+    if not CI_MODE and dashboard_lock_is_held():
         log.info("Dashboard refresh in progress; waiting up to 15 min for it to finish...")
         if not wait_for_dashboard_idle(900):
             log.info("Dashboard still running after wait; skipping Excel catch-up")
             return 0
 
     rows = load_cached_dashboard_rows()
+    if not rows and CI_MODE:
+        log.warning("No cached dashboard rows in history; GHA will query summary SQL for Excel context")
+        try:
+            monthly, weekly, daily = query_summary()
+            rows, _, _ = rows_from_summary(monthly, weekly, daily)
+        except Exception as exc:
+            log.warning("GHA summary fallback for Excel failed: %s", exc)
+            rows = []
     if not rows:
         log.warning("No cached dashboard rows for Excel catch-up; skipping")
         return 1
@@ -1755,8 +1788,17 @@ def seal_previous_month_if_needed():
         notify_failure_safe("SN Dashboard Month Seal", e)
 
 
+def dashboard_html_template_path() -> Path:
+    """CI uses published index.html so GHA works when automation/dashboard.html is stale."""
+    if CI_MODE:
+        index_path = output_dir() / "index.html"
+        if index_path.exists():
+            return index_path
+    return SCRIPT_DIR / "dashboard.html"
+
+
 def update_html(rows, weekly_info=None, daily_info=None):
-    template_path = SCRIPT_DIR / "dashboard.html"
+    template_path = dashboard_html_template_path()
     html_path = (output_dir() / "index.html") if CI_MODE else (SCRIPT_DIR / "dashboard.html")
     html = template_path.read_text(encoding="utf-8")
 
@@ -1972,9 +2014,13 @@ AUTOMATION_SYNC_FILES = [
     "team_tasks_query.sql",
     "team_member_incident.sql",
     "team_member_task.sql",
+    "dashboard.html",
     "employee-detail.html",
     "employee-detail-features.js",
     "dashboard-features.js",
+    "tickets.html",
+    "tickets-features.js",
+    "xlsx.full.min.js",
 ]
 
 TICKETS_STATIC_FILES = [
@@ -2027,6 +2073,33 @@ def sync_automation_to_repo(repo_dir: Path) -> None:
         copied += 1
     if copied:
         log.info("Synced %s file(s) to repo automation/", copied)
+
+
+def sync_github_workflows_to_repo(repo_dir: Path) -> None:
+    """Keep sn-dashboard workflow YAML in sync with databricks-alert/.github/workflows."""
+    wf_src = SCRIPT_DIR / ".github" / "workflows"
+    if not wf_src.is_dir():
+        return
+    dest = repo_dir / ".github" / "workflows"
+    dest.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    for yml in sorted(wf_src.glob("*.yml")):
+        shutil.copy2(str(yml), str(dest / yml.name))
+        copied += 1
+    if copied:
+        log.info("Synced %s workflow file(s) to repo .github/workflows/", copied)
+
+
+def _publish_static_source_path(fname: str) -> Path | None:
+    """Prefer freshly written workspace files (CI) over automation/ copies."""
+    for candidate in (
+        output_dir() / fname,
+        SCRIPT_DIR / fname,
+        Path(GITHUB_REPO_DIR) / fname,
+    ):
+        if candidate.exists():
+            return candidate
+    return None
 
 
 def _clean_ci_git_noise(repo_dir: Path) -> None:
@@ -2205,6 +2278,7 @@ def push_to_github(html_path) -> bool:
         return False
 
     sync_sealed_history_from_ticket_store()
+    sync_github_workflows_to_repo(repo_dir)
     assert_dashboard_static_bundle()
 
     shutil.copy2(str(html_path), str(repo_dir / "index.html"))
@@ -2227,7 +2301,11 @@ def push_to_github(html_path) -> bool:
     untrack_ci_runtime_files(repo_dir)
 
     subprocess.run(
-        ["git", "-C", str(repo_dir), "add", "index.html", "dashboard.html", *DASHBOARD_STATIC_FILES, "automation", ".gitignore"],
+        [
+            "git", "-C", str(repo_dir), "add",
+            "index.html", "dashboard.html", *DASHBOARD_STATIC_FILES,
+            "automation", ".github/workflows", ".gitignore",
+        ],
         capture_output=True,
     )
 
@@ -2270,10 +2348,11 @@ def push_to_github(html_path) -> bool:
 
 def push_to_github_ci() -> bool:
     repo_dir = output_dir()
+    sync_sealed_history_from_ticket_store()
     assert_dashboard_static_bundle()
     for fname in DASHBOARD_STATIC_FILES:
-        src = SCRIPT_DIR / fname
-        if src.exists() and src.parent != repo_dir:
+        src = _publish_static_source_path(fname)
+        if src and src.parent != repo_dir:
             shutil.copy2(str(src), str(repo_dir / fname))
 
     subprocess.run(
@@ -2437,16 +2516,11 @@ def push_tickets_to_github() -> bool:
 
 def push_tickets_to_github_ci() -> bool:
     repo_dir = output_dir()
+    sync_sealed_history_from_ticket_store()
     for fname in TICKETS_STATIC_FILES:
-        src = SCRIPT_DIR / fname
-        if src.exists() and src.parent != repo_dir:
+        src = _publish_static_source_path(fname)
+        if src and src.parent != repo_dir:
             shutil.copy2(str(src), str(repo_dir / fname))
-        elif fname == "dashboard_history.json":
-            hist = repo_dir / "dashboard_history.json"
-            if not hist.exists():
-                alt = SCRIPT_DIR / fname
-                if alt.exists():
-                    shutil.copy2(str(alt), str(hist))
 
     subprocess.run(
         ["git", "config", "user.name", "github-actions[bot]"],
