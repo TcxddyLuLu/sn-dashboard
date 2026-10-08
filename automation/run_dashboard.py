@@ -351,9 +351,29 @@ def employee_name_to_id_map() -> dict[str, str]:
     return mapping
 
 
+def enrich_employee_name_to_id_map(mapping: dict[str, str]) -> dict[str, str]:
+    """Add display names from last published dashboard history (sys_user full names)."""
+    for row in load_cached_dashboard_rows():
+        name = row.get("employee_name")
+        employee_id = row.get("employee_id")
+        if name and employee_id:
+            mapping[name] = canonical_employee_id(employee_id)
+
+    history = _load_dashboard_history_dict()
+    for month_data in history.values():
+        if not isinstance(month_data, dict):
+            continue
+        for row in month_data.get("summary_rows") or []:
+            name = row.get("employee_name")
+            employee_id = row.get("employee_id")
+            if name and employee_id:
+                mapping[name] = canonical_employee_id(employee_id)
+    return mapping
+
+
 def stored_ticket_details_to_raw_rows(tickets: list[dict]) -> list[dict]:
     """Convert dashboard_tickets.json rows into team-query shape for aggregations."""
-    name_to_id = employee_name_to_id_map()
+    name_to_id = enrich_employee_name_to_id_map(employee_name_to_id_map())
     raw_rows: list[dict] = []
     for ticket in tickets:
         if not isinstance(ticket, dict):
@@ -383,6 +403,46 @@ def summary_from_stored_ticket_details(tickets: list[dict]) -> tuple[list, list,
     weekly = aggregate_weekly_rows(raw_rows)
     daily = aggregate_daily_rows(raw_rows)
     return monthly, weekly, daily
+
+
+def fetch_dashboard_from_history_fallback(exc: Exception):
+    """When Databricks summary SQL fails, reuse last good published aggregates."""
+    month_key = now_display().strftime("%Y-%m")
+    hist = _load_dashboard_history_dict().get(month_key, {})
+
+    rows = load_cached_dashboard_rows()
+    weekly_info = hist.get("weekly") if isinstance(hist.get("weekly"), dict) else None
+    daily_info = hist.get("daily") if isinstance(hist.get("daily"), dict) else None
+
+    if rows and weekly_info and daily_info:
+        log.warning(
+            "Summary SQL failed (%s); reusing cached history for %s (%s employees)",
+            exc,
+            month_key,
+            len(rows),
+        )
+        return rows, weekly_info, daily_info
+
+    tickets = load_cached_ticket_details()
+    if tickets:
+        log.warning(
+            "Summary SQL failed (%s); rebuilding from %s cached ticket rows",
+            exc,
+            len(tickets),
+        )
+        monthly, weekly, daily = summary_from_stored_ticket_details(tickets)
+        return rows_from_summary(monthly, weekly, daily)
+
+    if rows:
+        log.warning(
+            "Summary SQL failed (%s); reusing summary rows only (charts may be partial)",
+            exc,
+        )
+        weekly_info = weekly_info or process_weekly_data([], rows)
+        daily_info = daily_info or process_daily_data([], rows)
+        return rows, weekly_info, daily_info
+
+    raise exc
 
 
 def aggregate_daily_rows(ticket_rows: list[dict]) -> list[dict]:
@@ -846,17 +906,9 @@ def fetch_dashboard_from_summary():
     log.info("Fetching dashboard data via summary queries (Phase 1)")
     try:
         monthly, weekly, daily = query_summary()
+        return rows_from_summary(monthly, weekly, daily)
     except Exception as exc:
-        cached = load_cached_ticket_details()
-        if not cached:
-            raise
-        log.warning(
-            "Summary SQL failed (%s); rebuilding charts from %s cached ticket rows",
-            exc,
-            len(cached),
-        )
-        monthly, weekly, daily = summary_from_stored_ticket_details(cached)
-    return rows_from_summary(monthly, weekly, daily)
+        return fetch_dashboard_from_history_fallback(exc)
 
 
 def refresh_excel_ticket_details(rows) -> bool:
