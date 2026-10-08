@@ -66,9 +66,9 @@ EXCEL_CATCHUP_DELAYS_MIN = (15, 30)
 EXCEL_LOCK_FILE = SCRIPT_DIR / ".excel_refresh.lock"
 DASHBOARD_LOCK_FILE = SCRIPT_DIR / ".dashboard_refresh.lock"
 DATABRICKS_QUERY_LOCK_FILE = SCRIPT_DIR / ".databricks_query.lock"
-QUERY_TIMEOUT_SUMMARY_LOCAL = 600
-QUERY_TIMEOUT_SUMMARY_PART_LOCAL = 240
-QUERY_TIMEOUT_SUMMARY_PART_CI = 180
+QUERY_TIMEOUT_SUMMARY_LOCAL = 900
+QUERY_TIMEOUT_SUMMARY_PART_LOCAL = 480
+QUERY_TIMEOUT_SUMMARY_PART_CI = 360
 DATABRICKS_RETRY_DURATION_SEC = 180
 DATABRICKS_SOCKET_TIMEOUT_MS = 60_000
 GIT_NETWORK_TIMEOUT_SEC = 120
@@ -137,6 +137,9 @@ def summary_timeout_seconds() -> int:
 
 
 def summary_part_timeout_seconds() -> int:
+    override = os.environ.get("DASHBOARD_SUMMARY_PART_TIMEOUT")
+    if override and str(override).isdigit():
+        return int(override)
     if CI_MODE or os.environ.get("CI", "").lower() == "true":
         return QUERY_TIMEOUT_SUMMARY_PART_CI
     return QUERY_TIMEOUT_SUMMARY_PART_LOCAL
@@ -338,6 +341,48 @@ def aggregate_weekly_rows(ticket_rows: list[dict]) -> list[dict]:
         {"employee_id": employee_id, "week_start": week_start, **counts}
         for (employee_id, week_start), counts in sorted(tally.items())
     ]
+
+
+def employee_name_to_id_map() -> dict[str, str]:
+    mapping: dict[str, str] = {}
+    for employee_id in EMPLOYEE_IDS:
+        mapping[employee_id] = employee_id
+        mapping[NAME_OVERRIDES.get(employee_id, employee_id)] = employee_id
+    return mapping
+
+
+def stored_ticket_details_to_raw_rows(tickets: list[dict]) -> list[dict]:
+    """Convert dashboard_tickets.json rows into team-query shape for aggregations."""
+    name_to_id = employee_name_to_id_map()
+    raw_rows: list[dict] = []
+    for ticket in tickets:
+        if not isinstance(ticket, dict):
+            continue
+        employee_name = ticket.get("employee") or ""
+        employee_id = name_to_id.get(employee_name)
+        if not employee_id:
+            continue
+        ticket_type = (
+            "incident" if ticket.get("type") == "Incident" else "task"
+        )
+        raw_rows.append({
+            "employee_id": employee_id,
+            "employee_name": employee_name,
+            "ticket_type": ticket_type,
+            "closed_date": ticket.get("closed"),
+            "ticket_number": ticket.get("number"),
+        })
+    return raw_rows
+
+
+def summary_from_stored_ticket_details(tickets: list[dict]) -> tuple[list, list, list]:
+    raw_rows = stored_ticket_details_to_raw_rows(tickets)
+    if not raw_rows:
+        raise RuntimeError("Cached tickets could not be mapped to employees")
+    monthly = build_monthly_rows(raw_rows)
+    weekly = aggregate_weekly_rows(raw_rows)
+    daily = aggregate_daily_rows(raw_rows)
+    return monthly, weekly, daily
 
 
 def aggregate_daily_rows(ticket_rows: list[dict]) -> list[dict]:
@@ -799,7 +844,18 @@ def load_cached_dashboard_rows() -> list[dict]:
 def fetch_dashboard_from_summary():
     """Fetch chart/summary data via fast summary SQL (Phase 1)."""
     log.info("Fetching dashboard data via summary queries (Phase 1)")
-    monthly, weekly, daily = query_summary()
+    try:
+        monthly, weekly, daily = query_summary()
+    except Exception as exc:
+        cached = load_cached_ticket_details()
+        if not cached:
+            raise
+        log.warning(
+            "Summary SQL failed (%s); rebuilding charts from %s cached ticket rows",
+            exc,
+            len(cached),
+        )
+        monthly, weekly, daily = summary_from_stored_ticket_details(cached)
     return rows_from_summary(monthly, weekly, daily)
 
 
@@ -1177,17 +1233,27 @@ def query_summary():
 
     try:
         for attempt in range(1, 3):
-            log.info("Running split summary queries (attempt %s/2)...", attempt)
+            log.info("Running split summary queries in parallel (attempt %s/2)...", attempt)
             try:
-                monthly = _query_summary_part(
-                    "databricks_query_worker:run_monthly_query", "Monthly summary"
-                )
-                weekly = _query_summary_part(
-                    "databricks_query_worker:run_weekly_query", "Weekly summary"
-                )
-                daily = _query_summary_part(
-                    "databricks_query_worker:run_daily_query", "Daily summary"
-                )
+                with ThreadPoolExecutor(max_workers=3) as pool:
+                    monthly_future = pool.submit(
+                        _query_summary_part,
+                        "databricks_query_worker:run_monthly_query",
+                        "Monthly summary",
+                    )
+                    weekly_future = pool.submit(
+                        _query_summary_part,
+                        "databricks_query_worker:run_weekly_query",
+                        "Weekly summary",
+                    )
+                    daily_future = pool.submit(
+                        _query_summary_part,
+                        "databricks_query_worker:run_daily_query",
+                        "Daily summary",
+                    )
+                    monthly = monthly_future.result()
+                    weekly = weekly_future.result()
+                    daily = daily_future.result()
             except Exception as exc:
                 log.warning("Summary query attempt %s failed: %s", attempt, exc)
                 if attempt < 2:

@@ -24,6 +24,11 @@ employee_names AS (
   UNION ALL
   SELECT * FROM sys_user_names
 ),
+month_bounds AS (
+  SELECT
+    date_trunc('month', from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai')) AS start_cst,
+    add_months(date_trunc('month', from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai')), 1) AS end_cst
+),
 incident_weekly AS (
   SELECT
     n.employee_id,
@@ -33,10 +38,11 @@ incident_weekly AS (
     ) AS week_start,
     COUNT(DISTINCT i.number) AS cnt
   FROM published_domain.rese_prd_servicenow.incident i
+  CROSS JOIN month_bounds b
   JOIN employee_names n ON i.assigned_to = n.employee_name
   WHERE i.state IN ('Resolved', 'Closed')
-    AND YEAR(from_utc_timestamp(i.resolved_at, 'Asia/Shanghai')) = YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))
-    AND MONTH(from_utc_timestamp(i.resolved_at, 'Asia/Shanghai')) = MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))
+    AND from_utc_timestamp(i.resolved_at, 'Asia/Shanghai') >= b.start_cst
+    AND from_utc_timestamp(i.resolved_at, 'Asia/Shanghai') < b.end_cst
   GROUP BY n.employee_id, week_start
 ),
 task_weekly AS (
@@ -48,10 +54,11 @@ task_weekly AS (
     ) AS week_start,
     COUNT(DISTINCT t.number) AS cnt
   FROM published_domain.rese_prd_servicenow.sc_task t
+  CROSS JOIN month_bounds b
   JOIN employee_names n ON t.assigned_to = n.employee_name
   WHERE t.state IN ('Resolved','Closed','Closed Complete','Closed Incomplete')
-    AND YEAR(from_utc_timestamp(t.closed_at, 'Asia/Shanghai')) = YEAR(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))
-    AND MONTH(from_utc_timestamp(t.closed_at, 'Asia/Shanghai')) = MONTH(from_utc_timestamp(CURRENT_TIMESTAMP(), 'Asia/Shanghai'))
+    AND from_utc_timestamp(t.closed_at, 'Asia/Shanghai') >= b.start_cst
+    AND from_utc_timestamp(t.closed_at, 'Asia/Shanghai') < b.end_cst
   GROUP BY n.employee_id, week_start
 )
 SELECT
