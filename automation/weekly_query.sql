@@ -11,7 +11,7 @@ sys_user_names AS (
   FROM published_domain.rese_prd_servicenow.sys_user u
   WHERE u.user_name IN (
     'BLiu60','AGuo22','AZho63','JDen4','HFeng1',
-    'LCh158','TTao5','L31','CLe144','RJu1','AXu72',
+    'LCh158','TTao5','L31','RJu1','AXu72',
     'YWa456','HYip2','JCh603','KChu17','ALan2',
     'KOuYan','VCHE11','YWei29','LXIAN2',
     'JQIANG','HZhu8','DCha49','PWan61','YDin23','XZh302',
