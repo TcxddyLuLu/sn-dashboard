@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import multiprocessing as mp
+from queue import Empty
 import os
 import re
 import urllib.error
@@ -149,6 +150,17 @@ def _hard_timeout_worker(target: CallableTarget, result_queue: mp.Queue) -> None
         result_queue.put(("err", exc))
 
 
+def _terminate_process(proc: mp.Process) -> None:
+    if not proc.is_alive():
+        proc.join(5)
+        return
+    proc.terminate()
+    proc.join(5)
+    if proc.is_alive():
+        proc.kill()
+        proc.join(5)
+
+
 def run_with_hard_timeout(target: CallableTarget, timeout_seconds: int, label: str) -> T:
     """Run a worker entrypoint in a child process; kill it after timeout_seconds."""
     ctx = mp.get_context("spawn")
@@ -159,21 +171,17 @@ def run_with_hard_timeout(target: CallableTarget, timeout_seconds: int, label: s
         daemon=True,
     )
     proc.start()
-    proc.join(timeout_seconds)
-
-    if proc.is_alive():
+    # Read the queue before join(): a large payload can fill the pipe and block the
+    # child on put() while the parent blocks on join() (macOS spawn deadlock).
+    try:
+        status, payload = result_queue.get(timeout=timeout_seconds)
+    except Empty:
         log.error("%s exceeded %ss hard timeout; terminating worker", label, timeout_seconds)
-        proc.terminate()
-        proc.join(5)
-        if proc.is_alive():
-            proc.kill()
-            proc.join(5)
+        _terminate_process(proc)
         raise TimeoutError(f"{label} exceeded {timeout_seconds}s hard timeout")
 
-    if result_queue.empty():
-        raise RuntimeError(f"{label} finished without returning a result")
+    _terminate_process(proc)
 
-    status, payload = result_queue.get_nowait()
     if status == "err":
         raise payload
     return payload

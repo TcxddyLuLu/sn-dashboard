@@ -557,13 +557,17 @@ def _databricks_connect():
 
 def _execute_team_ticket_sql(sql: str) -> list[dict]:
     conn = _databricks_connect()
-    cursor = conn.cursor()
-    cursor.execute(sql)
-    rows = cursor.fetchall()
-    cols = [d[0] for d in cursor.description]
-    cursor.close()
-    conn.close()
-    return [dict(zip(cols, r)) for r in rows]
+    try:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+            cols = [d[0] for d in cursor.description]
+            return [dict(zip(cols, r)) for r in rows]
+        finally:
+            cursor.close()
+    finally:
+        conn.close()
 
 
 def _run_team_tickets_once():
