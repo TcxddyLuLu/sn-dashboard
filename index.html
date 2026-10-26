@@ -579,9 +579,26 @@
   .leave-modal-header h4 { margin: 0; font-size: 17px; color: #1e293b; }
   .leave-modal-close { border: none; background: none; font-size: 22px; cursor: pointer; color: #64748b; line-height: 1; }
   .leave-modal-hint { font-size: 12px; color: #64748b; line-height: 1.5; margin: 0 0 14px; }
-  .leave-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 14px; }
+  .leave-form { margin-bottom: 12px; }
   .leave-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #64748b; }
-  .leave-form input { padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; }
+  .leave-form input { padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
+  .leave-cal-wrap { margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; background: #fafafa; }
+  .leave-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .leave-cal-head button { border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; width: 28px; height: 28px; cursor: pointer; }
+  .leave-cal-title { font-size: 13px; font-weight: 700; color: #334155; }
+  .leave-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .leave-cal-dow { font-size: 10px; color: #94a3b8; text-align: center; padding: 2px 0; }
+  .leave-cal-day {
+    border: none; background: #fff; border-radius: 6px; font-size: 12px; padding: 6px 0; cursor: pointer;
+    color: #334155; border: 1px solid transparent;
+  }
+  .leave-cal-day:hover:not(:disabled) { border-color: #93c5fd; background: #eff6ff; }
+  .leave-cal-day.muted { color: #cbd5e1; cursor: default; background: transparent; }
+  .leave-cal-day.weekend { color: #94a3b8; }
+  .leave-cal-day.selected { background: #2563eb; color: #fff; border-color: #2563eb; font-weight: 700; }
+  .leave-cal-day.registered { box-shadow: inset 0 0 0 2px #0f766e; }
+  .leave-cal-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .leave-cal-summary { font-size: 12px; color: #64748b; }
   .btn-leave-add, .btn-leave-primary, .btn-leave-secondary {
     font-size: 12px; font-weight: 600; padding: 8px 12px; border-radius: 8px; cursor: pointer; border: 1px solid #cbd5e1;
   }
@@ -598,7 +615,6 @@
   .leave-import-label { display: inline-flex; align-items: center; }
   .leave-status { font-size: 12px; color: #0f766e; margin: 10px 0 0; }
   .leave-status.leave-status-error { color: #dc2626; }
-  @media (max-width: 520px) { .leave-form { grid-template-columns: 1fr; } }
   @keyframes blink-gold {
     0%, 100% { background: #fef3c7; }
     50% { background: #fde68a; }
@@ -1721,7 +1737,7 @@ function retryChart() {
 </div>
 <script src="chart.min.js" defer onload="retryChart()" onerror="showStatus('Chart library could not load, but summary and heatmap data are still shown.')"></script>
 <script src="dashboard-roster.js?v=1" defer></script>
-<script src="dashboard-leave.js?v=2" defer></script>
+<script src="dashboard-leave.js?v=3" defer></script>
 <script src="dashboard-features.js" defer></script>
 </body>
 </html>
