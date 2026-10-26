@@ -2114,12 +2114,14 @@ DASHBOARD_FEATURES_BOOT_MARKER = "renderInlineSummaryFirst"
 
 DASHBOARD_STATIC_FILES = [
     "chart.min.js",
+    "dashboard-leave.js",
     "dashboard-features.js",
     "dashboard_history.json",
     "employee-detail.html",
     "employee-detail-features.js",
     "tickets.html",
     "tickets-features.js",
+    "leave_days.json",
 ]
 
 AUTOMATION_SYNC_FILES = [
