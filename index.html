@@ -430,6 +430,11 @@
     border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
   }
   .btn-export:hover { background: #0d9488; }
+  .btn-leave-toolbar {
+    background: #2563eb;
+    margin-right: 8px;
+  }
+  .btn-leave-toolbar:hover { background: #1d4ed8; }
   .toolbar-actions {
     margin-left: auto;
     display: flex;
@@ -538,9 +543,9 @@
   .weekly-header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
   .btn-leave-open {
     font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px;
-    border: 1px solid #cbd5e1; background: #fff; color: #334155; cursor: pointer;
+    border: 1px solid #2563eb; background: #2563eb; color: #fff; cursor: pointer;
   }
-  .btn-leave-open:hover { background: #f8fafc; border-color: #94a3b8; }
+  .btn-leave-open:hover { background: #1d4ed8; border-color: #1d4ed8; }
   .leave-modal { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; }
   .leave-modal[hidden] { display: none !important; }
   .leave-modal-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.45); }
@@ -741,6 +746,7 @@
       <button type="button" id="monthNext" title="Next month">&#9654;</button>
     </div>
     <div class="toolbar-actions">
+      <button type="button" class="btn-export btn-leave-toolbar js-leave-open" id="leaveOpenBtnTop">休假登记</button>
       <a class="btn-export" href="tickets.html" style="text-decoration:none;display:inline-block;line-height:32px;">Excel 明细 →</a>
     </div>
   </div>
@@ -793,7 +799,7 @@
         <span>关单日期 CST · 工作日 0 单淡红闪烁 · 已登记休假显示「休」</span>
       </div>
       <div class="weekly-header-actions">
-        <button type="button" class="btn-leave-open" id="leaveOpenBtn">休假登记</button>
+        <button type="button" class="btn-leave-open js-leave-open" id="leaveOpenBtn">休假登记</button>
       </div>
     </div>
     <div class="heatmap-wrap">
@@ -1646,7 +1652,7 @@ function retryChart() {
   <button type="button" class="btn-refresh-fab" id="refreshBtn" title="手动更新（需密码）" aria-label="手动更新">⟳</button>
 </div>
 <script src="chart.min.js" defer onload="retryChart()" onerror="showStatus('Chart library could not load, but summary and heatmap data are still shown.')"></script>
-<script src="dashboard-leave.js" defer></script>
+<script src="dashboard-leave.js?v=2" defer></script>
 <script src="dashboard-features.js" defer></script>
 </body>
 </html>

@@ -352,7 +352,11 @@ function openLeaveModal() {
 }
 
 function bindLeaveButton() {
-  document.getElementById('leaveOpenBtn')?.addEventListener('click', openLeaveModal);
+  document.querySelectorAll('.js-leave-open, #leaveOpenBtn, #leaveOpenBtnTop').forEach((btn) => {
+    if (btn.dataset.leaveBound) return;
+    btn.dataset.leaveBound = '1';
+    btn.addEventListener('click', openLeaveModal);
+  });
 }
 
 window.isHeatmapLeaveDay = isHeatmapLeaveDay;
