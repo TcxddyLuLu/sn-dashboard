@@ -223,7 +223,7 @@ function flatDaysFromGroups(groups) {
   return groups.flatMap((g) => g.days);
 }
 
-function dayCellHtml(d) {
+function dayCellHtml(d, empName) {
   const headCls = ['day-col', 'head'];
   if (d.weekend) headCls.push('weekend');
   const head = `<div class="${headCls.join(' ')}">${d.day}<span class="sub">${d.wd}</span></div>`;
@@ -241,6 +241,13 @@ function dayCellHtml(d) {
     text = d.value > 0 ? String(d.value) : '·';
     const c = dailyHeatColor(d.value);
     if (c) innerStyle = ` style="background:${c};color:${d.value > 7 ? '#fff' : '#1e3a5f'}"`;
+  } else if (
+    d.value === 0
+    && typeof isHeatmapLeaveDay === 'function'
+    && isHeatmapLeaveDay(empName, d.key)
+  ) {
+    text = '休';
+    innerCls += ' cell-leave';
   } else if (d.value === 0) {
     text = '0';
     innerCls += ' blink-zero';
@@ -253,7 +260,7 @@ function dayCellHtml(d) {
   return { head, val };
 }
 
-function renderWeekBlock(group, mode) {
+function renderWeekBlock(group, mode, empName) {
   const cls = ['week-block'];
   if (group.isCurrent) cls.push('current');
   if (group.orphan) cls.push('orphan');
@@ -261,7 +268,7 @@ function renderWeekBlock(group, mode) {
   let heads = '';
   let vals = '';
   group.days.forEach((d) => {
-    const cells = dayCellHtml(d);
+    const cells = dayCellHtml(d, empName);
     heads += cells.head;
     vals += cells.val;
   });
@@ -323,7 +330,31 @@ function weekBandsPlugin(layout) {
   };
 }
 
-function renderLineChart(flatDays, groups) {
+function leavePointLabelsPlugin(flatDays, empName) {
+  return {
+    id: 'leavePointLabels',
+    afterDatasetsDraw(chart) {
+      const meta = chart.getDatasetMeta(0);
+      if (!meta?.data?.length) return;
+      const { ctx } = chart;
+      meta.data.forEach((point, i) => {
+        const d = flatDays[i];
+        if (!d || d.future || d.weekend || d.value !== 0) return;
+        if (typeof isHeatmapLeaveDay !== 'function' || !isHeatmapLeaveDay(empName, d.key)) return;
+        const { x, y } = point.getProps(['x', 'y'], true);
+        ctx.save();
+        ctx.font = '700 12px system-ui, -apple-system, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('休', x, y - 7);
+        ctx.restore();
+      });
+    },
+  };
+}
+
+function renderLineChart(flatDays, groups, empName) {
   const canvas = document.getElementById('lineChart');
   const wrap = document.querySelector('.sync-chart-wrap');
   const headTrack = document.querySelectorAll('.sync-track')[0];
@@ -390,7 +421,20 @@ function renderLineChart(flatDays, groups) {
               const d = flatDays[items[0].dataIndex];
               return `${d.key} (${d.wd})`;
             },
-            label: (ctx) => ` ${ctx.parsed.y ?? 0} 单`,
+            label: (ctx) => {
+              const d = flatDays[ctx.dataIndex];
+              if (
+                d
+                && !d.future
+                && !d.weekend
+                && d.value === 0
+                && typeof isHeatmapLeaveDay === 'function'
+                && isHeatmapLeaveDay(empName, d.key)
+              ) {
+                return ' 休假';
+              }
+              return ` ${ctx.parsed.y ?? 0} 单`;
+            },
           },
         },
       },
@@ -411,17 +455,17 @@ function renderLineChart(flatDays, groups) {
         },
       },
     },
-    plugins: [weekBandsPlugin(layout)],
+    plugins: [weekBandsPlugin(layout), leavePointLabelsPlugin(flatDays, empName)],
   });
 }
 
-function renderSyncPanel(days, record) {
+function renderSyncPanel(days, record, empName) {
   const groups = buildWeekGroups(days, record);
   const flatDays = flatDaysFromGroups(groups);
   const rowTotal = flatDays.reduce((s, d) => s + (d.future ? 0 : d.value), 0);
 
-  const headTrack = groups.map((g) => renderWeekBlock(g, 'head')).join('');
-  const valTrack = groups.map((g) => renderWeekBlock(g, 'val')).join('');
+  const headTrack = groups.map((g) => renderWeekBlock(g, 'head', empName)).join('');
+  const valTrack = groups.map((g) => renderWeekBlock(g, 'val', empName)).join('');
   const chartMirror = renderChartMirror(groups);
 
   document.getElementById('syncPanel').innerHTML = `
@@ -445,7 +489,7 @@ function renderSyncPanel(days, record) {
       </div>
     </div>`;
 
-  requestAnimationFrame(() => renderLineChart(flatDays, groups));
+  requestAnimationFrame(() => renderLineChart(flatDays, groups, empName));
 
   document.getElementById('weekLegend').innerHTML = groups
     .filter((g) => !g.orphan)
@@ -507,7 +551,7 @@ function renderPage(emp, monthKey) {
 
   renderSummary(emp, record, monthLabel);
   renderWeekCards(record);
-  renderSyncPanel(days, record);
+  renderSyncPanel(days, record, emp);
 }
 
 async function boot() {
@@ -523,6 +567,12 @@ async function boot() {
     const resp = await fetch('dashboard_history.json?' + Date.now());
     if (resp.ok) DASHBOARD_HISTORY = await resp.json();
   } catch (_) { /* use inline snapshot only */ }
+
+  if (typeof initLeaveDays === 'function') {
+    try {
+      await initLeaveDays();
+    } catch (_) { /* chart still works without leave registry */ }
+  }
 
   if (CURRENT_MONTH_KEY && INLINE_MONTH_SNAPSHOT) {
     const prev = DASHBOARD_HISTORY[CURRENT_MONTH_KEY] || {};
