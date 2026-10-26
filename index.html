@@ -529,6 +529,49 @@
     animation: blink-warn 2s ease-in-out infinite;
     color: #ff1744 !important;
   }
+  table.heatmap td.cell .cell-inner.cell-leave {
+    background: #f1f5f9 !important;
+    color: #64748b !important;
+    font-weight: 700;
+    animation: none;
+  }
+  .weekly-header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .btn-leave-open {
+    font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px;
+    border: 1px solid #cbd5e1; background: #fff; color: #334155; cursor: pointer;
+  }
+  .btn-leave-open:hover { background: #f8fafc; border-color: #94a3b8; }
+  .leave-modal { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; }
+  .leave-modal[hidden] { display: none !important; }
+  .leave-modal-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.45); }
+  .leave-modal-panel {
+    position: relative; z-index: 1; width: min(520px, 94vw); max-height: 88vh; overflow: auto;
+    background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 20px 50px rgba(0,0,0,.18);
+  }
+  .leave-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .leave-modal-header h4 { margin: 0; font-size: 17px; color: #1e293b; }
+  .leave-modal-close { border: none; background: none; font-size: 22px; cursor: pointer; color: #64748b; line-height: 1; }
+  .leave-modal-hint { font-size: 12px; color: #64748b; line-height: 1.5; margin: 0 0 14px; }
+  .leave-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 14px; }
+  .leave-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #64748b; }
+  .leave-form input { padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; }
+  .btn-leave-add, .btn-leave-primary, .btn-leave-secondary {
+    font-size: 12px; font-weight: 600; padding: 8px 12px; border-radius: 8px; cursor: pointer; border: 1px solid #cbd5e1;
+  }
+  .btn-leave-add { background: #2563eb; color: #fff; border-color: #2563eb; height: 36px; }
+  .btn-leave-primary { background: #0f766e; color: #fff; border-color: #0f766e; }
+  .btn-leave-secondary { background: #fff; color: #334155; }
+  .leave-list-wrap { border: 1px solid #e2e8f0; border-radius: 8px; max-height: 220px; overflow: auto; margin-bottom: 12px; }
+  .leave-list-head { font-size: 11px; font-weight: 600; color: #64748b; padding: 8px 10px; border-bottom: 1px solid #f1f5f9; }
+  .leave-list { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .leave-list li { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; padding: 8px 10px; border-bottom: 1px solid #f8fafc; align-items: center; }
+  .leave-list li button { font-size: 11px; color: #dc2626; border: none; background: none; cursor: pointer; }
+  .leave-empty { padding: 16px; color: #94a3b8; text-align: center; }
+  .leave-modal-footer { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .leave-import-label { display: inline-flex; align-items: center; }
+  .leave-status { font-size: 12px; color: #0f766e; margin: 10px 0 0; }
+  .leave-status.leave-status-error { color: #dc2626; }
+  @media (max-width: 520px) { .leave-form { grid-template-columns: 1fr; } }
   @keyframes blink-gold {
     0%, 100% { background: #fef3c7; }
     50% { background: #fde68a; }
@@ -745,8 +788,13 @@
 
   <div class="weekly-section" id="dailySection">
     <div class="weekly-header">
-      <h3>Daily Heatmap</h3>
-      <span>关单日期 CST · 每人每天总数 · 工作日 0 单淡红闪烁</span>
+      <div>
+        <h3>Daily Heatmap</h3>
+        <span>关单日期 CST · 工作日 0 单淡红闪烁 · 已登记休假显示「休」</span>
+      </div>
+      <div class="weekly-header-actions">
+        <button type="button" class="btn-leave-open" id="leaveOpenBtn">休假登记</button>
+      </div>
     </div>
     <div class="heatmap-wrap">
       <table class="heatmap" id="heatmapTable"></table>
@@ -1407,6 +1455,9 @@ function renderDailyHeatmap(monthKey) {
       } else if (d.future) {
         text = '';
         innerStyle = ' style="background:#f8fafc;color:#e2e8f0"';
+      } else if (v === 0 && typeof isHeatmapLeaveDay === 'function' && isHeatmapLeaveDay(emp, d.key)) {
+        text = '休';
+        innerCls += ' cell-leave';
       } else if (v === 0) {
         text = '0';
         innerCls += ' blink-zero';
@@ -1437,6 +1488,7 @@ function renderDailyHeatmap(monthKey) {
   }).join('');
   legend.innerHTML = [
     '<span><i style="background:#fef2f2;border:1px solid #fecaca"></i> 0（工作日，闪烁）</span>',
+    '<span><i style="background:#f1f5f9;border:1px solid #cbd5e1;color:#64748b;font-weight:700;font-style:normal">休</i> 已登记休假</span>',
     `<span>1→15 蓝由浅至深：</span>${legendScale}<span>15+ 同 15</span>`,
     '<span><i style="background:#f8fafc;border:1px solid #e2e8f0"></i> 周末无数据 · / 未来空白</span>',
     '<span><i style="background:#fde68a;border:1px solid #f59e0b"></i> 当天最高单量（浅金闪烁）</span>',
@@ -1594,6 +1646,7 @@ function retryChart() {
   <button type="button" class="btn-refresh-fab" id="refreshBtn" title="手动更新（需密码）" aria-label="手动更新">⟳</button>
 </div>
 <script src="chart.min.js" defer onload="retryChart()" onerror="showStatus('Chart library could not load, but summary and heatmap data are still shown.')"></script>
+<script src="dashboard-leave.js" defer></script>
 <script src="dashboard-features.js" defer></script>
 </body>
 </html>

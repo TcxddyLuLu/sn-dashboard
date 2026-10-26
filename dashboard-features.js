@@ -365,6 +365,12 @@ async function loadHistoryAndBoot() {
 
     reconcileHistoryFromTickets();
 
+    if (typeof initLeaveDays === 'function') {
+      try {
+        await initLeaveDays();
+      } catch (_) { /* heatmap still works without leave registry */ }
+    }
+
     if (CURRENT_MONTH_KEY && INLINE_MONTH_DATA) {
       const prev = DASHBOARD_HISTORY[CURRENT_MONTH_KEY] || {};
       DASHBOARD_HISTORY[CURRENT_MONTH_KEY] = {
