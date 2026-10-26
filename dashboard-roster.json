@@ -1,0 +1,87 @@
+{
+  "sites": [
+    {
+      "name": "SH",
+      "members": [
+        "Luby Lu",
+        "Thomas Tao",
+        "Lee Li",
+        "Rory Ju",
+        "Alex Xu",
+        "Yibo Wang",
+        "Hooxi Zhu",
+        "Alan Zhong",
+        "Peter Zhang"
+      ]
+    },
+    {
+      "name": "CLC",
+      "members": [
+        "liang Xiang",
+        "Freddie Qiang",
+        "Hao Zhu",
+        "Dom Chang",
+        "Ping Wang",
+        "Yang Ding",
+        "Xinyu Zhang"
+      ]
+    },
+    {
+      "name": "GZ",
+      "members": [
+        "Aaron Jiang",
+        "Howie Tan",
+        "Junfeng Deng"
+      ]
+    },
+    {
+      "name": "ZS",
+      "members": [
+        "He Feng"
+      ]
+    },
+    {
+      "name": "BJ",
+      "members": [
+        "Bob Liu",
+        "Allen Guo"
+      ]
+    },
+    {
+      "name": "HK",
+      "members": [
+        "Harry Yip",
+        "Jacky Chan",
+        "Kenneth Chung"
+      ]
+    },
+    {
+      "name": "TP",
+      "members": [
+        "Vance Chen",
+        "Roy Wei"
+      ]
+    },
+    {
+      "name": "TC",
+      "members": [
+        "Andy Lan",
+        "Karen Ou Yang"
+      ]
+    },
+    {
+      "name": "CD",
+      "members": [
+        "Yin Ye",
+        "Yong Zhao"
+      ]
+    },
+    {
+      "name": "SY",
+      "members": [
+        "Zhi Lu",
+        "Guichong You"
+      ]
+    }
+  ]
+}

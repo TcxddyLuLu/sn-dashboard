@@ -365,6 +365,12 @@ async function loadHistoryAndBoot() {
 
     reconcileHistoryFromTickets();
 
+    if (typeof initHeatmapRoster === 'function') {
+      try {
+        await initHeatmapRoster();
+      } catch (_) { /* fallback heatmap sort */ }
+    }
+
     if (typeof initLeaveDays === 'function') {
       try {
         await initLeaveDays();

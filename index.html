@@ -506,6 +506,28 @@
     min-width: 130px;
     padding-left: 10px;
   }
+  table.heatmap tr.heatmap-site-row td {
+    background: #1e3a5f;
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 8px 12px;
+    letter-spacing: 0.02em;
+  }
+  table.heatmap tr.heatmap-group-row td.heatmap-group-label {
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  table.heatmap tr.heatmap-group-row td.heatmap-band-cell {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0;
+    height: 8px;
+  }
   table.heatmap td.emp-col {
     position: sticky;
     left: 0;
@@ -1275,13 +1297,22 @@ function buildDailyView(monthKey, matrix) {
     });
   });
 
-  const sorted = [...employees].sort((a, b) => {
-    const sumA = days.reduce((s, d) => s + (matrix[a]?.[d.key] || 0), 0);
-    const sumB = days.reduce((s, d) => s + (matrix[b]?.[d.key] || 0), 0);
-    return sumB - sumA || a.localeCompare(b);
-  });
+  const heatmapRows =
+    typeof buildHeatmapRows === 'function'
+      ? buildHeatmapRows(employees, matrix, days)
+      : [...employees]
+          .sort((a, b) => {
+            const sumA = days.reduce((s, d) => s + (matrix[a]?.[d.key] || 0), 0);
+            const sumB = days.reduce((s, d) => s + (matrix[b]?.[d.key] || 0), 0);
+            return sumB - sumA || a.localeCompare(b);
+          })
+          .map((name) => ({ type: 'employee', name }));
 
-  return { year: y, month: m, days, matrix, maxVal, isCurrentMonth, employees: sorted };
+  const sorted = heatmapRows
+    .filter((r) => r.type === 'employee')
+    .map((r) => r.name);
+
+  return { year: y, month: m, days, matrix, maxVal, isCurrentMonth, employees: sorted, heatmapRows };
 }
 
 function getDailyData(monthKey) {
@@ -1397,6 +1428,28 @@ function computeWeekMax(weekCols, weeklyData) {
   return weekMax;
 }
 
+function heatmapHeaderColumnCount(days, weekCols) {
+  return 1 + days.length + weekCols.length + 1;
+}
+
+function renderHeatmapSiteRow(label, colCount) {
+  return `<tr class="heatmap-site-row"><td colspan="${colCount}">${label}</td></tr>`;
+}
+
+function renderHeatmapGroupRow(label, days, weekCols) {
+  let weekColPtr = 0;
+  let html = `<tr class="heatmap-group-row"><td class="emp-col heatmap-group-label">${label}</td>`;
+  days.forEach((d) => {
+    html += '<td class="heatmap-band-cell"></td>';
+    if (weekColPtr < weekCols.length && d.day === weekCols[weekColPtr].afterDay) {
+      html += '<td class="heatmap-band-cell week-col"></td>';
+      weekColPtr++;
+    }
+  });
+  html += '<td class="heatmap-band-cell"></td></tr>';
+  return html;
+}
+
 function renderDailyHeatmap(monthKey) {
   const key = monthKey || (typeof activeMonthKey !== 'undefined' ? activeMonthKey : CURRENT_MONTH_KEY);
   const data = getDailyData(key);
@@ -1434,7 +1487,22 @@ function renderDailyHeatmap(monthKey) {
   });
   html += '<th>Σ</th></tr></thead><tbody>';
 
-  data.employees.forEach((emp) => {
+  const colCount = heatmapHeaderColumnCount(data.days, weekCols);
+  const heatmapRows =
+    data.heatmapRows
+    || data.employees.map((name) => ({ type: 'employee', name }));
+
+  heatmapRows.forEach((row) => {
+    if (row.type === 'site') {
+      html += renderHeatmapSiteRow(row.label, colCount);
+      return;
+    }
+    if (row.type === 'group') {
+      html += renderHeatmapGroupRow(row.label, data.days, weekCols);
+      return;
+    }
+    const emp = row.name;
+    if (!emp) return;
     let rowTotal = 0;
     weekColPtr = 0;
     html += `<tr><td class="emp-col">${formatEmployeeCell(emp)}</td>`;
@@ -1652,6 +1720,7 @@ function retryChart() {
   <button type="button" class="btn-refresh-fab" id="refreshBtn" title="手动更新（需密码）" aria-label="手动更新">⟳</button>
 </div>
 <script src="chart.min.js" defer onload="retryChart()" onerror="showStatus('Chart library could not load, but summary and heatmap data are still shown.')"></script>
+<script src="dashboard-roster.js?v=1" defer></script>
 <script src="dashboard-leave.js?v=2" defer></script>
 <script src="dashboard-features.js" defer></script>
 </body>

@@ -2114,6 +2114,8 @@ DASHBOARD_FEATURES_BOOT_MARKER = "renderInlineSummaryFirst"
 
 DASHBOARD_STATIC_FILES = [
     "chart.min.js",
+    "dashboard-roster.js",
+    "dashboard-roster.json",
     "dashboard-leave.js",
     "dashboard-features.js",
     "dashboard_history.json",
