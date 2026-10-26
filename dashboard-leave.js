@@ -1,7 +1,7 @@
 /* Heatmap leave registry: manual PTO marks show as 休 instead of blinking 0 */
 
 const LEAVE_STORAGE_KEY = 'sn_dashboard_leave_v1';
-const LEAVE_UI_VERSION = '3';
+const LEAVE_UI_VERSION = '4';
 
 /** @type {{ days: Record<string, string[]> }} */
 let LEAVE_REGISTRY = { days: {} };
@@ -130,6 +130,42 @@ function addLeaveEntries(employee, dateKeys) {
   persistLeaveLocal();
   refreshHeatmapAfterLeaveChange();
   return added;
+}
+
+/** Replace this employee's leave days with the selected set (full overwrite). */
+function updateLeaveForEmployee(employee, dateKeys) {
+  const emp = String(employee || '').trim();
+  if (!emp) return 0;
+
+  Object.keys(LEAVE_REGISTRY.days).forEach((dateKey) => {
+    const next = (LEAVE_REGISTRY.days[dateKey] || []).filter((e) => e !== emp);
+    if (next.length) LEAVE_REGISTRY.days[dateKey] = next;
+    else delete LEAVE_REGISTRY.days[dateKey];
+  });
+
+  const unique = [...new Set(dateKeys.map((d) => String(d).trim()).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)))].sort();
+  unique.forEach((dateKey) => {
+    addLeaveEntry(emp, dateKey, { deferRefresh: true });
+  });
+
+  persistLeaveLocal();
+  refreshHeatmapAfterLeaveChange();
+  return unique.length;
+}
+
+function leaveDatesForEmployee(employee) {
+  const emp = String(employee || '').trim();
+  if (!emp) return [];
+  return Object.entries(LEAVE_REGISTRY.days)
+    .filter(([, emps]) => emps.includes(emp))
+    .map(([dateKey]) => dateKey)
+    .sort();
+}
+
+function syncLeavePickerFromEmployee() {
+  const emp = leavePickerCurrentEmployee();
+  leavePickerSelected = new Set(leaveDatesForEmployee(emp));
+  renderLeaveCalendar();
 }
 
 function removeLeaveEntry(employee, dateKey) {
@@ -279,8 +315,8 @@ function renderLeaveCalendar() {
   if (summary) {
     const n = leavePickerSelected.size;
     summary.textContent = n
-      ? `已选 ${n} 天（可点多天，再点一次取消）`
-      : '在日历上点击选择多天';
+      ? `已选 ${n} 天（点 Update 将覆盖该员工全部休假日期）`
+      : '在日历上选择日期；Update 可清空该员工休假';
   }
 }
 
@@ -302,7 +338,7 @@ function ensureLeaveModal() {
         <button type="button" class="leave-modal-close" data-leave-close aria-label="关闭">×</button>
       </header>
       <p class="leave-modal-hint">
-        先选员工，再在下方日历<strong>点多天</strong>，一次提交。Heatmap 工作日 0 单显示「休」。
+        先选员工（会载入该员工已登记日期），在日历调整多天，点 <strong>Update</strong> 覆盖更新该员工的休假日期。Heatmap 工作日 0 单显示「休」。
         浏览器会本地保存；本机 <code>8090</code> 可「保存到团队」。
       </p>
       <div class="leave-form">
@@ -320,7 +356,7 @@ function ensureLeaveModal() {
           <div class="leave-cal-actions">
             <span class="leave-cal-summary" id="leaveCalSummary"></span>
             <button type="button" class="btn-leave-secondary" id="leaveCalClear">清空选择</button>
-            <button type="button" class="btn-leave-add" id="leaveAddBtn">添加所选日期</button>
+            <button type="button" class="btn-leave-add" id="leaveAddBtn">Update</button>
           </div>
         </div>
       </div>
@@ -347,8 +383,12 @@ function ensureLeaveModal() {
     });
   });
 
-  document.getElementById('leaveEmpInput')?.addEventListener('change', () => renderLeaveCalendar());
-  document.getElementById('leaveEmpInput')?.addEventListener('input', () => renderLeaveCalendar());
+  document.getElementById('leaveEmpInput')?.addEventListener('change', () => syncLeavePickerFromEmployee());
+  document.getElementById('leaveEmpInput')?.addEventListener('input', () => {
+    const emp = leavePickerCurrentEmployee();
+    if (emp && allDashboardEmployees().includes(emp)) syncLeavePickerFromEmployee();
+    else renderLeaveCalendar();
+  });
 
   document.getElementById('leaveCalPrev')?.addEventListener('click', () => {
     leavePickerMonth -= 1;
@@ -380,15 +420,15 @@ function ensureLeaveModal() {
       return;
     }
     const dates = [...leavePickerSelected].sort();
-    if (!dates.length) {
-      setLeaveStatus('请在日历上选择至少一天。', true);
-      return;
-    }
-    const added = addLeaveEntries(emp, dates);
-    leavePickerSelected.clear();
+    const count = updateLeaveForEmployee(emp, dates);
+    leavePickerSelected = new Set(dates);
     renderLeaveCalendar();
     renderLeaveList();
-    setLeaveStatus(`已为 ${emp} 登记 ${added} 天休假。`);
+    if (!dates.length) {
+      setLeaveStatus(`已清除 ${emp} 的全部休假登记。`);
+      return;
+    }
+    setLeaveStatus(`已更新 ${emp} 的休假：共 ${count} 天。`);
   });
 
   document.getElementById('leaveExportBtn')?.addEventListener('click', () => exportLeaveJson());
@@ -480,7 +520,8 @@ function openLeaveModal() {
   leavePickerSelected.clear();
   leavePickerInitMonth();
   renderLeaveList();
-  renderLeaveCalendar();
+  if (leavePickerCurrentEmployee()) syncLeavePickerFromEmployee();
+  else renderLeaveCalendar();
   setLeaveStatus('');
   modal.hidden = false;
 }
