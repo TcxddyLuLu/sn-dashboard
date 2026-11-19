@@ -8,7 +8,7 @@ Daily Dashboard Automation
 """
 
 import os, sys, json, re, subprocess, logging, shutil, argparse, fcntl, time, signal
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime, date, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -124,7 +124,7 @@ _MONTH_END_UTC_PH = "__MONTH_END_UTC__"
 QUERY_TIMEOUT_SUMMARY_CI = 300
 QUERY_TIMEOUT_TICKETS_LOCAL = 1200
 QUERY_TIMEOUT_TICKETS_CI = 1500
-QUERY_TIMEOUT_TEAM_LOCAL = 900
+QUERY_TIMEOUT_TEAM_LOCAL = 1200
 QUERY_TIMEOUT_TEAM_CI = 900
 
 CANONICAL_EMPLOYEE_ID = {employee_id.upper(): employee_id for employee_id in EMPLOYEE_IDS}
@@ -152,9 +152,24 @@ def ticket_timeout_seconds() -> int:
 
 
 def team_query_timeout_seconds() -> int:
+    override = os.environ.get("TEAM_QUERY_TIMEOUT")
+    if override and str(override).isdigit():
+        return int(override)
     if CI_MODE or os.environ.get("CI", "").lower() == "true":
         return QUERY_TIMEOUT_TEAM_CI
     return QUERY_TIMEOUT_TEAM_LOCAL
+
+
+def team_ticket_workers() -> int:
+    raw = os.environ.get("TEAM_TICKET_WORKERS", "4")
+    if str(raw).isdigit():
+        return min(6, max(1, int(raw)))
+    return 4
+
+
+def team_tickets_mode() -> str:
+    """bulk | member | auto — default auto tries 2 bulk SQLs then per-member fallback."""
+    return os.environ.get("TEAM_TICKETS_MODE", "auto").strip().lower()
 
 
 def canonical_employee_id(raw_id: str) -> str:
@@ -239,8 +254,42 @@ def _load_employee_names_for_tickets() -> list[tuple[str, str]]:
     return names
 
 
+def _execute_team_ticket_sql_safe(sql: str) -> list[dict]:
+    try:
+        return _execute_team_ticket_sql(sql)
+    except Exception as exc:
+        log.warning("Team ticket SQL failed (skipped): %s", exc)
+        return []
+
+
+def _run_team_tickets_bulk(year: int, month: int) -> list[dict]:
+    """Two team-wide SQLs (incident + task) — far fewer Databricks sessions than per-member."""
+    inc_sql, task_sql = build_team_tickets_sql(year, month)
+    log.info("Running bulk team ticket queries (incident + task)...")
+    ticket_rows: list[dict] = []
+    errors: list[str] = []
+    deadline = team_query_timeout_seconds() - 30
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = {
+            pool.submit(_execute_team_ticket_sql, inc_sql): "incidents",
+            pool.submit(_execute_team_ticket_sql, task_sql): "tasks",
+        }
+        for future in as_completed(futures, timeout=max(60, deadline)):
+            label = futures[future]
+            try:
+                chunk = future.result()
+                log.info("Bulk %s query returned %s rows", label, len(chunk))
+                ticket_rows.extend(chunk)
+            except Exception as exc:
+                errors.append(f"{label}: {exc}")
+                log.warning("Bulk %s query failed: %s", label, exc)
+    if errors and not ticket_rows:
+        raise RuntimeError("; ".join(errors))
+    return ticket_rows
+
+
 def _run_team_tickets_by_member(year: int, month: int) -> list[dict]:
-    """Fetch tickets with one small query per employee (avoids full-table scan)."""
+    """Fallback: one small query per employee (68 SQLs)."""
     members = _load_employee_names_for_tickets()
     jobs: list[str] = []
     for employee_id, employee_name in members:
@@ -256,7 +305,7 @@ def _run_team_tickets_by_member(year: int, month: int) -> list[dict]:
         )
 
     ticket_rows: list[dict] = []
-    workers = min(8, max(1, len(jobs)))
+    workers = min(team_ticket_workers(), max(1, len(jobs)))
     log.info(
         "Running %s per-employee ticket queries (%s members, %s workers)...",
         len(jobs),
@@ -264,10 +313,27 @@ def _run_team_tickets_by_member(year: int, month: int) -> list[dict]:
         workers,
     )
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        for chunk in pool.map(_execute_team_ticket_sql, jobs):
+        for chunk in pool.map(_execute_team_ticket_sql_safe, jobs):
             ticket_rows.extend(chunk)
     log.info("Per-employee ticket queries returned %s rows", len(ticket_rows))
     return ticket_rows
+
+
+def _run_team_tickets_for_month(year: int, month: int) -> list[dict]:
+    mode = team_tickets_mode()
+    if mode in ("bulk", "auto"):
+        try:
+            rows = _run_team_tickets_bulk(year, month)
+            if rows or mode == "bulk":
+                return rows
+            log.warning("Bulk team tickets returned 0 rows; trying per-member")
+        except Exception as exc:
+            if mode == "bulk":
+                raise
+            log.warning("Bulk team tickets failed (%s); falling back to per-member", exc)
+    if mode == "member" or mode == "auto":
+        return _run_team_tickets_by_member(year, month)
+    raise RuntimeError(f"Invalid TEAM_TICKETS_MODE: {mode}")
 
 
 def normalize_ticket_rows(rows: list[dict]) -> list[dict]:
@@ -572,12 +638,12 @@ def _execute_team_ticket_sql(sql: str) -> list[dict]:
 
 def _run_team_tickets_once():
     now = now_display()
-    return _run_team_tickets_by_member(now.year, now.month)
+    return _run_team_tickets_for_month(now.year, now.month)
 
 
 def _fetch_team_tickets_for_month(year: int, month: int) -> list[dict]:
     ensure_databricks_http_path(SCRIPT_DIR / ".env")
-    return normalize_ticket_rows(_run_team_tickets_by_member(year, month))
+    return normalize_ticket_rows(_run_team_tickets_for_month(year, month))
 
 
 def _fetch_query_rows(sql: str) -> list[dict]:
