@@ -82,7 +82,7 @@ NAME_OVERRIDES = {
     "AZho63": "Alan Zhong",
     "HTan3": "Howie Tan",
     "HZh8": "Hooxi Zhu",
-    "AWan96": "Arugs Wang",
+    "AWan96": "Argus Wang",
 }
 
 # ServiceNow assigned_to values for employees missing/wrong in sys_user (matches dashboard_query.sql).
