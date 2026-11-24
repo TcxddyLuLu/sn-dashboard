@@ -82,6 +82,7 @@ NAME_OVERRIDES = {
     "AZho63": "Alan Zhong",
     "HTan3": "Howie Tan",
     "HZh8": "Hooxi Zhu",
+    "AWan96": "Arugs Wang",
 }
 
 # ServiceNow assigned_to values for employees missing/wrong in sys_user (matches dashboard_query.sql).
@@ -97,7 +98,7 @@ EMPLOYEE_IDS = [
     'KOuYan','VCHE11','YWei29','LXIAN2',
     'JQIANG','HZhu8','DCha49','PWan61','YDin23','XZh302',
     'FL22','YY7','YZh33','Z36','GYo2',
-    'HZh8','PZh105',
+    'HZh8','PZh105','AWan96',
 ]
 
 DASHBOARD_SQL = (SCRIPT_DIR / "dashboard_query.sql").read_text()
